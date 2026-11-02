@@ -12,7 +12,7 @@ const clamp = (x: number, lo: number, hi: number): number => Math.min(hi, Math.m
 const EPS = 1e-9;
 
 /** Math.round, except that a value a hair under a half still rounds up. */
-const round = (x: number): number => Math.round(x + EPS);
+const roundHalfUp = (x: number): number => Math.round(x + EPS);
 
 function mapOptions(f: (o: OptionId) => number): Record<OptionId, number> {
   const out = { A: 0, B: 0, C: 0, D: 0 };
@@ -67,7 +67,7 @@ export function effectiveScores(content: CaseContent, roundIndex: number, prior:
   const options = content.rounds[roundIndex].options;
   return mapOptions((o) => {
     const evidence = options.find((x) => x.id === o)?.score;
-    return evidence ?? decisionBase + synergyBonus * synergyHits(o, prior, content.synergy);
+    return evidence ?? (decisionBase + synergyBonus * synergyHits(o, prior, content.synergy));
   });
 }
 
@@ -95,7 +95,7 @@ export function computeDamage(args: {
 
   const exhibit = Math.min(exhibits, k.maxExhibits) * k.exhibitBonus;
   const rally = Math.min(rallies, k.maxCallouts) * k.calloutBonus;
-  const total = clamp(round(base + focus + alignment + exhibit + rally), 0, 100);
+  const total = clamp(roundHalfUp(base + focus + alignment + exhibit + rally), 0, k.roundHp);
 
   return {
     round: roundIndex, total, base, focus, alignment, exhibit, rally,
@@ -106,9 +106,10 @@ export function computeDamage(args: {
   };
 }
 
-/** Linear from `max` at an instant answer down to 0 at the end of the window. */
+/** Linear from `max` at an instant answer down to 0 at the end of the window. A window of zero or less pays nothing. */
 export function speedBonus(responseMs: number, windowMs: number, max: number): number {
-  return clamp(round(max * (1 - responseMs / windowMs)), 0, max);
+  if (windowMs <= 0) return 0;
+  return clamp(roundHalfUp(max * (1 - responseMs / windowMs)), 0, max);
 }
 
 export function pointsFor(args: {
@@ -154,15 +155,21 @@ export function consistencyAward(players: Player[], content: CaseContent): strin
 
 /** Highest mean score among named tables with at least two members. */
 export function tableAward(players: Player[]): { table: string; mean: number } | null {
-  const byTable = new Map<string, number[]>();
+  const byTable = new Map<string, { total: number; n: number }>();
   for (const p of players) {
     if (p.table === null) continue;
-    byTable.set(p.table, [...(byTable.get(p.table) ?? []), p.score]);
+    const acc = byTable.get(p.table);
+    if (acc) {
+      acc.total += p.score;
+      acc.n += 1;
+    } else {
+      byTable.set(p.table, { total: p.score, n: 1 });
+    }
   }
   let best: { table: string; mean: number } | null = null;
-  for (const [table, scores] of byTable) {
-    if (scores.length < 2) continue;
-    const mean = scores.reduce((acc, x) => acc + x, 0) / scores.length;
+  for (const [table, { total, n }] of byTable) {
+    if (n < 2) continue;
+    const mean = total / n;
     if (best === null || mean > best.mean) best = { table, mean };
   }
   return best;

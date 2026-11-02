@@ -82,6 +82,20 @@ describe('computeDamage', () => {
     expect(d.total).toBe(0); expect(d.majority).toBe('A'); expect(d.tied).toBe(true);
     expect(Object.values(d.perOption).every(Number.isFinite)).toBe(true);
   });
+  it('withholds alignment when the lead class is the tied group, even if the resolved letters match', () => {
+    const d = dmg({ lead: T(3, 3, 0, 0), support: T(10, 2, 0, 0) });
+    expect(d.leadTied).toBe(true); expect(d.leadMajority).toBe('A'); expect(d.supportMajority).toBe('A'); expect(d.alignment).toBe(0);
+  });
+  it('gives no support majority and no alignment when only the lead class voted', () => {
+    const d = dmg({ lead: T(0, 10, 0, 0), support: Z });
+    expect(d.leadMajority).toBe('B'); expect(d.supportMajority).toBeNull(); expect(d.supportTied).toBe(false);
+    expect(d.alignment).toBe(0); expect(d.total).toBe(95);
+  });
+  it('caps the total at the round HP in the content, not at a fixed 100', () => {
+    const tuned = { ...c, scoring: { ...c.scoring, roundHp: 80 } };
+    const d = dmg({ content: tuned, lead: T(0, 10, 0, 0), support: T(0, 10, 0, 0), exhibits: 3, rallies: 2 });
+    expect(d.total).toBe(80);
+  });
 });
 
 describe('points, endings, awards', () => {
@@ -89,6 +103,15 @@ describe('points, endings, awards', () => {
     expect(speedBonus(6000, 30000, 20)).toBe(16);
     expect(speedBonus(0, 30000, 20)).toBe(20);
     expect(speedBonus(45000, 30000, 20)).toBe(0);
+  });
+  it('speed bonus is 0, not NaN, when the window is zero or negative', () => {
+    expect(speedBonus(0, 0, 20)).toBe(0);
+    expect(speedBonus(5, 0, 20)).toBe(0);
+    expect(speedBonus(5, -30000, 20)).toBe(0);
+    expect(pointsFor({ content: c, roundIndex: 0, option: 'B', responseMs: 0, windowMs: 0, prior: [], isLead: true })).toBe(90);
+  });
+  it('speed bonus caps an answer stamped before the window opened', () => {
+    expect(speedBonus(-1000, 30000, 20)).toBe(20);
   });
   it('points are effective score plus speed plus the caster bonus for the lead class', () => {
     const base = { content: c, roundIndex: 0, option: 'B' as const, responseMs: 6000, windowMs: 30000, prior: [] as const };
@@ -102,6 +125,16 @@ describe('points, endings, awards', () => {
     expect(endingFor({ ...f, totalDamage: 200 })).toEqual({ ending: 'B', tier: 'fragile', majority: 'B' });
     expect(endingFor({ ...f, totalDamage: 179 })).toEqual({ ending: 'holds', tier: 'holds', majority: 'B' });
   });
+  it('puts each tier boundary inside the tier it opens', () => {
+    const f = { content: c, finalLead: T(1, 5, 1, 1), finalSupport: T(4, 20, 4, 4) };
+    expect(endingFor({ ...f, totalDamage: 260 }).tier).toBe('decisive');
+    expect(endingFor({ ...f, totalDamage: 259 }).tier).toBe('fragile');
+    expect(endingFor({ ...f, totalDamage: 180 }).tier).toBe('fragile');
+  });
+  it('picks the ending from the blend of both groups, not from either alone', () => {
+    // The lead class alone would say A and the rest alone C; the blend says B.
+    expect(endingFor({ content: c, finalLead: T(8, 7, 0, 5), finalSupport: T(0, 7, 8, 5), totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B' });
+  });
   const p = (id: string, picks: string, score: number, table: string | null = null, role: Role = 'citizen'): Player => ({
     id, name: id, role, table, joinedAt: 0, score, lastPoints: 0,
     votes: Object.fromEntries([...picks].map((o, i) => [i, { option: o, at: 0 }])) as Player['votes'],
@@ -114,5 +147,9 @@ describe('points, endings, awards', () => {
   it('awards the top table by mean score among tables with two or more members', () => {
     expect(tableAward([p('a', '', 100, 'Table 1'), p('b', '', 50, 'Table 1'), p('c', '', 400, 'Table 2'), p('d', '', 10, null)])).toEqual({ table: 'Table 1', mean: 75 });
     expect(tableAward([p('a', '', 100, null)])).toBeNull();
+  });
+  it('averages every member of a table and keeps the first table when the means are equal', () => {
+    const rows = [p('a', '', 10, 'T1'), p('b', '', 20, 'T1'), p('c', '', 30, 'T1'), p('d', '', 20, 'T2'), p('e', '', 20, 'T2')];
+    expect(tableAward(rows)).toEqual({ table: 'T1', mean: 20 });
   });
 });
