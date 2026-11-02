@@ -1,0 +1,118 @@
+// tests/scoring.test.ts
+import { describe, it, expect } from 'vitest';
+import raw from '../content/case.json';
+import { loadContent } from '../shared/content';
+import { shares, blendShares, majorityOf, synergyHits, effectiveScores, computeDamage, speedBonus, pointsFor, endingFor, consistencyAward, tableAward } from '../shared/scoring';
+import type { Player, Role } from '../shared/types';
+const c = loadContent(raw);
+const T = (A: number, B: number, C: number, D: number) => ({ A, B, C, D });
+const Z = T(0, 0, 0, 0);
+
+describe('shares', () => {
+  it('splits by total and handles zero', () => {
+    expect(shares(T(4, 24, 4, 8))).toEqual({ A: 0.1, B: 0.6, C: 0.1, D: 0.2 });
+    expect(shares(Z)).toEqual(Z);
+  });
+  it('blends lead and support half and half, falling back to whichever voted', () => {
+    expect(blendShares(T(0, 1, 0, 0), T(1, 1, 0, 0))).toEqual({ A: 0.25, B: 0.75, C: 0, D: 0 });
+    expect(blendShares(Z, T(0, 10, 0, 0))).toEqual({ A: 0, B: 1, C: 0, D: 0 });
+    expect(blendShares(T(0, 10, 0, 0), Z)).toEqual({ A: 0, B: 1, C: 0, D: 0 });
+    expect(blendShares(Z, Z)).toEqual(Z);
+  });
+  it('picks the top option, earliest letter on tie', () => {
+    expect(majorityOf(shares(T(4, 24, 4, 8)))).toEqual({ majority: 'B', tied: false });
+    expect(majorityOf(shares(T(5, 5, 1, 0)))).toEqual({ majority: 'A', tied: true });
+    expect(majorityOf(Z)).toEqual({ majority: 'A', tied: true });
+  });
+});
+
+describe('synergy and effective scores', () => {
+  it('counts coherent earlier majorities', () => {
+    expect(synergyHits('B', ['B', 'C', 'B'], c.synergy)).toBe(3);
+    expect(synergyHits('A', ['B', 'C', 'B'], c.synergy)).toBe(0);
+    expect(synergyHits('D', ['B', 'C', 'B'], c.synergy)).toBe(3);
+    expect(synergyHits('A', ['A', 'C', 'A'], c.synergy)).toBe(1);
+    expect(synergyHits('B', [null, null, null], c.synergy)).toBe(0);
+  });
+  it('uses evidence scores for rounds 1 to 3 and 50 + 15 per hit for round 4', () => {
+    expect(effectiveScores(c, 0, [])).toEqual(T(40, 80, 15, 55));
+    expect(effectiveScores(c, 3, ['B', 'C', 'B'])).toEqual(T(50, 95, 50, 95));
+  });
+});
+
+describe('computeDamage', () => {
+  const dmg = (over: Partial<Parameters<typeof computeDamage>[0]>) =>
+    computeDamage({ content: c, roundIndex: 0, lead: T(1, 6, 1, 2), support: T(6, 15, 3, 6), prior: [], exhibits: 0, rallies: 0, ...over });
+  it('matches the spec worked example for round 1', () => {
+    const d = dmg({ exhibits: 2 });
+    for (const [o, v] of Object.entries({ A: 0.15, B: 0.55, C: 0.1, D: 0.2 })) expect(d.shares[o as 'A']).toBeCloseTo(v, 10);
+    expect(d.base).toBeCloseTo(62.5, 5);
+    expect(d.focus).toBe(0); expect(d.alignment).toBe(10); expect(d.exhibit).toBe(10); expect(d.rally).toBe(0);
+    expect(d.total).toBe(83);
+    expect(d.majority).toBe('B'); expect(d.leadMajority).toBe('B'); expect(d.supportMajority).toBe('B');
+    expect(d.leadTied).toBe(false); expect(d.supportTied).toBe(false);
+  });
+  it('gives focus when the blended top share reaches 60%', () => {
+    const d = dmg({ lead: T(0, 10, 0, 0), support: T(10, 20, 0, 0) });
+    expect(d.base).toBeCloseTo(73.333, 2); expect(d.focus).toBe(15); expect(d.alignment).toBe(10); expect(d.total).toBe(98);
+  });
+  it('gives an even split 48 with no focus and no alignment', () => {
+    const d = dmg({ lead: T(1, 1, 1, 1), support: T(1, 1, 1, 1) });
+    expect(d.total).toBe(48); expect(d.focus).toBe(0); expect(d.alignment).toBe(0); expect(d.tied).toBe(true);
+    expect(d.leadTied).toBe(true); expect(d.supportTied).toBe(true);
+  });
+  it('withholds alignment when one group is tied even if the resolved letters match', () => {
+    const d = dmg({ lead: T(0, 5, 0, 0), support: T(0, 3, 3, 0) });
+    expect(d.leadMajority).toBe('B'); expect(d.supportMajority).toBe('B'); expect(d.supportTied).toBe(true); expect(d.alignment).toBe(0);
+  });
+  it('falls back to the support votes when no one of the lead class voted', () => {
+    const d = dmg({ lead: Z, support: T(0, 10, 0, 0) });
+    expect(d.total).toBe(95); expect(d.alignment).toBe(0); expect(d.leadMajority).toBeNull(); expect(d.leadTied).toBe(false);
+  });
+  it('matches the spec worked example for round 4', () => {
+    const d = dmg({ roundIndex: 3, lead: T(2, 4, 1, 1), support: T(8, 16, 4, 4), prior: ['B', 'C', 'B'] });
+    expect(d.base).toBeCloseTo(78.125, 5); expect(d.alignment).toBe(10); expect(d.total).toBe(88);
+  });
+  it('caps exhibits at 3, rallies at 2, and total at 100', () => {
+    const d = dmg({ lead: T(0, 10, 0, 0), support: T(0, 10, 0, 0), exhibits: 7, rallies: 5 });
+    expect(d.exhibit).toBe(15); expect(d.rally).toBe(20); expect(d.total).toBe(100);
+  });
+  it('handles an empty round without NaN', () => {
+    const d = dmg({ roundIndex: 1, lead: Z, support: Z, prior: ['B'] });
+    expect(d.total).toBe(0); expect(d.majority).toBe('A'); expect(d.tied).toBe(true);
+    expect(Object.values(d.perOption).every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('points, endings, awards', () => {
+  it('speed bonus is linear and clamped', () => {
+    expect(speedBonus(6000, 30000, 20)).toBe(16);
+    expect(speedBonus(0, 30000, 20)).toBe(20);
+    expect(speedBonus(45000, 30000, 20)).toBe(0);
+  });
+  it('points are effective score plus speed plus the caster bonus for the lead class', () => {
+    const base = { content: c, roundIndex: 0, option: 'B' as const, responseMs: 6000, windowMs: 30000, prior: [] as const };
+    expect(pointsFor({ ...base, isLead: true })).toBe(106);
+    expect(pointsFor({ ...base, isLead: false })).toBe(96);
+    expect(pointsFor({ content: c, roundIndex: 3, option: 'B', responseMs: 30000, windowMs: 30000, prior: ['B', 'C', 'B'], isLead: false })).toBe(95);
+  });
+  it('picks the ending by final blended majority and total damage tier', () => {
+    const f = { content: c, finalLead: T(1, 5, 1, 1), finalSupport: T(4, 20, 4, 4) };
+    expect(endingFor({ ...f, totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B' });
+    expect(endingFor({ ...f, totalDamage: 200 })).toEqual({ ending: 'B', tier: 'fragile', majority: 'B' });
+    expect(endingFor({ ...f, totalDamage: 179 })).toEqual({ ending: 'holds', tier: 'holds', majority: 'B' });
+  });
+  const p = (id: string, picks: string, score: number, table: string | null = null, role: Role = 'citizen'): Player => ({
+    id, name: id, role, table, joinedAt: 0, score, lastPoints: 0,
+    votes: Object.fromEntries([...picks].map((o, i) => [i, { option: o, at: 0 }])) as Player['votes'],
+  });
+  it('awards consistency to the player with most own-synergy hits, ties by score', () => {
+    expect(consistencyAward([p('x', 'BCBB', 10), p('y', 'ACAA', 500), p('z', 'BCB', 999)], c)).toBe('x');
+    expect(consistencyAward([p('x', 'BCBB', 10), p('y', 'BCBB', 11)], c)).toBe('y');
+    expect(consistencyAward([p('z', 'BCB', 999)], c)).toBeNull();
+  });
+  it('awards the top table by mean score among tables with two or more members', () => {
+    expect(tableAward([p('a', '', 100, 'Table 1'), p('b', '', 50, 'Table 1'), p('c', '', 400, 'Table 2'), p('d', '', 10, null)])).toEqual({ table: 'Table 1', mean: 75 });
+    expect(tableAward([p('a', '', 100, null)])).toBeNull();
+  });
+});
