@@ -700,7 +700,7 @@ Expected: FAIL, modules not found.
 
 - [ ] **Step 4: Implement `shared/names.ts` and `shared/codes.ts`**
 
-`names.ts`: two word lists of 24 each (first: Steam, Rift, Olkaria, Savanna, Geothermal, Baseload, Acacia, Silicon, Nairobi, Azure, Pylon, Ochre…; second: Gecko, Giraffe, Heron, Weaver, Mongoose, Hornbill, Ibis, Zebra, Dikdik, Crane, Serval, Oryx…), FNV-1a 32-bit over the seed to index both. `clean(raw)`: strip `[\u0000-\u001f\u007f]`, trim, slice 16. `sanitizeName = clean || generateName(seed)`; `sanitizeTable = clean || null`. `codes.ts`: alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ`, `isValidCode = /^[A-HJ-NP-Z]{4}$/`.
+`names.ts`: two word lists of 24 each (first: Steam, Rift, Olkaria, Savanna, Thermal, Fissure, Acacia, Silicon, Nairobi, Azure, Pylon, Ochre…; second: Gecko, Giraffe, Heron, Weaver, Mongoose, Hornbill, Ibis, Zebra, Dikdik, Crane, Serval, Oryx…), FNV-1a 32-bit over the seed to index both. `clean(raw)`: strip `[\u0000-\u001f\u007f]`, trim, slice 16. `sanitizeName = clean || generateName(seed)`; `sanitizeTable = clean || null`. `codes.ts`: alphabet `ABCDEFGHJKLMNPQRSTUVWXYZ`, `isValidCode = /^[A-HJ-NP-Z]{4}$/`.
 
 - [ ] **Step 5: Implement `shared/room-logic.ts`**
 

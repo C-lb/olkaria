@@ -16,6 +16,16 @@ it('sanitises names and tables', () => {
   expect(sanitizeTable(undefined)).toBeNull();
 });
 
+import { NAME_FIRST_WORDS, NAME_SECOND_WORDS } from '../shared/names';
+
+it('keeps both word lists at 24 entries', () => {
+  expect(NAME_FIRST_WORDS).toHaveLength(24);
+  expect(NAME_SECOND_WORDS).toHaveLength(24);
+});
+it('keeps every pairing within the 16-character cap that typed names obey', () => {
+  const tooLong = NAME_FIRST_WORDS.flatMap((first) => NAME_SECOND_WORDS.map((second) => `${first} ${second}`)).filter((name) => name.length > 16);
+  expect(tooLong).toEqual([]);
+});
 it('builds every generated name from two capitalised words', () => {
   for (let i = 0; i < 500; i++) expect(generateName(`seed-${i}`)).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
 });
