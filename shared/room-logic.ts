@@ -136,10 +136,16 @@ function castVote(state: RoomState, ev: VoteEvent): Result {
 
 const lock = (state: RoomState, now: number): Result => update(state, now, { phase: 'locked' }, [{ type: 'clearAlarm' }]);
 
-/** A tick at or after the deadline of an open vote locks it; any other tick changes nothing. */
+/**
+ * A tick at or after the deadline of an open vote locks it. An early tick (an alarm that fired ahead
+ * of the deadline, or a stale one from before a reopen) changes nothing but arms the alarm again for
+ * the real deadline, so an open vote is never left with nothing scheduled to close it. In any other
+ * phase a tick does nothing, even in locked where the old deadline is still stored.
+ */
 function tick(state: RoomState, now: number): Result {
-  const due = state.phase === 'vote' && state.voteDeadline !== null && now >= state.voteDeadline;
-  return due ? lock(state, now) : nothing(state);
+  if (state.phase !== 'vote' || state.voteDeadline === null) return nothing(state);
+  if (now >= state.voteDeadline) return lock(state, now);
+  return { state: { ...state }, effects: [{ type: 'setAlarm', at: state.voteDeadline }] };
 }
 
 function runCmd(state: RoomState, cmd: HostCmd, now: number, content: CaseContent): Result {
