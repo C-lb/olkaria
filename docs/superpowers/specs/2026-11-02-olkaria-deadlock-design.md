@@ -56,9 +56,9 @@ Travel 2 to 4 are skipped with N unless the segment is running early. The debrie
 
 ### 3.2 Host screens (projector)
 
-- Lobby. QR code at least a quarter of the screen height, the room code in large type, the join URL under it, "N joined" and the count per class ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline with their name. Brad Smith's quote under the title; PS Tanui's "not failed or withdrawn … requires some structuring" as the quest hook. Space starts the game.
+- Lobby. QR code at least a quarter of the screen height, the room code in large type, the join URL under it, "N joined" and the count per class ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline, and a list of the last eight joiners by name and class ("Ann, Knight") in the text layer. Brad Smith's quote under the title; PS Tanui's "not failed or withdrawn … requires some structuring" as the quest hook. Space starts the game.
 - Travel. Side-scrolling platform segment through a dark-fantasy Rift Valley. The presenter controls the lead class of the coming round; the other three trail. Three exhibit pickups per segment. The arena gate starts the round.
-- Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; "N of M voted". Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, up to twice. Then the strike: the lead class performs the special attack sized by its majority, the other three strike in support sized by their shares, rally strikes land last with the student's name, the HP drains. Then the debrief panel: per option, damage and one projector line with citation; a line on alignment ("The party stood with the Rogues" or "Split: Rogues chose B, the party chose A"); the discuss line.
+- Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; "N of M voted". Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, up to twice. Then the strike. Every number shown adds up to the damage drained: the lead class performs the special attack carrying the lead half of the base damage, flashing in the colour of its majority option; the other three classes strike together carrying the support half; then one flourish per bonus earned, each with its number ("Focus +15", "Party stands together +10", "Exhibit +5" per pickup) and one rally strike per convincing call-out with the student's name and "+10"; the HP drains by the total. When the sum passes 100 the panel says "capped at 100". When no one of the lead class voted, the special attack is skipped ("No Rogues voted this round") and the support strike carries all of the base; the mirror case skips the support strike. Then the debrief panel: per option, its damage contribution and one projector line with citation; a breakdown line ("Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83"); an alignment line in one of four forms ("The party stood with the Rogues: both chose B", "Split: Rogues chose B, the party chose A", "The Rogues were split" or "The party was split" when a group tied, "No Rogues voted this round"); the discuss line.
 - Ending. One of five cutscenes (section 4.6) with the final split, "what must be true" and "the risk you accepted".
 - Leaderboard. Top five students, most consistent strategist, top table, and the final split under "What should Microsoft do, and why?".
 
@@ -97,8 +97,8 @@ Four phases of 100 HP each, 400 in total, drawn in a dark-fantasy register.
 1. Narration: the situation in two to four sentences with one quote from the case, ending with the lead class's call to strike ("Rogues, this is your strike: what will Kenyans accept?").
 2. Four options on screen (full text) and on phones (short label). Everyone votes. 30-second timer; Space locks early; the timer locks automatically.
 3. Lock: two bars per option, the lead class and the rest of the party. Call-out: C picks a random voter from the lead class first (any voter once the lead class is used up), shows their name and choice; they defend it; Y awards a rally strike, N does not. Up to two per round.
-4. Reveal: the special attack by the lead class, three support strikes, rally strikes. Damage numbers next to each.
-5. Debrief: per option, damage and projector line; the alignment line; the discuss line. Space moves on.
+4. Reveal: the special attack by the lead class (the lead half of base), the combined support strike (the support half), a flourish per bonus, rally strikes. The numbers shown sum to the damage drained.
+5. Debrief: per option, damage and projector line; the breakdown line; the alignment line; the discuss line. Space moves on.
 
 ### 4.4 Scoring
 
@@ -140,7 +140,7 @@ Short platform segments between rounds. Arrow keys move and jump (Space also jum
 - B, "The Seed Plant". Must be true: KenGen or a commercial anchor signs a smaller commitment; 24 to 60 MW fills within a few years; the expansion option stays open. Risk accepted: weak early returns; competitors build larger first.
 - C, "The Long Road South". Must be true: Kenyan demand stays small enough that waiting costs little; the G42 and Kenyan relationships survive the pause. Risk accepted: Oracle, Huawei and Nxtra take the market; the deal lapses.
 - D, "The Tenant". Must be true: local partners such as EcoCloud are willing and able to own the asset risk; Kenya still delivers power and land; Azure demand fills the rented capacity. Risk accepted: the demand risk is moved, not solved; the partners' goals diverge from Microsoft's.
-- X, "The Deadlock holds". Plays when total damage is under 180. "Your board sends the party back to Nairobi." For rounds 1 to 3 it lists the class's majority next to what the final option needed.
+- `holds`, "The Deadlock holds". Plays when total damage is under 180. "Your board sends the party back to Nairobi." For rounds 1 to 3 it lists the class's majority next to what the final option needed.
 
 Each ending shows the round 4 split, the slide the facilitator closes on.
 
@@ -166,6 +166,8 @@ Debrief: "Geothermal expansion displaced hundreds of Maasai families and drew a 
 
 Citizens' view. Power is a sizing and conditions problem. The grid can carry 60 to 100 MW and cannot carry 1 GW; the condition that generation grows with the plant is what makes B safe, and D is the condition that makes it fair.
 
+Discuss line: "Why did the full 1 GW do so little damage, and what condition made 60 to 100 MW safe?"
+
 ### 5.2 Round 2, Debt Golem. Knights (Kenyan Government): what does the Government offer instead of a guarantee?
 
 Narration. "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?"
@@ -184,6 +186,8 @@ Debrief: "The Cloud Policy and the data-localisation rules already point this wa
 
 Government's view. Structure it, do not guarantee it, which is what Tanui said. C and D are both live and combine; A is politically dead; B is honest but passive.
 
+Discuss line: "Two live offers, one honest refusal, one dead option. Which would you sign, and who carries the risk?"
+
 ### 5.3 Round 3, Fog of Demand. Bards (Local Businesses): what do Kenya's businesses commit?
 
 Narration. "The Fog. Microsoft wants proof that Kenyans will pay before it builds. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?"
@@ -201,6 +205,8 @@ D. Screen: "Skills first. No commitments until the innovation lab and training p
 Debrief: "The development centre employed about 500 people and was meant to feed the innovation lab (Namunwa, 2026; Otieno, 2026), so the grievance is real. But it ties demand to a different problem and gives Microsoft no reason to build."
 
 Local Businesses' view. Demand is the thing hidden in the fog, and only the buyers can make it visible (A) or build it themselves (B). Waiting (C) and bargaining (D) leave the fog where it is.
+
+Discuss line: "What would Kenya's businesses need to see before they sign, and what would Microsoft need to see before it builds?"
 
 ### 5.4 Round 4, the core. Wizards (Microsoft), the whole party: what should Microsoft do?
 
@@ -221,6 +227,8 @@ No evidence scores. Synergy table (earlier-round majorities coherent with each f
 | D, tenant | B, C | C, D | B |
 
 Microsoft's view, for the facilitator only and never shown as a right answer. If the class follows the evidence in rounds 1 to 3, the coherent decision is B, possibly structured as D. The case's own Decision section says every option has significant drawbacks; the point of round 4 is that the class owns the trade-off it picks and can say what must be true for it to work.
+
+Discuss line: "What should Microsoft do, and why?" On the phone, the round 4 result shows how many of the three earlier class decisions the student's own pick fits, instead of a debrief.
 
 ### 5.5 Exhibit pickups (travel segments)
 
@@ -275,8 +283,8 @@ Transitions
 - `locked` → `reveal` on host `reveal`. Tallies the lead role and the rest separately, computes damage and bonuses, applies damage, awards points (vote points, caster bonus, call-out points), records the majority. A still-pending call-out counts as declined.
 - `locked` → `vote` on host `reopen` with a fresh deadline; existing votes stand and the opening time stays. In `vote`, `reopen` extends the deadline. Elsewhere it is an error; a reveal is final.
 - `reveal` → `travel` (round + 1) on host `next` while round < 3; `reveal` → `ending` after round 3. `ending` → `leaderboard` on `next`.
-- Any phase → `lobby` on host `reset` (players kept, scores, tallies, call-outs and damage cleared).
-- Host `exhibit` during `travel` adds a pickup for the current round (max 3). Host `injectVotes` during `vote` or `locked` adds synthetic votes to the current round's support tally (manual mode and bots); synthetic voters never appear as players. Host `kick` removes a player. Host `hideNames` toggles names on the lobby and leaderboard.
+- Any phase → `lobby` on host `reset` (players kept, scores, tallies, call-outs and damage cleared, bans kept).
+- Host `exhibit` during `travel` adds a pickup for the current round (max 3). Host `injectVotes` during `vote` or `locked` adds synthetic votes to the current round's support tally (manual mode and bots); synthetic voters never appear as players. Host `kick` removes a player and bans their client id: the phone is told it was removed and stops reconnecting, and any later `join` from that id is refused, so a kick sticks. Host `hideNames` toggles names on the lobby list and the leaderboard.
 
 Player events
 
@@ -302,7 +310,7 @@ Reconnect. The host page remembers its room for the tab and resumes at the saved
 
 ### 6.5 Host keyboard
 
-Space: advance (start, lock, reveal, next). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: auto-run. N in travel: skip. H: hide names on lobby and leaderboard (the banner still names the called student). F: fullscreen. Esc: key map. 1 to 4, Shift+1 to Shift+4, B: tallies.
+Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Space does nothing, so the closing screen survives a stray press. Shift+R twice within 3 seconds: reset to the lobby (the first press shows "Press Shift+R again to reset"). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: auto-run. N in travel: skip. H: hide names on the lobby list and the leaderboard (the banner still names the called student). F: fullscreen. Esc: key map. 1 to 4, Shift+1 to Shift+4, B: tallies.
 
 ### 6.6 Content file
 
@@ -347,6 +355,7 @@ Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute 
 
 - Roles map to classes as Citizen Rogue, Government Knight, Local Businesses Bard, Microsoft Wizard, and lead the rounds in that order so Microsoft's decision closes the segment as the rubric asks. Bard for Local Businesses is my pick (trade, networks, deals); it is one word in the content file to change.
 - Round 3 is written from the buyers' side: with G42 folded into Microsoft, the demand head belongs to the businesses who would buy or build the capacity.
+- Every number shown during a strike adds up to the damage drained, bonuses included; a kick bans the client id so it sticks; Space never resets, Shift+R twice does; the lobby shows names in a text-layer list rather than on the sprites; the discuss lines are content and live in section 5 for the team's sign-off.
 - The lead class carries half the attack regardless of headcount; the alignment bonus is +10; the caster bonus is 10 points.
 - Rounds 1 to 3 are written from the lead stakeholder's side with evidence scores; round 4 keeps Microsoft's four options and the synergy table.
 - Call-outs: random among the lead class's voters first, then anyone, at most two per round, +10 damage when convincing, 30 points to the student when awarded and 10 for speaking.

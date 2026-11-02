@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A projector-side dark-fantasy pixel boss fight plus a phone page, where a class split into four stakeholder classes (Rogue, Knight, Cleric, Wizard) votes through four decision rounds of the Kenya data-centre case, one class leading each round's special attack, and the votes become attacks on the Deadlock.
+**Goal:** A projector-side dark-fantasy pixel boss fight plus a phone page, where a class split into four stakeholder classes (Rogue, Knight, Bard, Wizard) votes through four decision rounds of the Kenya data-centre case, one class leading each round's special attack, and the votes become attacks on the Deadlock.
 
 **Architecture:** Pure TypeScript core in `shared/` (content schema, scoring, room reducer) used by both an authoritative Cloudflare Durable Object and an in-browser offline mode. Phaser 3 host game with an HTML text layer, and a plain TypeScript phone page, both built by Vite and served as static assets by the same Worker that hosts the rooms over WebSockets. All case content lives in one JSON file.
 
@@ -23,6 +23,9 @@
 - `reopen` works from `locked` (back to `vote`, fresh deadline, `voteOpenedAt` unchanged) and from `vote` (deadline extended); elsewhere `'bad phase'`. A reveal is final (spec 6.2).
 - Phone labels 28 characters or fewer; projector lines 130 or fewer; round ids `grid`, `debt`, `fog`, `core` (spec 6.6).
 - Travel controls: arrow keys and Space only; A toggles auto-run; N skips (spec 6.5).
+- Space advances (start, open the vote, lock, reveal, next) and does nothing on the leaderboard. Reset is Shift+R pressed twice within 3 seconds, never Space (spec 6.5).
+- Kick bans the client id: the phone is told `{ t: 'kicked' }`, stops reconnecting, and a later join from that id is refused with `'removed'` (spec 6.2).
+- Everything shown during a strike sums to the damage drained: lead half of base, support half of base, one flourish per bonus, one rally strike per convincing call-out; the debrief carries a breakdown line (spec 3.2).
 - Copy rules: sentence case, no em dashes, no all-caps eyebrows (anti-vibecode). Invoke the anti-vibecode skill before `player/styles.css` and `host/hud/hud.css`.
 - Every non-skippable animation is 8 seconds or shorter; Space skips (spec 2).
 - Assets: GitHub first, author page second, licence recorded in `CREDITS.md` before any file is copied (spec 7).
@@ -107,13 +110,14 @@ export interface DamageResult {
   round: number; total: number; base: number; focus: number; alignment: number; exhibit: number; rally: number;
   leadShares: Record<OptionId, number>; supportShares: Record<OptionId, number>; shares: Record<OptionId, number>;
   effective: Record<OptionId, number>; perOption: Record<OptionId, number>;
-  majority: OptionId; tied: boolean; leadMajority: OptionId | null; supportMajority: OptionId | null;
+  majority: OptionId; tied: boolean;
+  leadMajority: OptionId | null; supportMajority: OptionId | null; leadTied: boolean; supportTied: boolean;
 }
 export interface Callout { playerId: string | null; option: OptionId | null; status: 'pending' | 'awarded' | 'declined'; points: number }
 export interface RoomState {
   code: string; hostKey: string; createdAt: number; updatedAt: number;
   phase: Phase; round: number; voteOpenedAt: number | null; voteDeadline: number | null; voteWindowMs: number;
-  players: Record<string, Player>; synthetic: Record<number, Tally>; exhibits: Record<number, string[]>;
+  players: Record<string, Player>; banned: string[]; synthetic: Record<number, Tally>; exhibits: Record<number, string[]>;
   callouts: Record<number, Callout[]>;
   bossHp: number; damageLog: DamageResult[]; majorities: (OptionId | null)[]; hideNames: boolean;
 }
@@ -128,7 +132,7 @@ export type RoomEvent =
   | { type: 'vote'; clientId: string; round: number; option: OptionId; now: number }
   | { type: 'cmd'; key: string; cmd: HostCmd; now: number }
   | { type: 'tick'; now: number };
-export type Effect = { type: 'setAlarm'; at: number } | { type: 'clearAlarm' } | { type: 'error'; clientId?: string; msg: string };
+export type Effect = { type: 'setAlarm'; at: number } | { type: 'clearAlarm' } | { type: 'error'; clientId?: string; msg: string } | { type: 'kicked'; clientId: string };
 export type ClientMsg =
   | { t: 'join'; clientId: string; name: string; role: Role; table?: string }
   | { t: 'vote'; round: number; option: OptionId }
@@ -142,7 +146,7 @@ export interface PlayerView {
   picks: (OptionId | null)[];
   callout: { name: string | null; option: OptionId | null; isMe: boolean } | null;
 }
-export type ServerMsg = { t: 'host'; state: HostView } | { t: 'you'; view: PlayerView } | { t: 'error'; msg: string };
+export type ServerMsg = { t: 'host'; state: HostView } | { t: 'you'; view: PlayerView } | { t: 'error'; msg: string } | { t: 'kicked' };
 ```
 
 - [ ] **Step 3: Write the failing content test**
@@ -317,11 +321,12 @@ describe('computeDamage', () => {
     computeDamage({ content: c, roundIndex: 0, lead: T(1, 6, 1, 2), support: T(6, 15, 3, 6), prior: [], exhibits: 0, rallies: 0, ...over });
   it('matches the spec worked example for round 1', () => {
     const d = dmg({ exhibits: 2 });
-    expect(d.shares).toEqual({ A: 0.15, B: 0.55, C: 0.1, D: 0.2 });
+    for (const [o, v] of Object.entries({ A: 0.15, B: 0.55, C: 0.1, D: 0.2 })) expect(d.shares[o as 'A']).toBeCloseTo(v, 10);
     expect(d.base).toBeCloseTo(62.5, 5);
     expect(d.focus).toBe(0); expect(d.alignment).toBe(10); expect(d.exhibit).toBe(10); expect(d.rally).toBe(0);
     expect(d.total).toBe(83);
     expect(d.majority).toBe('B'); expect(d.leadMajority).toBe('B'); expect(d.supportMajority).toBe('B');
+    expect(d.leadTied).toBe(false); expect(d.supportTied).toBe(false);
   });
   it('gives focus when the blended top share reaches 60%', () => {
     const d = dmg({ lead: T(0, 10, 0, 0), support: T(10, 20, 0, 0) });
@@ -330,10 +335,15 @@ describe('computeDamage', () => {
   it('gives an even split 48 with no focus and no alignment', () => {
     const d = dmg({ lead: T(1, 1, 1, 1), support: T(1, 1, 1, 1) });
     expect(d.total).toBe(48); expect(d.focus).toBe(0); expect(d.alignment).toBe(0); expect(d.tied).toBe(true);
+    expect(d.leadTied).toBe(true); expect(d.supportTied).toBe(true);
+  });
+  it('withholds alignment when one group is tied even if the resolved letters match', () => {
+    const d = dmg({ lead: T(0, 5, 0, 0), support: T(0, 3, 3, 0) });
+    expect(d.leadMajority).toBe('B'); expect(d.supportMajority).toBe('B'); expect(d.supportTied).toBe(true); expect(d.alignment).toBe(0);
   });
   it('falls back to the support votes when no one of the lead class voted', () => {
     const d = dmg({ lead: Z, support: T(0, 10, 0, 0) });
-    expect(d.total).toBe(95); expect(d.alignment).toBe(0); expect(d.leadMajority).toBeNull();
+    expect(d.total).toBe(95); expect(d.alignment).toBe(0); expect(d.leadMajority).toBeNull(); expect(d.leadTied).toBe(false);
   });
   it('matches the spec worked example for round 4', () => {
     const d = dmg({ roundIndex: 3, lead: T(2, 4, 1, 1), support: T(8, 16, 4, 4), prior: ['B', 'C', 'B'] });
@@ -391,7 +401,7 @@ Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement `shared/scoring.ts`**
 
-Formulas from spec 4.4. `computeDamage`: `effective = effectiveScores(...)`, `sh = blendShares(lead, support)`, `perOption[o] = sh[o] * effective[o]`, `base = Σ perOption`, `{majority, tied} = majorityOf(sh)`, `focus = !tied && sh[majority] >= focusThreshold ? focusBonus : 0`, `leadMajority` and `supportMajority` from `majorityOf(shares(...))` when that group's total is above 0 else `null`, `alignment = both present && neither tied && equal ? alignmentBonus : 0`, `exhibit = min(exhibits, maxExhibits) * exhibitBonus`, `rally = min(rallies, maxCallouts) * calloutBonus`, `total = clamp(round(base + focus + alignment + exhibit + rally), 0, 100)`. `speedBonus = clamp(round(max * (1 - responseMs / windowMs)), 0, max)`. `pointsFor = effective[option] + speedBonus + (isLead ? casterBonus : 0)`. `endingFor`: majority of `blendShares(finalLead, finalSupport)`; tiers from `content.scoring.tiers`; below fragile returns `ending: 'holds'`. `consistencyAward`: players with votes for rounds 0 to 3 only; `synergyHits(votes[3].option, [votes[0..2]])`; max hits then max score; `null` when none qualify. `tableAward`: group by non-null `table`, keep groups of 2 or more, highest mean `score`, `null` when none.
+Formulas from spec 4.4. `computeDamage`: `effective = effectiveScores(...)`, `sh = blendShares(lead, support)`, `perOption[o] = sh[o] * effective[o]`, `base = Σ perOption`, `{majority, tied} = majorityOf(sh)`, `focus = !tied && sh[majority] >= focusThreshold ? focusBonus : 0`, `leadMajority` and `supportMajority` from `majorityOf(shares(...))` when that group's total is above 0 else `null`, `leadTied` and `supportTied` from the same calls (`false` when the group is empty), `alignment = both present && neither tied && equal ? alignmentBonus : 0`, `exhibit = min(exhibits, maxExhibits) * exhibitBonus`, `rally = min(rallies, maxCallouts) * calloutBonus`, `total = clamp(round(base + focus + alignment + exhibit + rally), 0, 100)`. `speedBonus = clamp(round(max * (1 - responseMs / windowMs)), 0, max)`. `pointsFor = effective[option] + speedBonus + (isLead ? casterBonus : 0)`. `endingFor`: majority of `blendShares(finalLead, finalSupport)`; tiers from `content.scoring.tiers`; below fragile returns `ending: 'holds'`. `consistencyAward`: players with votes for rounds 0 to 3 only; `synergyHits(votes[3].option, [votes[0..2]])`; max hits then max score; `null` when none qualify. `tableAward`: group by non-null `table`, keep groups of 2 or more, highest mean `score`, `null` when none.
 
 - [ ] **Step 4: Run tests and type-check**
 
@@ -608,7 +618,7 @@ describe('reveal and scoring', () => {
     const s = revealed();
     const d = s.damageLog[0];
     // lead B 1; support A 1, B 1 (tied): blended A 0.25 B 0.75, base = 10 + 60 = 70, focus 15, alignment 0 (support tied), exhibit 10 -> 95
-    expect(d.total).toBe(95); expect(d.alignment).toBe(0);
+    expect(d.total).toBe(95); expect(d.alignment).toBe(0); expect(d.supportTied).toBe(true); expect(d.leadTied).toBe(false);
     expect(s.bossHp).toBe(305);
     expect(s.majorities[0]).toBe('B');
     expect(s.players.p1.lastPoints).toBe(80 + 16 + 10); expect(s.players.p1.score).toBe(106);
@@ -633,15 +643,23 @@ describe('reveal and scoring', () => {
     expect(s.exhibits[0]).toEqual(['a', 'b', 'c']);
     expect(cmd(cmd(s, { k: 'openVote' }).state, { k: 'exhibit', exhibitId: 'e' }).effects).toContainEqual({ type: 'error', msg: 'not in travel' });
   });
-  it('kick removes a player and their votes from the tally', () => {
+  it('kick removes a player, their votes, bans the client id and tells the phone', () => {
     const s = run(toVote(), [vote('p1', 0, 'B')]).state;
-    const k = cmd(s, { k: 'kick', playerId: 'p1' }).state;
-    expect(k.players.p1).toBeUndefined(); expect(tallyFor(k, 0).B).toBe(0);
+    const r = cmd(s, { k: 'kick', playerId: 'p1' });
+    expect(r.state.players.p1).toBeUndefined(); expect(tallyFor(r.state, 0).B).toBe(0);
+    expect(r.state.banned).toEqual(['p1']);
+    expect(r.effects).toContainEqual({ type: 'kicked', clientId: 'p1' });
+    const again = reduce(r.state, join('p1', 'Ann', 'citizen'), c);
+    expect(again.state.players.p1).toBeUndefined();
+    expect(again.effects).toContainEqual({ type: 'kicked', clientId: 'p1' });
+    expect(again.effects).toContainEqual({ type: 'error', clientId: 'p1', msg: 'removed' });
   });
-  it('reset returns to lobby keeping players but clearing scores, damage and call-outs', () => {
-    const s = cmd(revealed(), { k: 'reset' }).state;
+  it('reset returns to lobby keeping players and bans but clearing scores, damage and call-outs', () => {
+    const banned = cmd(revealed(), { k: 'kick', playerId: 'p3' }).state;
+    const s = cmd(banned, { k: 'reset' }).state;
     expect(s.phase).toBe('lobby'); expect(s.round).toBe(-1); expect(s.bossHp).toBe(400);
-    expect(Object.keys(s.players)).toHaveLength(3); expect(s.players.p1.score).toBe(0); expect(s.damageLog).toEqual([]); expect(s.callouts).toEqual({});
+    expect(Object.keys(s.players)).toHaveLength(2); expect(s.players.p1.score).toBe(0); expect(s.damageLog).toEqual([]); expect(s.callouts).toEqual({});
+    expect(s.banned).toEqual(['p3']);
   });
 });
 
@@ -686,7 +704,7 @@ Expected: FAIL, modules not found.
 
 - [ ] **Step 5: Implement `shared/room-logic.ts`**
 
-Transitions exactly as spec 6.2. Error messages: `'bad host key'`, `'bad role'`, `'wrong round'`, `'unknown player'`, `'already voted'`, `'not accepting votes'`, `'not in travel'`, `'bad phase'`, `'call-out pending'`, `'call-out limit'`, `'no pending call-out'`. Lead role of a round = `content.rounds[round].lead`. `leadTallyFor` counts votes of players whose `role` is the lead; `supportTallyFor` counts the rest plus `synthetic[round]`; `tallyFor` is their sum. Call-out eligibility: voters this round not already in `callouts[round]`; if any eligible voter has the lead role, choose among those only; explicit `playerId` wins if eligible; otherwise index `floor(pick * eligible.length)` over ids sorted by `joinedAt` then id; no eligible voter → `{ playerId: null, option: null }`. Judge sets `status` and `points` (`calloutPointsAwarded` or `calloutPointsSpoke`). Reveal: pending call-outs become `declined` with `calloutPointsSpoke`; `rallies = count(awarded)`; `computeDamage({ lead: leadTallyFor, support: supportTallyFor, prior: majorities.slice(0, round), exhibits: (exhibits[round] ?? []).length, rallies })`; `bossHp = max(0, bossHp - total)`; per player with a vote this round `lastPoints = pointsFor({ ..., isLead: player.role === lead }) + Σ their call-out points this round`, players without a vote get `lastPoints = 0`; `score += lastPoints`. `openVote` uses `seconds ?? content.scoring.voteSeconds`. `reopen` as in Global Constraints. `playerView.rank = 1 + count(players with score strictly greater)`; `picks` has one entry per round 0 to `state.round` (empty in the lobby); `isLead = player.role === lead`; `tally`, `leadTally`, `supportTally` are `null` before `reveal`. Always return new objects.
+Transitions exactly as spec 6.2. Error messages: `'bad host key'`, `'bad role'`, `'removed'`, `'wrong round'`, `'unknown player'`, `'already voted'`, `'not accepting votes'`, `'not in travel'`, `'bad phase'`, `'call-out pending'`, `'call-out limit'`, `'no pending call-out'`. `initialState` has `banned: []`. `kick` removes the player, appends the id to `banned` (once) and emits `{ type: 'kicked', clientId }`; a `join` from a banned id emits both `{ type: 'kicked', clientId }` and the `'removed'` error and changes nothing. `reset` keeps `banned`. Lead role of a round = `content.rounds[round].lead`. `leadTallyFor` counts votes of players whose `role` is the lead; `supportTallyFor` counts the rest plus `synthetic[round]`; `tallyFor` is their sum. Call-out eligibility: voters this round not already in `callouts[round]`; if any eligible voter has the lead role, choose among those only; explicit `playerId` wins if eligible; otherwise index `floor(pick * eligible.length)` over ids sorted by `joinedAt` then id; no eligible voter → `{ playerId: null, option: null }`. Judge sets `status` and `points` (`calloutPointsAwarded` or `calloutPointsSpoke`). Reveal: pending call-outs become `declined` with `calloutPointsSpoke`; `rallies = count(awarded)`; `computeDamage({ lead: leadTallyFor, support: supportTallyFor, prior: majorities.slice(0, round), exhibits: (exhibits[round] ?? []).length, rallies })`; `bossHp = max(0, bossHp - total)`; per player with a vote this round `lastPoints = pointsFor({ ..., isLead: player.role === lead }) + Σ their call-out points this round`, players without a vote get `lastPoints = 0`; `score += lastPoints`. `openVote` uses `seconds ?? content.scoring.voteSeconds`. `reopen` as in Global Constraints. `playerView.rank = 1 + count(players with score strictly greater)`; `picks` has one entry per round 0 to `state.round` (empty in the lobby); `isLead = player.role === lead`; `tally`, `leadTally`, `supportTally` are `null` before `reveal`. Always return new objects.
 
 - [ ] **Step 6: Run tests and type-check**
 
@@ -729,7 +747,7 @@ git add shared tests && git commit -m "feat: room reducer with roles, lead and s
 
 - [ ] **Step 2: Implement `worker/room.ts`**
 
-`export class Room extends DurableObject<Env>` with: `fetch(req)` handling `POST /init` (store `initialState`) and WebSocket upgrades (`new WebSocketPair()`, `ws.serializeAttachment({ role, clientId })`, `this.ctx.acceptWebSocket(server, [role])`, 403 on a bad host key); `webSocketMessage(ws, raw)` mapping `ClientMsg` to `RoomEvent` (a `callout` without `pick` gets `pick: Math.random()`); `apply(event)` = reduce, `storage.put('state')`, run effects (`setAlarm` → `storage.setAlarm`, `clearAlarm` → `storage.deleteAlarm`, `error` → `{t:'error'}` to the matching socket or the host), `broadcast()`; `broadcast()` sends `hostView(state, Date.now(), content)` to host sockets and `playerView(...)` to each player socket (skip `null`); `alarm()` applies `{ type: 'tick' }` and deletes storage after 6 hours of silence; `webSocketClose` is a no-op.
+`export class Room extends DurableObject<Env>` with: `fetch(req)` handling `POST /init` (store `initialState`) and WebSocket upgrades (`new WebSocketPair()`, `ws.serializeAttachment({ role, clientId })`, `this.ctx.acceptWebSocket(server, [role])`, 403 on a bad host key); `webSocketMessage(ws, raw)` mapping `ClientMsg` to `RoomEvent` (a `callout` without `pick` gets `pick: Math.random()`); `apply(event)` = reduce, `storage.put('state')`, run effects (`setAlarm` → `storage.setAlarm`, `clearAlarm` → `storage.deleteAlarm`, `error` → `{t:'error'}` to the matching socket or the host, `kicked` → `{t:'kicked'}` to every socket whose attachment has that client id, then `ws.close(4001, 'removed')`), `broadcast()`; `broadcast()` sends `hostView(state, Date.now(), content)` to host sockets and `playerView(...)` to each player socket (skip `null`); `alarm()` applies `{ type: 'tick' }` and deletes storage after 6 hours of silence; `webSocketClose` is a no-op.
 
 - [ ] **Step 3: Implement `worker/index.ts`**
 
@@ -760,7 +778,7 @@ npx tsc --noEmit && npx vitest run && git add -A && git commit -m "feat: worker,
 **Interfaces:**
 - Consumes `PlayerView`, `ClientMsg`, `ServerMsg`, `Role`, `ROLES` (Task 1), `CaseContent` (Task 1), `synergyHits` (Task 2), WebSocket protocol (Task 4).
 - Produces `player/render.ts`: `render(root: HTMLElement, view: PlayerView | null, content: CaseContent, ui: UiState, actions: Actions): void` with `UiState = { status: 'connecting' | 'joining' | 'joined' | 'kicked' | 'offline'; name: string; role: Role | null; table: string }` and `Actions = { join(name: string, role: Role, table: string): void; vote(option: OptionId): void }`. Also `formatCountdown(deadline: number, serverNow: number, localNow: number, localAtServerNow: number): string` (`"23 s"`, never negative).
-- Produces `player/net.ts`: `class PlayerSocket { constructor(code: string, clientId: string); onView(cb): void; onStatus(cb: (s: 'open' | 'closed') => void): void; send(msg: ClientMsg): void }` with reconnect (1 s, 2 s, 4 s, max 10 s) and a re-sent `join` on every open.
+- Produces `player/net.ts`: `class PlayerSocket { constructor(code: string, clientId: string); onView(cb): void; onStatus(cb: (s: 'open' | 'closed' | 'kicked') => void): void; send(msg: ClientMsg): void }` with reconnect (1 s, 2 s, 4 s, max 10 s) and a re-sent `join` on every open. A `{ t: 'kicked' }` message or a close with code 4001 reports `'kicked'` and stops all reconnecting; `main.ts` then sets `status: 'kicked'` and never sends `join` again in that tab.
 
 - [ ] **Step 1: Invoke the anti-vibecode skill and read `references/components.md` and `references/states.md`**
 
@@ -843,11 +861,11 @@ Expected: FAIL, module not found.
 
 - [ ] **Step 4: Implement `player/render.ts`**
 
-One function per state: `joinForm` (name input `name="nickname" maxlength="16" required`; four `button[data-role]` from `content.roles` in order showing class name and stakeholder, the selected one `aria-pressed="true"`; table input `name="table" maxlength="16"` with placeholder "Table (optional)"; `button[type=submit]` "Join" disabled until the trimmed name is non-empty and a role is selected), `waiting` ("You're in as {name}, {className}. Watch the screen."), `voteButtons` (letter, inline SVG shape, phone label; a line "Your class leads this round" when `isLead`), `locked` ("Locked: {letter}. {phone label}"), `calledOut` ("You're up. Defend {letter}: {phone label}." and `navigator.vibrate?.(200)`), `someoneCalled` ("{name} is defending {letter}." or "Someone is defending their choice."), `result` ("+{lastPoints} this round", "{score} total", "{rank} of {playerCount}", then "Why {letter} scored what it did" with the full `debrief` of the player's option, or "You did not vote this round."), `ending` (the four `picks` with phone labels, "Coherence: {hits} of 3" via `synergyHits(picks[3], picks.slice(0, 3), content.synergy)`, rank), `kicked` ("You were removed from the room."), `offline` ("Reconnecting…"). Phase mapping: `lobby|travel` → waiting; `vote` → voteButtons or locked; `locked` → calledOut when `callout?.isMe`, someoneCalled when `callout`, else locked or "You did not vote this round."; `reveal` → result; `ending|leaderboard` → ending.
+One function per state: `joinForm` (name input `name="nickname" maxlength="16" required`; four `button[data-role]` from `content.roles` in order showing class name and stakeholder, the selected one `aria-pressed="true"`; table input `name="table" maxlength="16"` with placeholder "Table (optional)"; `button[type=submit]` "Join" disabled until the trimmed name is non-empty and a role is selected), `waiting` ("You're in as {name}, {className}. Watch the screen."), `voteButtons` (letter, inline SVG shape, phone label; a line "Your class leads this round" when `isLead`), `locked` ("Locked: {letter}. {phone label}"), `calledOut` ("You're up. Defend {letter}: {phone label}." and `navigator.vibrate?.(200)`), `someoneCalled` ("{name} is defending {letter}." or "Someone is defending their choice."), `result` ("+{lastPoints} this round", "{score} total", "{rank} of {playerCount}", then for rounds 1 to 3 "Why {letter} scored what it did" with the full `debrief` of the player's option, and for round 4 "Your pick {letter} fits {hits} of the three earlier decisions" via `synergyHits(myVote, majorities.slice(0, 3), content.synergy)`; or "You did not vote this round."), `ending` (the four `picks` with phone labels, "Coherence: {hits} of 3" via `synergyHits(picks[3], picks.slice(0, 3), content.synergy)`, rank), `kicked` ("You were removed from the room."), `offline` ("Reconnecting…"). Phase mapping: `lobby|travel` → waiting; `vote` → voteButtons or locked; `locked` → calledOut when `callout?.isMe`, someoneCalled when `callout`, else locked or "You did not vote this round."; `reveal` → result; `ending|leaderboard` → ending.
 
 - [ ] **Step 5: Implement `player/net.ts`, `player/main.ts`, `player/index.html`, `player/styles.css`**
 
-`main.ts`: code from `location.pathname.match(/\/j\/([A-Z]{4})/)`, client id from `localStorage['olkaria.clientId']`, name, role and table drafts from `localStorage['olkaria.join']`; on submit store them and send `join`; re-render on every view; countdown tick every 250 ms while `phase === 'vote'`. `index.html`: viewport meta, `<main id="app">`, DM Sans or system sans. `styles.css`: anti-vibecode tokens, 17 px base, flat buttons with dim strokes, role buttons in a 2 × 2 grid with inline SVG class icons (dagger, shield, lantern, staff) and no colour, the four vote buttons full width 64 px tall with `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` labels and the option fills `#b5473d`, `#3f6fa3`, `#c9a227`, `#4f8a5b` with white letter and shape, `:active` darkens 8%, disabled greys out.
+`main.ts`: code from `location.pathname.match(/\/j\/([A-Z]{4})/)`, client id from `localStorage['olkaria.clientId']`, name, role and table drafts from `localStorage['olkaria.join']`; on submit store them and send `join`; re-render on every view; countdown tick every 250 ms while `phase === 'vote'`. `index.html`: viewport meta, `<main id="app">`, DM Sans or system sans. `styles.css`: anti-vibecode tokens, 17 px base, flat buttons with dim strokes, role buttons in a 2 × 2 grid with inline SVG class icons (dagger, shield, lute, staff) and no colour, the four vote buttons full width 64 px tall with `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` labels and the option fills `#b5473d`, `#3f6fa3`, `#c9a227`, `#4f8a5b` with white letter and shape, `:active` darkens 8%, disabled greys out.
 
 - [ ] **Step 6: Run tests, build, check bundle size**
 
@@ -961,9 +979,9 @@ npx vitest run && npx tsc --noEmit && git add host/net.ts host/session.ts tests/
 - Produces registry keys read by every scene: `game.registry.get('client'): RoomClient`, `'content': CaseContent`, `'hud': Hud`, `'view': HostView | null` (scenes listen to `registry.events` `changedata-view`).
 - Produces `host/scale.ts`: `integerZoom(winW: number, winH: number, w = 320, h = 180): number` (`max(1, floor(min(winW / w, winH / h)))`) and `applyZoom(game: Phaser.Game, hudRoot: HTMLElement): void` (sets `game.scale.setZoom`, centres the canvas, positions `hudRoot` over the canvas rect, sets `--zoom`; called at boot and on `resize`).
 - Produces `host/router.ts`: `sceneFor(view: { phase: Phase; round: number }, active: { key: string; round: number } | null): { key: string; data: { round: number; resume: boolean } } | null` with the rules in spec 6.3 Reconnect: `lobby` → `Lobby`; `travel` → `Travel` unless the active scene is `Travel` or `Battle` for that round; `vote`, `locked`, `reveal` → `Battle` with `resume: true` unless the active scene is `Battle` for that round; `ending` → `Ending`; `leaderboard` → `Leaderboard`; `null` when the active scene fits.
-- Produces `host/hud/Hud.ts`: `class Hud` with `constructor(root: HTMLElement)` and methods `showLobby(a: { qrDataUrl: string | null; code: string; joinUrl: string; count: number; roleCounts: Record<Role, number>; classNames: Record<Role, string>; offline: boolean; smith: string; tanui: string })`, `showNarration(a: { boss: string; title: string; narration: string; quote?: string; footer: string })`, `showOptions(a: { options: { letter: OptionId; screen: string }[]; leadLabel: string; timerText: string; votedText: string; leadShares: Record<OptionId, number> | null; supportShares: Record<OptionId, number> | null; footer: string })`, `showBanner(a: { name: string | null; letter: OptionId | null; phone: string | null; footer: string } | null)`, `flashRally(text: string, ms?: number)`, `showDebrief(a: { lines: { letter: OptionId; damage: number; text: string }[]; alignment: string; rally: string | null; discuss: string })`, `showEnding(a: { title: string; tier: string; split: Record<OptionId, number>; mustBeTrue: string[]; risk: string[]; holds: { round: string; chose: string; needed: string }[] | null })`, `showLeaderboard(a: { rows: { name: string; className: string; score: number }[]; consistent: string; table: string | null; split: Record<OptionId, number>; question: string })`, `showToast(text: string, ms?: number)`, `showKeymap(show: boolean)`, `clear()`. Exports `OPTION_COLORS: Record<OptionId, string>`.
-- Produces `host/hotkeys.ts`: `installHotkeys(game: Phaser.Game, client: RoomClient): void` handling 1 to 4, Shift+1 to Shift+4, B, C, Y, N, H, F, Esc, R per spec 6.5; Y and N send `judge` only when `view.phase === 'locked'` and a call-out is pending, otherwise ignored here (the Travel scene owns N for skipping). Space, arrows and A are scene-level.
-- Produces `host/art/placeholders.ts`: `makePlaceholders(scene: Phaser.Scene): void` creating textures `class-citizen`, `class-government`, `class-g42`, `class-microsoft` (12 × 16 neutral figures), `tile-ground`, `tile-platform`, `exhibit`, `gate`, `boss-grid`, `boss-debt`, `boss-fog`, `boss-core` (64 × 48 silhouettes), and a 6 px bitmap digit font `digits` for damage numbers.
+- Produces `host/hud/Hud.ts`: `class Hud` with `constructor(root: HTMLElement)` and methods `showLobby(a: { qrDataUrl: string | null; code: string; joinUrl: string; count: number; roleCounts: Record<Role, number>; classNames: Record<Role, string>; recent: string[]; offline: boolean; smith: string; tanui: string })` (`recent` is the last eight joiners as "Ann, Knight", already emptied by the caller when names are hidden), `showNarration(a: { boss: string; title: string; narration: string; quote?: string; footer: string })`, `showOptions(a: { options: { letter: OptionId; screen: string }[]; leadLabel: string; timerText: string; votedText: string; leadShares: Record<OptionId, number> | null; supportShares: Record<OptionId, number> | null; footer: string })`, `showBanner(a: { name: string | null; letter: OptionId | null; phone: string | null; footer: string } | null)`, `flashRally(text: string, ms?: number)`, `showDebrief(a: { lines: { letter: OptionId; damage: number; text: string }[]; breakdown: { base: number; focus: number; alignment: number; exhibit: number; rally: number; total: number; capped: boolean }; alignment: string; rally: string | null; discuss: string })` (renders the breakdown as "Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83", adding " (capped at 100)" when `capped`), `showEnding(a: { title: string; tier: string; split: Record<OptionId, number>; mustBeTrue: string[]; risk: string[]; holds: { round: string; chose: string; needed: string }[] | null })`, `showLeaderboard(a: { rows: { name: string; className: string; score: number }[]; consistent: string; table: string | null; split: Record<OptionId, number>; question: string })`, `showToast(text: string, ms?: number)`, `showKeymap(show: boolean)`, `clear()`. Exports `OPTION_COLORS: Record<OptionId, string>`.
+- Produces `host/hotkeys.ts`: `installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): void` handling 1 to 4, Shift+1 to Shift+4, B, C, Y, N, H, F, Esc, R and Shift+R per spec 6.5; Y and N send `judge` only when `view.phase === 'locked'` and a call-out is pending, otherwise ignored here (the Travel scene owns N for skipping); R sends `reopen`; Shift+R once shows `hud.showToast('Press Shift+R again to reset', 3000)` and a second Shift+R within 3 s sends `reset`. Space, arrows and A are scene-level.
+- Produces `host/art/placeholders.ts`: `makePlaceholders(scene: Phaser.Scene): void` creating textures `class-citizen`, `class-government`, `class-business`, `class-microsoft` (12 × 16 neutral figures), `tile-ground`, `tile-platform`, `exhibit`, `gate`, `boss-grid`, `boss-debt`, `boss-fog`, `boss-core` (64 × 48 silhouettes), and a 6 px bitmap digit font `digits` for damage numbers.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1019,15 +1037,18 @@ it('draws four cards in letter order with letter colours and two bars each', () 
 });
 it('shows the lobby counts, the banner and the debrief lines', () => {
   const root = document.createElement('div'); const hud = new Hud(root);
-  hud.showLobby({ qrDataUrl: null, code: 'ABCD', joinUrl: 'https://x/j/ABCD', count: 3, roleCounts: { citizen: 1, government: 2, business: 0, microsoft: 0 }, classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' }, offline: true, smith: 's', tanui: 't' });
-  expect(root.textContent).toContain('Knights 2'); expect(root.textContent).toContain('Offline mode');
+  hud.showLobby({ qrDataUrl: null, code: 'ABCD', joinUrl: 'https://x/j/ABCD', count: 3, roleCounts: { citizen: 1, government: 2, business: 0, microsoft: 0 }, classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' }, recent: ['Ann, Knight', 'Cy, Rogue'], offline: true, smith: 's', tanui: 't' });
+  expect(root.textContent).toContain('Knights 2'); expect(root.textContent).toContain('Offline mode'); expect(root.textContent).toContain('Ann, Knight');
   hud.showBanner({ name: 'Sarah', letter: 'B', phone: 'Yes to 60 to 100 MW, tied', footer: 'Y convincing, N not' });
   expect(root.textContent).toContain('Sarah, defend B: Yes to 60 to 100 MW, tied');
   hud.showBanner({ name: null, letter: null, phone: null, footer: '' });
   expect(root.textContent).toContain('Hand call-out');
-  hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'line a' }, { letter: 'B', damage: 44, text: 'line b' }], alignment: 'The party stood with the Rogues', rally: 'Rally: Sarah +10', discuss: 'Why?' });
+  hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'line a' }, { letter: 'B', damage: 44, text: 'line b' }], breakdown: { base: 62.5, focus: 0, alignment: 10, exhibit: 10, rally: 10, total: 93, capped: false }, alignment: 'The party stood with the Rogues: both chose B', rally: 'Rally: Sarah +10', discuss: 'Why?' });
   expect(root.querySelectorAll('[data-debrief-line]')).toHaveLength(2);
   expect(root.textContent).toContain('Rally: Sarah +10'); expect(root.textContent).toContain('stood with the Rogues');
+  expect(root.textContent).toContain('Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally +10. Total 93');
+  hud.showDebrief({ lines: [], breakdown: { base: 80, focus: 15, alignment: 0, exhibit: 15, rally: 20, total: 100, capped: true }, alignment: '', rally: null, discuss: '' });
+  expect(root.textContent).toContain('Total 100 (capped at 100)');
 });
 ```
 
@@ -1038,7 +1059,7 @@ Expected: FAIL, modules not found.
 
 - [ ] **Step 3: Write `host/main.ts`, `host/index.html`, `host/scale.ts`, `host/router.ts`**
 
-Config: `type: Phaser.AUTO`, `width: 320`, `height: 180`, `pixelArt: true`, `scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }`, `physics: { default: 'arcade', arcade: { gravity: { y: 600 } } }`, `backgroundColor: '#15141c'`, scenes `[Boot, Lobby, Travel, Battle, Ending, Leaderboard]`. Before creating the game: `loadContent(await import('../content/case.json'))`, `client = createRoomClient(location, content)`, `hud = new Hud(document.getElementById('hud')!)`, registry set; `client.onState(v => { game.registry.set('view', v); const next = sceneFor(v, activeScene(game)); if (next) game.scene.start(next.key, next.data); })`; `applyZoom(game, hudRoot)` after boot and on `window.resize`; `installHotkeys(game, client)`. `index.html`: dark body, `<div id="game">` and a sibling `<div id="hud">` positioned absolute with `pointer-events: none`, the title font from Task 11 (Pixelify Sans from Google Fonts until then).
+Config: `type: Phaser.AUTO`, `width: 320`, `height: 180`, `pixelArt: true`, `scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }`, `physics: { default: 'arcade', arcade: { gravity: { y: 600 } } }`, `backgroundColor: '#15141c'`, scenes `[Boot, Lobby, Travel, Battle, Ending, Leaderboard]`. Before creating the game: `loadContent(await import('../content/case.json'))`, `client = createRoomClient(location, content)`, `hud = new Hud(document.getElementById('hud')!)`, registry set; `client.onState(v => { game.registry.set('view', v); const next = sceneFor(v, activeScene(game)); if (next) game.scene.start(next.key, next.data); })`; `applyZoom(game, hudRoot)` after boot and on `window.resize`; `installHotkeys(game, client, hud)`. `index.html`: dark body, `<div id="game">` and a sibling `<div id="hud">` positioned absolute with `pointer-events: none`, the title font from Task 11 (Pixelify Sans from Google Fonts until then).
 
 - [ ] **Step 4: Write `Hud.ts`, `hud.css`, `placeholders.ts`, `hotkeys.ts`, `Boot.ts`**
 
@@ -1046,7 +1067,7 @@ Invoke the anti-vibecode skill before `hud.css`. Sizes in `calc(var(--zoom) * Np
 
 - [ ] **Step 5: Write `Lobby.ts`**
 
-On create: `client.connect()` → `QRCode.toDataURL(joinUrl, { margin: 1, scale: 8 })` → `hud.showLobby({...})` with `roleCounts` from `view.players` and `classNames` from `content.roles`; the canvas draws a gothic skyline strip. On `changedata-view`: diff `players`, drop a `class-{role}` sprite per new player at a random x with a small tween, label with name (6 px bitmap text on the canvas, the one exception to the HTML rule because labels ride on sprites) unless `hideNames`, and refresh `showLobby` with the new counts. Offline mode shows the offline notice instead of the QR. Space → `client.send({ k: 'start' })`.
+On create: `client.connect()` → `QRCode.toDataURL(joinUrl, { margin: 1, scale: 8 })` → `hud.showLobby({...})` with `roleCounts` from `view.players`, `classNames` from `content.roles`, and `recent` as the last eight players by `joinedAt` formatted "Ann, Knight" (an empty array when `view.hideNames`); the canvas draws a gothic skyline strip. On `changedata-view`: diff `players`, drop a `class-{role}` sprite per new player at a random x with a small tween (no text on the canvas), and refresh `showLobby` with the new counts and list. Offline mode shows the offline notice instead of the QR. Space → `client.send({ k: 'start' })`.
 
 - [ ] **Step 6: Run tests, then manual check**
 
@@ -1081,7 +1102,7 @@ import { loadContent } from '../shared/content';
 import { classFor, labelFor } from '../host/strikers';
 const c = loadContent(raw);
 it('names the lead class and the three support classes of a round', () => {
-  expect(classFor(c, 0)).toEqual({ lead: 'citizen', support: ['government', 'g42', 'microsoft'] });
+  expect(classFor(c, 0)).toEqual({ lead: 'citizen', support: ['government', 'business', 'microsoft'] });
   expect(classFor(c, 2)).toEqual({ lead: 'business', support: ['citizen', 'government', 'microsoft'] });
   expect(labelFor(c, 'citizen', true)).toBe('Rogues'); expect(labelFor(c, 'business')).toBe('Bard');
 });
@@ -1093,7 +1114,7 @@ The scene renders from `view.phase`, world on the canvas, text through `hud`:
 - `travel` (arrived, vote not open): boss idle; `hud.showNarration` with the round's narration (which ends with the lead class's call to strike) and a quote (round 1 `quotes.ruto`, round 2 `quotes.tanui`); footer "Space opens the vote".
 - `vote`: `hud.showOptions` with the four options, `leadLabel = labelFor(lead, true)`, timer from `voteDeadline - serverNow` corrected by local clock offset, "N of M voted" (N = Σ `view.tally`, M = player count; offline: N only), `leadShares` and `supportShares` null. Space → `closeVote`.
 - `locked`: `showOptions` again with `leadShares = shares(view.leadTally)` and `supportShares = shares(view.supportTally)`; footer "C calls a student out. Space: the party strikes". When `view.callouts[round]` has a pending entry: `hud.showBanner` ("{name}, defend {letter}: {phone}" or "Hand call-out. Who defends their choice?"), the called student's class sprite steps forward 8 px, footer "Y convincing, N not". After a judge, `hud.flashRally("+10 rally")` in amber or `"no bonus"` in grey for 1.5 s. Resolved call-outs listed small under the cards.
-- `reveal` (skipped entirely when started with `resume: true`, straight to the debrief): at most 6 s. The lead class sprite performs the special attack: a large lunge flashing in the colour of `leadMajority` with a damage number equal to the lead half of `base` (`Σ leadShares × effective × 0.5`, or all of `base` when no support voted); then the three support sprites strike in role order, each sized by the support half of `base` and flashing in `supportMajority`'s colour; then one rally strike per awarded call-out by the called student's class with their name and "+10"; `HpBar.set` drains over 1.5 s; screen shake 200 ms. Then `hud.showDebrief` with one line per option "{letter} {perOption rounded}: {projector}", `alignment` text ("The party stood with the {Rogues}" when `alignment > 0`, "Split: {Rogues} chose {X}, the party chose {Y}" when both majorities exist and differ, "No {Rogues} voted this round" when `leadMajority` is null), the rally line when `rally > 0`, and the discuss line. Space during the sequence skips to the debrief; Space on the debrief → `next`.
+- `reveal` (skipped entirely when started with `resume: true`, straight to the debrief): at most 6 s, and every number shown sums to `damageLog[round].total` (before the cap). Let `d = damageLog[round]`, `leadHalf = Σ shares(view.leadTally)[o] × d.effective[o] × 0.5` and `supportHalf = Σ shares(view.supportTally)[o] × d.effective[o] × 0.5`; when only one group voted, that group's strike carries all of `d.base` and the other strike is skipped with a HUD toast ("No {Rogues} voted this round" or "The party left it to the {Rogues}"). Sequence: the lead class sprite lunges large, flashing in `leadMajority`'s colour, with the number `leadHalf` (one decimal); the three support sprites lunge together, flashing in `supportMajority`'s colour, with `supportHalf`; then one flourish per bonus with its number: "Focus +15" when `d.focus > 0`, "Party stands together +10" when `d.alignment > 0`, "Exhibit +5" per collected exhibit up to `d.exhibit / 5`; then one rally strike per awarded call-out by the called student's class with their name and "+10"; `HpBar.set` drains by `d.total` over 1.5 s; screen shake 200 ms. Then `hud.showDebrief` with one line per option "{letter} {perOption, one decimal}: {projector}", `breakdown` from `d` (`capped = base + focus + alignment + exhibit + rally > 100`), the alignment text in one of four forms ("The party stood with the {Rogues}: both chose {X}" when `d.alignment > 0`; "The {Rogues} were split" and/or "The party was split" when `d.leadTied` or `d.supportTied`; "Split: {Rogues} chose {X}, the party chose {Y}" when both majorities exist, neither tied, and they differ; "No {Rogues} voted this round" when `leadMajority` is null), the rally line when `d.rally > 0`, and the discuss line. Space during the sequence skips to the debrief; Space on the debrief → `next`.
 - After `next` the router starts Travel or Ending.
 
 - [ ] **Step 3: Implement `strikers.ts`, `HpBar.ts`, `Battle.ts`**
@@ -1102,7 +1123,7 @@ Space handling: `busy` set when the strike sequence starts; Space while `busy` k
 
 - [ ] **Step 4: Manual check in offline mode**
 
-`npm run dev`, `http://localhost:5173/host/?mode=offline`, Space through the lobby, N through travel (the Travel stub starts Battle at once until Task 9), Space to open the vote, `2` ten times and `1` twice, Space to lock: the Party bars show 83% and 17%, the lead bars are empty and the debrief will say no Rogues voted. C: hand call-out banner; Y: "+10 rally". Space to reveal: special attack and supports play, HP drops to the expected amount (support only: base 73.3, focus 15, rally 10, total 98), the debrief lists four projector lines, the "No Rogues voted" line and the rally line. Press Space twice quickly during the strike: skips once, does not advance. Reload on the debrief: returns to the debrief with no replay. Online with two phones (a Rogue voting B and a Knight voting A): lead bar B 100%, Party bar A 100%, C names the Rogue first, the debrief says "Split: Rogues chose B, the party chose A".
+`npm run dev`, `http://localhost:5173/host/?mode=offline`, Space through the lobby, N through travel (the Travel stub starts Battle at once until Task 9), Space to open the vote, `2` ten times and `1` twice, Space to lock: the Party bars show 83% and 17%, the lead bars are empty and the debrief will say no Rogues voted. C: hand call-out banner; Y: "+10 rally". Space to reveal: the lead strike is skipped with the "No Rogues voted this round" toast, the party strike shows 73.3, then "Focus +15" and a rally strike "+10", and the HP drops by 98; the debrief lists four projector lines, the breakdown "Base 73.3, Focus +15, Party aligned 0, Exhibits 0, Rally +10. Total 98", the "No Rogues voted this round" line and the rally line. Press Space twice quickly during the strike: skips once, does not advance. Reload on the debrief: returns to the debrief with no replay. Online with two phones (a Rogue voting B and a Knight voting A): lead bar B 100%, Party bar A 100%, C names the Rogue first, the debrief says "Split: Rogues chose B, the party chose A".
 
 - [ ] **Step 5: Run tests, type-check, commit, push**
 
@@ -1131,7 +1152,7 @@ Arcade physics. Lead sprite is `class-{classFor(content, round).lead}` with `set
 
 - [ ] **Step 3: Manual check**
 
-Offline: from the lobby, Space, walk right, jump onto a platform, touch an exhibit: toast for 4 s; after the gate the Battle narration appears. A at the start of segment 2: the lead reaches the gate without falling. N skips. In Battle after two exhibits, the reveal shows `exhibit 10` in the breakdown.
+Offline: from the lobby, Space, walk right, jump onto a platform, touch an exhibit: toast for 4 s; after the gate the Battle narration appears. A at the start of segment 2: the lead reaches the gate without falling. N skips. In Battle after two exhibits, the reveal plays two "Exhibit +5" flourishes and the debrief breakdown reads "Exhibits +10".
 
 - [ ] **Step 4: Type-check, commit, push**
 
@@ -1148,13 +1169,13 @@ npx tsc --noEmit && git add host && git commit -m "feat: travel platformer segme
 
 **Interfaces:**
 - Consumes registry, `endingFor`, `consistencyAward`, `tableAward` (Task 2), `Hud.showEnding`, `Hud.showLeaderboard` (Task 7), `labelFor` (Task 8).
-- Produces: `Ending` reads `view.damageLog` (sum of `total`), `view.leadTally` and `view.supportTally` (round 3's while phase is `ending`), picks the ending via `endingFor`, calls `hud.showEnding` with title, tier, the final split (`view.tally`), "What must be true" and "The risk you accepted"; for `holds`, rows for rounds 1 to 3 "{Rogues} chose {letter}: {phone}" beside "Needed: {synergy letters}". The canvas shows the core cracking (or standing, for `holds`). Space → `next`. `Leaderboard` calls `hud.showLeaderboard` with the top 5 by `score` (name or "Player" when `hideNames`, plus class name), "Most consistent strategist: {name}" or "No one voted in all four rounds", "Top table: {table} ({mean} avg)" or `null`, and the final split under "What should Microsoft do, and why?". Space → `reset`.
+- Produces: `Ending` reads `view.damageLog` (sum of `total`), `view.leadTally` and `view.supportTally` (round 3's while phase is `ending`), picks the ending via `endingFor`, calls `hud.showEnding` with title, tier, the final split (`view.tally`), "What must be true" and "The risk you accepted"; for `holds`, rows for rounds 1 to 3 "{Rogues} chose {letter}: {phone}" beside "Needed: {synergy letters}". The canvas shows the core cracking (or standing, for `holds`). Space → `next`. `Leaderboard` calls `hud.showLeaderboard` with the top 5 by `score` (name or "Player" when `hideNames`, plus class name), "Most consistent strategist: {name}" or "No one voted in all four rounds", "Top table: {table} ({mean} avg)" or `null`, and the final split under "What should Microsoft do, and why?". Space does nothing here; the screen stays up for the discussion and only Shift+R twice (Task 7 hotkeys) resets to the lobby.
 
 - [ ] **Step 1: Implement both scenes**
 
 - [ ] **Step 2: Manual check**
 
-Offline run with N in every travel (no exhibits, no lead class, no call-outs, so each round is the pressed option's score plus the 15 focus bonus): key `2` ten times in every round gives damage 95, 60, 95, 95 (round 4 with prior B, B, B: B has 2 hits, 80 + 15), total 345, "The Seed Plant", decisive. Then `3` twice in round 1, `1` twice in round 2, `1` twice in round 3, `2` twice in round 4: damage 30, 25, 85, 80 (prior C, A, A: B has 1 hit, 65 + 15), total 220, "The Seed Plant", fragile. Then `3`, `1`, `4`, `2` twice each: damage 30, 25, 50, 65 (prior C, A, D: B has 0 hits), total 170, "The Deadlock holds" with three rows of class choice versus needed (B needed B or D, C or D, A or B). Leaderboard shows "No one voted in all four rounds" and no top table in offline mode.
+Offline run with N in every travel (no exhibits, no lead class, no call-outs, so each round is the pressed option's score plus the 15 focus bonus): key `2` ten times in every round gives damage 95, 60, 95, 95 (round 4 with prior B, B, B: B has 2 hits, 80 + 15), total 345, "The Seed Plant", decisive. Then `3` twice in round 1, `1` twice in round 2, `1` twice in round 3, `2` twice in round 4: damage 30, 25, 85, 80 (prior C, A, A: B has 1 hit, 65 + 15), total 220, "The Seed Plant", fragile. Then `3`, `1`, `4`, `2` twice each: damage 30, 25, 50, 65 (prior C, A, D: B has 0 hits), total 170, "The Deadlock holds" with three rows of class choice versus needed (B needed B or D, C or D, A or B). Leaderboard shows "No one voted in all four rounds" and no top table in offline mode; Space on it does nothing; Shift+R once shows the confirm toast and a second Shift+R returns to the lobby.
 
 - [ ] **Step 3: Type-check, commit, push**
 
@@ -1232,5 +1253,6 @@ git add RUNBOOK.md README.md && git commit -m "docs: runbook and deployment note
 - Type consistency: `RoomClient.addBots` declared in T6, used in T7; `HostCmd` keys match T1, T3 tests and T7 hotkeys; `hostView` and `playerView` take `content` in T3 and are called that way in T4 and T6; `Hud.showOptions` takes `leadShares` and `supportShares` from `view.leadTally` and `view.supportTally` via `shares` in T8; `classFor` (T8) is used by T9 and T10.
 - Arithmetic checked: spec worked examples (62.5 + 10 + 10 = 82.5 → 83; 73.3 + 15 + 10 = 98.3 → 98; even split 47.5 → 48; round 4 base 78.125 + 10 = 88.125 → 88); T3 reveal (10 + 60 + 15 + 10 = 95, points 106, 96, 50); T3 call-out reveal (60 + 10 = 70, points 136, 66); T6 offline (80 + 15 + 10 = 105 → 100); T8 manual (73.3 + 15 + 10 = 98.3 → 98); T10 manual runs (95 + 60 + 95 + 95 = 345; 30 + 25 + 85 + 80 = 220; 30 + 25 + 50 + 65 = 170).
 - Revision 3 (Caleb, 2 Nov): G42 folded into Microsoft, fourth role Local Businesses as the Bard with round 3 rewritten from the buyers' side (T1 content and tests, T3, T5, T7, T8 tests, T10 manual numbers, T11 sprite note).
+- Second reviewer pass (2 Nov): strike numbers now sum to the damage drained with a breakdown line (T7 `showDebrief`, T8 reveal); kick bans the client id with a `kicked` effect and message (T1 types, T3, T4, T5); Space never resets, Shift+R twice does (T7 hotkeys, T10); discuss lines moved into spec 5; `leadTied` and `supportTied` drive four alignment texts (T1, T2, T3, T8); lobby names in the HUD list, no canvas text (T7); round 4 phone result shows coherence (T5); `class-business` texture and lute icon (T7, T5); float-safe share assertions (T2).
 - Review Focus coverage: 1 and 2 in T3; 3 in T2 and T3; 4 in T6, T7 and T8 manual; 5 in T8 manual; 6 in T3; 7 in T3.
 - Revision 2 (Caleb, 2 Nov): stakeholder roles as classes with a lead class per round (T1 content, T2 blended shares and alignment, T3 lead and support tallies and lead-first call-outs, T5 role picker, T7 lobby counts and two bars, T8 special attack and alignment line, T9 lead sprite, T10 top table, T4 and T12 roles in the simulator), 12-minute segment (T12 runbook), spark-bot's Cloudflare account (T12), dark-fantasy art with GitHub-first sourcing (T11).
