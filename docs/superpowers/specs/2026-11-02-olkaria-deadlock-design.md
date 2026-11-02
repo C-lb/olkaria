@@ -342,9 +342,11 @@ Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Sp
 
 `RUNBOOK.md` carries the checklist: deploy, create the room, five teammates join with roles, a full 12-minute run, one switch to offline mode, a run with 60 simulated clients.
 
+Schedule for a 5 November presentation. Build on 2 and 3 November in plan order, which puts the content, scoring, room, phone page and battle screen first (plan tasks 1 to 8, 10, 12). Cuts, in this order, if time runs out: sound; the art pass (placeholder sprites and procedural bosses are acceptable on the day); the travel platformer (replace with a 3-second walk-in to each arena, keep the exhibit bonus as three facts the facilitator reads). Deploy and rehearse with the team's phones on 4 November. The fallback on the day is the offline mode with hand counts, which is in the first build.
+
 ## 9. Open questions for Caleb
 
-1. Presentation date and section. The plan front-loads a demoable slice; art and sound are the first cuts if the date is close.
+1. Presentation date: 5 November 2026 (answered 2 November), so the case document is due 3 November and the build has 4 November for rehearsal. Schedule in section 8.
 2. The evidence scores in section 5, now written from each stakeholder's side. Does the team agree with them?
 3. Round 4 option D: the tenant model (default) or an open "Something else, tell us" button scoring a flat 50?
 4. Role choice: free with counts shown (default), or should the join page also take a table number so the leaderboard can rank tables? The optional table name covers this if people fill it in.
