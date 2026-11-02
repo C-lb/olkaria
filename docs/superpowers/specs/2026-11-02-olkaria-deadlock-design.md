@@ -1,254 +1,252 @@
 # Olkaria: the Deadlock. Design for the BUSI611 case engagement game
 
-Date: 2 November 2026. Status: draft for Caleb's review.
+Date: 2 November 2026, revision 2 (after Caleb's answers). Status: for Caleb's review.
 
 Case source: "Should Microsoft Build Its US$1 Billion Data Centre in Kenya?" (BUSI611 case write-up by Caleb, Sarah, Anabelle, Prathiti and Adithi, November 2026), file `~/Downloads/BUSI611 Case Planning.pdf`. Every fact, figure and quote in the game content comes from that document. Section and exhibit numbers below refer to it.
 
-Assignment source: the Canvas case project brief (pasted into `~/Desktop/BUSI611/BUSI611 Module 3 - Sessions 16-20 (Canvas).md`). The group leads a 30 to 35 minute in-class case discussion. The rubric gives 4 points for facilitation (substantive, well paced, thoughtful questions, broad participation, competing views, ends at a clear decision point) and 1 point for creativity and interactivity (at least one interactive element; close by asking the class what the company should do and why).
+Assignment source: the Canvas case project brief (pasted into `~/Desktop/BUSI611/BUSI611 Module 3 - Sessions 16-20 (Canvas).md`). The group leads a 30 to 35 minute in-class case discussion. The rubric gives 4 points for facilitation (substantive, well paced, thoughtful questions, broad participation, competing views, ends at a clear decision point) and 1 point for creativity and interactivity (at least one interactive element such as a poll, role-play or stakeholder exercise; close by asking the class what the company should do and why).
 
 ## 1. Intent
 
-This game is the interactive element and, if the team wants, the spine of the whole 30 minutes.
+This game is the interactive element: a 12-minute segment inside the 30 to 35 minute slot. It is a poll, a role-play and a stakeholder exercise at once.
 
-The class plays as Microsoft's deal team. The opponent is the Deadlock: the stall that has frozen the project since May 2026. It has three heads, matching the three constraints in the case's central question: electricity supply, public finances, and current demand. Each head is a decision round. Students scan a QR code, enter their name, get four options on their phone, and vote. The votes become a combined attack by the party. The attack's strength reflects how well the chosen move fits the evidence in the case. Before the party strikes, the facilitators can call out a random voter by name to defend their choice aloud; a convincing defence adds a bonus strike. The fourth round is the decision itself, and the class's majority picks the ending.
+The class forms tables of four. At each table, every student takes one stakeholder role, and each role is a character class in a dark-fantasy party: the Citizen is the Rogue, the Kenyan Government is the Knight, Local Businesses are the Bard, Microsoft (with its partner G42 folded in) is the Wizard. The party faces the Deadlock: the stall that has frozen the US$1 billion data centre since May 2026. It has three heads, matching the three constraints in the case's central question (electricity supply, public finances, current demand), and a core, the decision itself. Each head is a round. In each round one class leads a special attack, and the special attack is that stakeholder's decision: what Kenyans will accept on power, what the Government offers instead of a guarantee, what Kenya's businesses commit on demand, and finally what Microsoft does. Everyone votes on their phone; the lead class's votes carry half the attack, the rest of the party the other half; the damage reflects how well the chosen move fits the evidence in the case. Before the party strikes, the facilitators can call out a voter by name to defend their choice for a bonus strike. The class majority on the last round picks the ending.
 
-Why Microsoft is the party. The rubric requires the company to be the primary decision-maker. Sections 3 and 7 and all three discussion questions are written from Microsoft's side. Microsoft and G42 hold the decision rights, and Microsoft has the balance sheet (section 3.3). The Kenyan government has the strongest counter-stake, so its constraints become the boss's heads, but Kenya is not the enemy. Kenyan officials appear as characters: Principal Secretary Tanui's line that the project is "not failed or withdrawn" but "requires some structuring" is the quest hook. The Treasury's refusal is a locked gate the party must find another route around, not a monster to kill. This matters in a global development class and it matters for the rubric's "competing views".
+Why this shape. The brief says the company must be the primary decision-maker, so Microsoft's decision is the last round and the closing question. The other three stakeholders each own one head of the Deadlock, which is where the case's own stakeholder map (Exhibit 8) puts the conflict. Kenya is never the villain: the Knight is a player class, and the Treasury's refusal is a locked gate the party must find a way around.
 
 ## 2. Goals, non-goals, anti-goals
 
 Goals
 
-- Every student votes four times from their own phone with no app install and no account.
-- Every round gives the facilitator at least one cold call: a named student defends their vote aloud before the attack lands, so participation is broad and not only the usual hands.
-- Each round ends on a debrief screen that gives the facilitator 3 to 5 minutes of structured discussion material: the class split, the damage each option did, and the case fact behind each number.
-- The final screen is the class's answer to "what should Microsoft do and why", which is how the rubric says to close.
-- Runs on the classroom projector from a deployed URL. Survives a Wi-Fi or server failure through a manual mode driven from the keyboard.
-- The team can change every word of content, every score and every citation without touching game code.
+- Every student picks a stakeholder role, votes four times from their phone, and sees how their stakeholder's choice landed. No app install, no account.
+- Every round gives the facilitator one or two cold calls: a named student defends their vote before the attack lands.
+- Each debrief hands the facilitator the discussion material for the rest of the slot: the lead stakeholder's split against the party's split, the damage each option did, and the case fact behind each number.
+- The final screen is the class's answer to "what should Microsoft do and why".
+- Runs on the projector from a deployed URL and survives a network failure through a keyboard-driven manual mode.
+- The team can change every word, score and citation in one JSON file.
 
 Non-goals
 
-- Not a general quiz platform. One case, one room at a time, no persistence beyond the session.
-- Not a full platformer. Travel segments are 20 to 30 seconds and skippable.
-- Not a grading tool. The leaderboard is for fun.
+- Not a general quiz platform; one case, one room, no persistence past the session.
+- Not a full platformer; travel segments are 20 to 30 seconds and skippable.
+- Not a grading tool.
 
-Anti-goals (a failure even if everything runs)
+Anti-goals
 
 - Framing Kenya or Kenyans as the villain.
-- A hidden right answer on the final decision. The brief says the central question must have no implied right answer. The final round scores conviction and coherence, never correctness.
-- Thirty minutes of watching animations. No non-skippable sequence longer than 8 seconds.
-- Vibecode UI. The anti-vibecode skill applies to the phone page and the host HUD.
+- A hidden right answer on Microsoft's decision. The brief says the central question must have no implied right answer; the final round scores conviction and coherence, never correctness.
+- Watching animations; nothing non-skippable runs longer than 8 seconds.
+- Vibecode UI. The anti-vibecode skill applies to the phone page and the HTML layer on the projector.
 
 ## 3. The experience
 
-### 3.1 Run of show, game as spine (32 minutes)
+### 3.1 Run of show (12-minute segment)
 
-| Min | Beat | On the projector | Facilitator |
+| Time | Beat | On the projector | Facilitator |
 |---|---|---|---|
-| 0 to 3 | Lobby | QR code, room code, join URL, join count, pixel avatars dropping in | "Scan to join. You are Microsoft's deal team." Two-sentence recap of the central question. |
-| 3 to 4 | Travel 1 | Party runs from Nairobi toward Olkaria; three exhibit pickups | Reads each exhibit fact as it pops. |
-| 4 to 10 | Round 1, Grid Wyrm | Narration, four options, 30 s timer, call-out, attack, debrief | Call-out first (1 min, one or two students defend their vote), then 3 min: "Why did holding the 1 GW plan do so little damage?" |
-| 10 to 11 | Travel 2 | Rift Valley to the Treasury | |
-| 11 to 17 | Round 2, Debt Golem | Same shape | Discussion question 3: who should carry the demand risk. |
-| 17 to 18 | Travel 3 | Into the Fog | |
-| 18 to 24 | Round 3, Fog of Demand | Same shape | Discussion question 2: when is early too early. |
-| 24 to 25 | Travel 4 (short) | The Deadlock's core | |
-| 25 to 30 | Round 4, the Decision | Four options, vote, synergy reveal, ending | Discussion question 1. "What would need to be true for a different option to win?" |
-| 30 to 32 | Leaderboard and close | Top 5, most consistent strategist, the class split | Closes on the class's decision and why. |
+| 0:00 to 1:30 | Lobby | QR, code, URL, role counts, avatars dropping in | "Tables of four. Scan, type your name, pick your role: one of each per table." |
+| 1:30 to 2:00 | Travel 1 | Party runs toward Olkaria; three exhibit pickups (or N to skip) | Reads the exhibit facts as they pop. |
+| 2:00 to 4:30 | Round 1, Grid Wyrm | Rogues' special attack: what Kenyans accept on power | 30 s vote, one call-out, strike, 45 s debrief |
+| 4:30 to 7:00 | Round 2, Debt Golem | Knights' special attack: what the Government offers | Same shape |
+| 7:00 to 9:30 | Round 3, Fog of Demand | Bards' special attack: what Kenya's businesses commit | Same shape |
+| 9:30 to 11:30 | Round 4, the core | Wizards' special attack with the whole party: Microsoft's decision; ending | "What should Microsoft do, and why?" |
+| 11:30 to 12:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hands the split to the discussion that follows |
 
-Alternative: game as a 12-minute segment. Same four rounds with about a minute of discussion each; slides take the rest of the slot. The host advances everything manually, so one build serves both.
+Travel 2 to 4 are skipped with N unless the segment is running early. The debrief lines are built to be picked up again in the facilitated discussion after the game. Because the host advances everything manually, the same build also works as the spine of the whole slot if the team changes its mind.
 
 ### 3.2 Host screens (projector)
 
-- Lobby. QR code at least a quarter of the screen height, the room code in large type, the join URL in text under it, "N joined", and a pixel avatar for each joiner dropping onto the Nairobi skyline with their name. Brad Smith's quote sits under the title; PS Tanui's "not failed or withdrawn … requires some structuring" is the quest hook at the bottom. Space starts the game.
-- Travel. Side-scrolling platform segment. The presenter controls the lead party member; three followers trail. Three exhibit pickups per segment. Reaching the arena gate starts the round.
-- Battle. Boss sprite with the current phase's HP segment and a thin total bar; a narration box (the situation); four option cards with letter, shape and colour; the timer; "23 of 41 voted". The distribution stays hidden until lock, as in Kahoot. After lock: four bars, then the call-out. The facilitator presses C and the game picks a random voter: a banner shows "Sarah, defend B: Start small, 24 to 60 MW" and the party member who proposed that option steps forward. The student explains; the facilitator presses Y (convincing, bonus strike) or N (no bonus). Up to two call-outs per round. Then the four party members strike with sizes proportional to vote share, any rally strikes land last with the student's name on them, damage numbers float, the HP drains. Then the debrief panel: per option, damage dealt and one projector line (section 5.7) with citation, plus a "Discuss" line. The full debrief text goes to each phone for the option its owner chose, and to the facilitator notes in the runbook.
+- Lobby. QR code at least a quarter of the screen height, the room code in large type, the join URL under it, "N joined" and the count per class ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline with their name. Brad Smith's quote under the title; PS Tanui's "not failed or withdrawn … requires some structuring" as the quest hook. Space starts the game.
+- Travel. Side-scrolling platform segment through a dark-fantasy Rift Valley. The presenter controls the lead class of the coming round; the other three trail. Three exhibit pickups per segment. The arena gate starts the round.
+- Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; "N of M voted". Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, up to twice. Then the strike: the lead class performs the special attack sized by its majority, the other three strike in support sized by their shares, rally strikes land last with the student's name, the HP drains. Then the debrief panel: per option, damage and one projector line with citation; a line on alignment ("The party stood with the Rogues" or "Split: Rogues chose B, the party chose A"); the discuss line.
+- Ending. One of five cutscenes (section 4.6) with the final split, "what must be true" and "the risk you accepted".
+- Leaderboard. Top five students, most consistent strategist, top table, and the final split under "What should Microsoft do, and why?".
 
-Text on the projector is an HTML layer over the game canvas, not canvas text (section 7), so narration, option cards, the call-out banner, the debrief and the QR are crisp at native resolution and wrap properly.
-- Ending. One of five cutscenes (section 4.6) with the class split, "what must be true" and "the risk you accepted".
-- Leaderboard. Top 5 by points, "most consistent strategist", and the round 4 split one more time for the closing question.
+Text on the projector is an HTML layer over the game canvas, not canvas text (section 7), so it wraps and stays crisp.
 
 ### 3.3 Player screens (phone)
 
-Join (name required, up to 16 characters; it is the name the class will hear), Waiting ("You're in. Watch the screen."), Vote (four large buttons: letter, shape, short label; countdown), Locked in ("Locked: B. Start small, 24 to 60 MW."), Called out ("You're up. Defend B: Start small, 24 to 60 MW." with the phone vibrating once where supported), Someone else called out ("Sarah is defending B."), Round result (points this round, running total, rank, and the full debrief for the option you chose, so the case fact behind your score is in your hand), Ending summary (your four picks, your synergy count, your rank). A kicked player sees a plain message; a dropped connection shows "Reconnecting".
+Join (name, required, up to 16 characters; role, required, four large buttons with class and stakeholder; table name, optional, up to 16 characters), Waiting ("You're in as Ann, Knight. Watch the screen."), Vote (four large buttons: letter, shape, short label; countdown; a line "Your class leads this round" when it does), Locked in ("Locked: B. Yes to 60 to 100 MW, tied."), Called out ("You're up. Defend B: …", with one vibration where supported), Someone else called out ("Sarah is defending B."), Round result (points this round, running total, rank, and the full debrief of the option you chose), Ending summary (your four picks, your coherence count, your rank), Removed, Reconnecting.
 
 ## 4. Game design
 
-### 4.1 The party: Microsoft's deal team
+### 4.1 The party: four stakeholders, four classes
 
-Four members, one per Kahoot-style button. Each round, each option is proposed by one member, so the class sees the debate inside Microsoft, and the attack shows four strikes sized by vote share. The member-to-option mapping is set per round in content and is flavour, not a rule.
-
-Colour belongs to the letter, never to the member: A is always red, B blue, C yellow, D green, on phones, on the projector's option cards and bars, and on the call-out banner, so a student can match their phone to the screen at a glance. Party sprites are not colour-coded; the proposing member's name appears as a small tag on the card ("The Envoy"). The striker for an option is the member who proposed it, or, when no member is set (round 4), the member whose default button carries that letter. During a strike the striker flashes in the option's colour.
-
-| Button | Member | Class | Lens |
+| Role | Class | Who they are in the case | Leads |
 |---|---|---|---|
-| A, red triangle | The Engineer | Artificer | power, latency, the site |
-| B, blue diamond | The Treasurer | Paladin | capital at risk, returns, fixed costs |
-| C, yellow circle | The Envoy | Bard | the Kenyan government, G42, PPP law |
-| D, green square | The Scout | Ranger | competitors, timing, other markets |
+| Citizen | Rogue | Households and businesses on the same grid, workers promised skills, startups, the Olkaria communities (sections 4.2, 5) | Round 1, power |
+| Kenyan Government | Knight | The Treasury and the ICT ministry, the PPP Act, Parliament after the High Court ruling (sections 4.3, 4.4, 5) | Round 2, finances |
+| Local Businesses | Bard | Safaricom and M-Pesa, the banks, the startups of the Silicon Savannah, EcoCloud and the local developers who would build and supply (sections 3.2, 4.2, 5) | Round 3, demand |
+| Microsoft | Wizard | Azure and the capital-allocation decision, with G42, the Abu Dhabi partner that was to lead the investment, folded into the same side (sections 3.1 to 3.4) | Round 4, the decision |
+
+Students choose their role when they join; the lobby shows the counts so tables can balance themselves. The game does not enforce one of each per table. Roles are fixed for the session.
+
+Colour belongs to the option letter, never to a class: A is always red, B blue, C yellow, D green, on phones, on the projector's cards and bars, and on the call-out banner. Class sprites keep their own look.
 
 ### 4.2 The boss: the Deadlock
 
-Four phases of 100 HP each, 400 in total.
+Four phases of 100 HP each, 400 in total, drawn in a dark-fantasy register.
 
-1. Grid Wyrm (electricity supply). A serpent whose body is a chain of transmission pylons.
-2. Debt Golem (public finances). Stacked blocks carved with 68% and 48.5%.
-3. Fog of Demand (demand and competitors). A cloud of particles with floating, contradictory numbers (97.5%, 8.7%, 20 MW).
-4. The core (the decision). The Deadlock's exposed centre.
+1. Grid Wyrm (electricity supply): a serpent of chain and lightning coiled around the Olkaria plants.
+2. Debt Golem (public finances): a stone golem bound in chains, 68% and 48.5% carved into its chest.
+3. Fog of Demand (demand and competitors): a wraith in a cloud of numbers that never agree (97.5%, 8.7%, 20 MW).
+4. The core (the decision): the Deadlock's exposed heart.
 
 ### 4.3 Shape of a round
 
-1. Narration box: the situation in two to four sentences with one quote from the case. The facilitator reads it aloud or lets the class read.
-2. Four options on screen (full text) and on phones (short label). 30-second timer, join count. Space locks early; the timer locks automatically.
-3. Lock: distribution bars appear. Call-out: C picks a random student who voted this round and shows their name and choice; they defend it aloud; Y awards a rally strike, N does not. Up to two per round. The facilitator can skip this step entirely.
-4. Reveal: the four members strike, then any rally strikes land. Each contribution appears next to its strike.
-5. Debrief panel: for each option, the damage it dealt and a one-line case fact with citation. "Discuss" line at the bottom. Space moves on.
+1. Narration: the situation in two to four sentences with one quote from the case, ending with the lead class's call to strike ("Rogues, this is your strike: what will Kenyans accept?").
+2. Four options on screen (full text) and on phones (short label). Everyone votes. 30-second timer; Space locks early; the timer locks automatically.
+3. Lock: two bars per option, the lead class and the rest of the party. Call-out: C picks a random voter from the lead class first (any voter once the lead class is used up), shows their name and choice; they defend it; Y awards a rally strike, N does not. Up to two per round.
+4. Reveal: the special attack by the lead class, three support strikes, rally strikes. Damage numbers next to each.
+5. Debrief: per option, damage and projector line; the alignment line; the discuss line. Space moves on.
 
 ### 4.4 Scoring
 
 Each option in a round has an effective score from 0 to 100.
 
-- Evidence rounds (1 to 3): the effective score is the evidence score set in content (section 5), a judgement of how well the case's own evidence supports the move.
-- Decision round (4): effective score = 50 + 15 × synergy hits, where a synergy hit is an earlier round whose class majority is listed as coherent with this option (table in section 5.4). Maximum 95.
+- Rounds 1 to 3: the effective score is the evidence score set in content (section 5), a judgement of how well the case's evidence supports the move for the stakeholder making it.
+- Round 4: effective score = 50 + 15 × synergy hits, where a hit is an earlier round whose class majority is listed as coherent with this option (table in section 5.4). Maximum 95.
+
+Shares. The lead class's votes and the rest of the party's votes are each tallied. Blended share of an option = half its share among the lead class plus half its share among the rest. If one of the two groups cast no votes, the other group's shares are used alone.
 
 Damage for a round:
 
-- base = Σ over options of (vote share × effective score)
-- focus bonus = +15 if the top option holds at least 60% of the votes, else 0
-- exhibit bonus = +5 per exhibit collected in the preceding travel segment, maximum 3 (+15)
-- rally bonus = +10 per call-out the facilitator judges convincing, maximum 2 per round (+20)
-- damage = round(base + focus + exhibit + rally), clamped to 0 to 100
+- base = Σ over options of (blended share × effective score)
+- focus bonus = +15 if the top option holds at least 60% of the blended share
+- alignment bonus = +10 if the lead class's majority and the rest of the party's majority are the same option (both groups voted, neither tied)
+- exhibit bonus = +5 per exhibit collected in the preceding travel segment, maximum 3
+- rally bonus = +10 per call-out the facilitator judged convincing, maximum 2
+- damage = round(base + focus + alignment + exhibit + rally), clamped to 0 to 100
 
-Majority of a round = the option with the most votes. On a tie, the earliest letter wins and the round is flagged tied (no focus bonus is possible on a tie anyway).
+Majority of a round = the option with the most blended share; on a tie, the earliest letter, flagged tied.
 
-Ending = the majority option of round 4, in a tier set by total damage over the four rounds (max 400): decisive at 260 or more, fragile from 180 to 259. Below 180 the Deadlock holds and its own ending plays (section 4.6).
+Ending = the majority option of round 4, in a tier set by total damage over the four rounds (max 400): decisive at 260 or more, fragile from 180 to 259. Below 180 the Deadlock holds and its own ending plays.
 
-Student points per round = effective score of their option + speed bonus, where speed bonus = round(20 × (1 − response time ÷ vote window)), clamped to 0 to 20. A called-out student also earns 10 points for speaking, or 30 if the party awards the rally strike. "Most consistent strategist" goes to the player whose own four picks produce the most synergy hits for their own round 4 pick, ties broken by total points.
+Student points per round = effective score of their option + speed bonus + 10 if their class led the round (the caster bonus), where speed bonus = round(20 × (1 − response time ÷ vote window)), clamped to 0 to 20. A called-out student also earns 10 points for speaking, or 30 if the party awards the rally strike. "Most consistent strategist" goes to the player whose own four picks produce the most synergy hits for their own round 4 pick, ties broken by total points. "Top table" is the table name with the highest mean points among tables with at least two members; omitted when no one entered a table name.
 
-Worked example, round 1 with 40 voters: A 4, B 24, C 4, D 8. Shares 0.10, 0.60, 0.10, 0.20. Base = 0.1 × 60 + 0.6 × 85 + 0.1 × 20 + 0.2 × 35 = 66. Focus +15 (B at 60%). Two exhibits, +10. Damage 91. One convincing call-out on top caps the round at 100. An evenly split class (10 each) does 50 with no focus bonus. A class that converges on the weakest option does about 35.
+Worked example, round 1. Ten Rogues vote A 1, B 6, C 1, D 2 (shares 0.10, 0.60, 0.10, 0.20). Thirty others vote A 6, B 15, C 3, D 6 (0.20, 0.50, 0.10, 0.20). Blended 0.15, 0.55, 0.10, 0.20. With round 1 scores 40, 80, 15, 55: base = 6 + 44 + 1.5 + 11 = 62.5. Focus 0 (B at 55%). Alignment +10 (both groups chose B). Two exhibits, +10. Damage 83. The same votes with every Rogue on B and the rest 2:1 for B over A give base 73.3, focus +15, alignment +10, damage 98. An evenly split room does 48.
 
-Worked example, round 4 with prior majorities B, D, B and a final tally A 5, B 25, C 5, D 5. Synergy hits: A 0 (score 50), B 3 (95), C 1 (65), D 2 (80). Base = 0.125 × 50 + 0.625 × 95 + 0.125 × 65 + 0.125 × 80 = 83.75. Focus +15. Damage 99.
+Worked example, round 4. Earlier majorities B, C, B. Synergy hits: A 0 (score 50), B 3 (95), C 0 (50), D 3 (95). Wizards vote A 2, B 4, C 1, D 1 and the rest A 8, B 16, C 4, D 4 (both 0.25, 0.50, 0.125, 0.125). Base = 12.5 + 47.5 + 6.25 + 11.875 = 78.1. Focus 0. Alignment +10. Damage 88.
 
-Why this shape: evidence rounds reward reading the case; the focus bonus rewards a class that commits, which is what a deal team has to do; the rally bonus rewards a student who can argue the choice out loud, which is the facilitation rubric's "broad participation" in game form; the decision round rewards a strategy that hangs together across rounds, which is discussion question 1's "what would need to be true". The scores are visible after each round, so the mechanism is also the teaching.
+Why this shape: the lead class owns half the attack regardless of how many students chose that role, so the stakeholder exercise is real even with uneven tables; the alignment bonus rewards a party that agrees across stakeholders and makes disagreement visible when it does not, which is the discussion; evidence scores reward reading the case; the final round rewards a strategy that hangs together, which is discussion question 1's "what would need to be true".
 
 ### 4.5 Travel and exhibits
 
-Short side-scrolling platform segments between rounds. Controls: arrow keys to move and jump (Space also jumps), A to auto-run along a baked path (the safe option on stage), N to skip straight to the arena. Three exhibit pickups per segment. Each is a case figure that pops as a toast for 4 seconds and adds +5 to the next round's damage. The pickups for each segment are set in content; defaults in section 5.5.
+Short platform segments between rounds. Arrow keys move and jump (Space also jumps), A auto-runs along a baked path, N skips to the arena. Three exhibit pickups per segment, each a case figure shown as a toast for 4 seconds and worth +5 damage next round (section 5.5).
 
 ### 4.6 Endings
 
-- A, "Olkaria Colossus". Must be true: Microsoft takes a larger share of the investment if G42 turns cautious; dedicated geothermal generation separate from the main grid; demand grows into 1 GW over a long payback. Risk accepted: stranded assets and public opposition over power (section 7, Exhibit 10).
-- B, "The Seed Plant". Must be true: KenGen or a commercial anchor signs a smaller commitment; 24 to 60 MW fills within a few years; the expansion option stays open. Risk accepted: weak early returns; competitors build larger facilities first.
+- A, "Olkaria Colossus". Must be true: Microsoft takes a larger share if G42 turns cautious; dedicated geothermal separate from the grid; demand grows into 1 GW over a long payback. Risk accepted: stranded assets and public opposition over power (section 7, Exhibit 10).
+- B, "The Seed Plant". Must be true: KenGen or a commercial anchor signs a smaller commitment; 24 to 60 MW fills within a few years; the expansion option stays open. Risk accepted: weak early returns; competitors build larger first.
 - C, "The Long Road South". Must be true: Kenyan demand stays small enough that waiting costs little; the G42 and Kenyan relationships survive the pause. Risk accepted: Oracle, Huawei and Nxtra take the market; the deal lapses.
-- D, "The Tenant". Must be true: G42 is willing to own the asset risk; Kenya still delivers power and land; Azure demand fills the capacity Microsoft rents. Risk accepted: the demand risk is moved, not solved; G42's goals diverge from Microsoft's.
-- X, "The Deadlock holds". Plays when total damage is under 180. "Your board sends the team back to Nairobi." The screen lists, for each earlier round, the class's majority next to what the final option needed, so the inconsistency is the lesson.
+- D, "The Tenant". Must be true: local partners such as EcoCloud are willing and able to own the asset risk; Kenya still delivers power and land; Azure demand fills the rented capacity. Risk accepted: the demand risk is moved, not solved; the partners' goals diverge from Microsoft's.
+- X, "The Deadlock holds". Plays when total damage is under 180. "Your board sends the party back to Nairobi." For rounds 1 to 3 it lists the class's majority next to what the final option needed.
 
-Each ending shows the round 4 split, which is the slide the facilitator closes on.
+Each ending shows the round 4 split, the slide the facilitator closes on.
 
-## 5. Content: the decisions in Microsoft's eyes
+## 5. Content: four stakeholders, four decisions
 
-These are the answers the game encodes. Evidence scores are judgements made from the case document alone; the team should agree with them before class, and can change them in `content/case.json` without touching code. The phone label is what students see on their screens; the screen text is the full option on the projector.
+Evidence scores are judgements made from the case document alone; the team should agree with them before class and can change them in `content/case.json`. The phone label is what students see; the screen text is the full option on the projector. The projector line (section 5.7) is what the debrief shows; the full debrief goes to the phones and the facilitator notes.
 
-### 5.1 Round 1, Grid Wyrm: how does Microsoft get its power?
+### 5.1 Round 1, Grid Wyrm. Rogues (Citizens): what will Kenyans accept on power?
 
-Narration. "Olkaria steam fields, 2026. The Grid Wyrm coils around the geothermal plants that generate about 950 MW. Kenya's whole grid has about 3,192 MW installed against a record peak of 2,444 MW. President Ruto: 'to switch on that one data center, we would need to shut off power for half the country.' The 1 GW plan would take about 31% of installed capacity. How does Microsoft get its power?"
+Narration. "Olkaria steam fields. The Grid Wyrm coils around the plants that make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced hundreds of Maasai families. Rogues, this is your strike: what will Kenyans accept?"
 
-A. The Engineer. Screen: "Dedicated geothermal. Pay KenGen to develop new Olkaria capacity ring-fenced for the site, off the household grid." Phone: "Build our own geothermal". Score 60.
-Debrief: "Geothermal is 24-hour baseload and Kenya has the world's highest share of it (section 4.1). But new generation takes years, and Olkaria expansion displaced hundreds of Maasai families (Krebs, 2022; World Bank Inspection Panel, 2015). Strong on power, weak on time and social licence."
+A. Screen: "Households first. No data-centre load until household and industrial supply is secure; the deal waits for new generation." Phone: "Households first, deal waits". Score 40.
+Debrief: "Protects a grid the case shows is stretched: lines above 120% of design capacity, a 1 GW load worth 31% of installed capacity (The Analyst, 2026a; Exhibit 2). But it forgoes the hub, the skills and the regional position while Oracle, Huawei and Nxtra move (section 3.2)."
 
-B. The Treasurer. Screen: "Shrink phase one to 24 to 60 MW, in line with the EcoCloud talks, and expand only as new generation comes online." Phone: "Start small, 24 to 60 MW". Score 85.
-Debrief: "100 MW is about 4% of peak demand and a tenth of Olkaria's output; 1 GW is about 41% of record peak (Exhibit 2). Talks on a 60 MW facility with EcoCloud are already under way (Vimal, 2026). This is the move the grid can take today."
+B. Screen: "Accept a 60 to 100 MW first phase, about 4% of peak demand, on condition that new generation is tied to every expansion." Phone: "Yes to 60 to 100 MW, tied". Score 80.
+Debrief: "100 MW is about 4% of peak demand and a tenth of Olkaria's output (Exhibit 2); EcoCloud talks are already at 60 MW (Vimal, 2026); the 10,000 MW plan becomes the condition for growth rather than the hope behind it (Kizito, 2025; The Star, 2026)."
 
-C. The Envoy. Screen: "Hold the 1 GW plan and lean on Kenya's pledge of 10,000 MW of new generation within about seven years." Phone: "Hold 1 GW, trust 10 GW plan". Score 20.
-Debrief: "The 10,000 MW target was announced in November 2025 with a 2032 horizon (Kizito, 2025; The Star, 2026). Kenya's record on flagship projects is mixed; Konza progressed slowly and in phases (Exhibit 6). Some transmission lines already run above 120% of design capacity (The Analyst, 2026a). Building ahead of generation is what caused the stall."
+C. Screen: "Accept the full 1 GW for the jobs, the skills lab and the regional hub." Phone: "Full 1 GW for the hub". Score 15.
+Debrief: "1 GW is about 31% of installed capacity and 41% of record peak (Exhibit 2). The development centre that was meant to deliver the skills is closing (Namunwa, 2026). Benefits would be concentrated while the risks are spread widely (Exhibit 9)."
 
-D. The Scout. Screen: "Put the capacity in South Africa, where Microsoft just committed another US$329 million, and serve East Africa from there." Phone: "Move it to South Africa". Score 35.
-Debrief: "It avoids Kenya's grid, but South Africa's grid is unstable and coal-heavy (Exhibit 7), inference has to sit close to users (Direct LTx, n.d.), and Oracle's Nairobi region through iXAfrica is already announced (iXAfrica Data Centres, 2026). This is Option 3 wearing a power hat."
+D. Screen: "Only with a community deal: Olkaria communities get compensation and a share of the benefit before any expansion." Phone: "Community deal first". Score 55.
+Debrief: "Geothermal expansion displaced hundreds of Maasai families and drew a World Bank Inspection Panel investigation (Krebs, 2022; World Bank Inspection Panel, 2015). The right ask for Olkaria; it decides who benefits more than how much power there is."
 
-Microsoft's view. The grid problem is a sizing problem. Everything in section 4.1 says the grid can carry 60 to 100 MW and cannot carry 1 GW. Dedicated generation is the long-run answer but not a 2026 answer. The evidence path is B now, with A as the expansion route.
+Citizens' view. Power is a sizing and conditions problem. The grid can carry 60 to 100 MW and cannot carry 1 GW; the condition that generation grows with the plant is what makes B safe, and D is the condition that makes it fair.
 
-### 5.2 Round 2, Debt Golem: who should carry the demand risk?
+### 5.2 Round 2, Debt Golem. Knights (Kenyan Government): what does the Government offer instead of a guarantee?
 
-Narration. "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament's approval. The Treasury has said no. A data centre is largely fixed cost, so someone has to carry the demand risk. Who?"
+Narration. "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?"
 
-A. The Envoy. Screen: "Kenya's Treasury. Keep pressing for the anchor-tenant guarantee, sweetened with the skills lab and training pledges." Phone: "Kenya's Treasury guarantees". Score 10.
-Debrief: "The Treasury already declined the ICT ministry's proposal (Semafor, 2026; The Analyst, 2026a). PS Tanui said Kenya cannot guarantee procurement controlled by market forces or by other governments (Musau, 2026). The sweetener is weaker since the Nairobi development centre closure (Namunwa, 2026). Elections come in 2027."
+A. Screen: "Sign the anchor-tenant guarantee. The hub is worth the risk." Phone: "Sign the guarantee". Score 10.
+Debrief: "The IMF would count it as debt while 48.5% of revenue already goes to debt service (The Analyst, 2026b; People Daily, 2025). The Finance Bill protests show where the limit is (Al Jazeera, 2024). The High Court says Parliament must approve (Capital FM, 2026). Elections come in 2027."
 
-B. The Engineer. Screen: "KenGen. A smaller purchase commitment signed by the state generator, kept off the national balance sheet." Phone: "KenGen signs, not Treasury". Score 60.
-Debrief: "A compromise actually under discussion (The Analyst, 2026b). KenGen would gain a large long-term customer (KenGen, 2025). But the state still ultimately stands behind KenGen, the IMF may still count it, and it answers power offtake more than cloud demand."
+B. Screen: "No guarantee of any kind. Microsoft can build on market terms or not at all." Phone: "No guarantee, market terms". Score 45.
+Debrief: "Protects taxpayers and matches Tanui's line that Kenya cannot guarantee procurement set by markets or other governments (Musau, 2026). But it leaves the deal where it is, stalled, while competitors build (section 3.2)."
 
-C. The Treasurer. Screen: "G42. Let G42 fund and own the facility; Microsoft becomes an anchor tenant and pays for the capacity it uses." Phone: "G42 owns it, we rent". Score 55.
-Debrief: "One of the compromises discussed (Steffens Herrera, 2026). G42 is backed by Mubadala and Silver Lake, and Microsoft holds a US$1.5 billion stake and a board seat (AGBI, 2024). It cuts Microsoft's capital at risk, but G42 has its own goals and may turn cautious (sections 3.4 and 7). The risk moves; it does not shrink."
+C. Screen: "KenGen signs a smaller power and capacity commitment for a 60 MW phase, kept off the national balance sheet." Phone: "KenGen signs, 60 MW". Score 65.
+Debrief: "The compromise under discussion (The Analyst, 2026b). KenGen gains a long-term customer (KenGen, 2025). The state still ultimately stands behind KenGen, and the IMF may still count it."
 
-D. The Scout. Screen: "Microsoft itself. Build small on spec with no sovereign guarantee and win commercial anchors (Safaricom, banks, ministries under the Cloud Policy) as it goes." Phone: "We carry it, build small". Score 70.
-Debrief: "US$1 billion is about 0.6% of fiscal 2027 capital spending and 2.7% of one quarter's net income (Exhibit 4), and Microsoft's own share is smaller. At 24 to 60 MW the exposure is small. The Cloud Policy and data-localisation rules raise local demand (section 4.4). The counterweight: investors punished capital spending in January 2026 (GeekWire, 2026b), and Microsoft wants predictable demand before it builds (Vimal, 2026). This is the only option that needs no signature Kenya cannot currently give."
+D. Screen: "Be the customer, not the guarantor: move government services to the local region under the Cloud Policy, paid from annual budgets." Phone: "Government as customer". Score 60.
+Debrief: "The Cloud Policy and the data-localisation rules already point this way (section 4.4), and it creates demand without a sovereign guarantee. But a multi-year cloud purchase may still face the High Court's PPP review (section 4.4), and implementation of digital plans has been uneven (Exhibit 6)."
 
-Microsoft's view. Risk should sit with whoever can bear it and manage it. Kenya can do neither: the fiscal numbers rule out bearing it, and Tanui's point that demand is set by markets and other governments rules out managing it. Microsoft and G42 can bear it at the scale of a small first phase. Three live options (B, C, D) and one dead one (A). The debrief should say so; the facilitator's question is which of the three live ones the class trusts and why.
+Government's view. Structure it, do not guarantee it, which is what Tanui said. C and D are both live and combine; A is politically dead; B is honest but passive.
 
-### 5.3 Round 3, Fog of Demand: when is early too early?
+### 5.3 Round 3, Fog of Demand. Bards (Local Businesses): what do Kenya's businesses commit?
 
-Narration. "The Fog. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW of IT load. Phase one alone would be five times the market, the full build fifty times. One survey says 97.5% of online Kenyans used an AI tool last month, the highest of 54 countries. Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are building. When is early an advantage, and when is it too early?"
+Narration. "The Fog. Microsoft wants proof that Kenyans will pay before it builds. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?"
 
-A. The Scout. Screen: "Early is right. Build for the 2031 market (US$805 million, three quarters of new East African capacity) and lock in the hub before Oracle, Huawei and Nxtra do." Phone: "Go early, win the hub". Score 50.
-Debrief: "First-mover logic is real: Oracle's region through iXAfrica (January 2026), Nxtra's 44 MW at Tatu City, Huawei's 100-plus clients, AWS's further US$1.5 billion (section 3.2). But even the 2031 market of US$805 million is below the project's US$1 billion headline (section 4.2). Webvan built ahead of the infrastructure and habits it needed (section 7)."
+A. Screen: "Commit now. Safaricom, the banks and the large startups sign letters of intent to move workloads to a Nairobi region if price and latency beat South Africa." Phone: "Sign letters of intent". Score 70.
+Debrief: "This is the predictable demand Microsoft says it needs before it builds (Vimal, 2026). M-Pesa's 40 million monthly users and the data-localisation rules make local workloads real (sections 3.2, 4.4). But the case says demand outside government is limited and today's market is 20 MW (section 4.2), so the letters have to be conditional and staged."
 
-B. The Treasurer. Screen: "Too early for 1 GW. Size phase one to what the market can fill in about three years, 24 to 60 MW, and keep the expansion option." Phone: "Right-size to today's 20 MW". Score 80.
-Debrief: "20 MW of market today; 36.3% of households online and 7.0% with fixed internet (section 4.2). Instacart succeeded where Webvan failed because the enabling infrastructure had arrived (section 7). A staged build is how to be early without being too early."
+B. Screen: "Partner, don't just buy. EcoCloud and local developers co-build a 60 MW first phase and sell capacity to Kenyan firms as they migrate." Phone: "Co-build 60 MW with EcoCloud". Score 80.
+Debrief: "The 60 MW EcoCloud talks already exist (Vimal, 2026), local partners stand to win construction, power and connectivity contracts (section 5), and 60 MW is a size the market can grow into. It turns local business from a hoped-for customer into a builder with its own money at stake."
 
-C. The Envoy. Screen: "Demand will come from the state. Data-localisation rules, the Cloud Policy and the AI Strategy push public workloads on-shore; sign ministry MoUs first." Phone: "Government workloads first". Score 40.
-Debrief: "The policies exist and do raise demand for a local region (section 4.4). But implementation is uneven, the AI strategy has no 2026/27 budget line, there is no data-centre regulatory framework, and the US trade report says tenders are often influenced by political connections (USTR, 2026). It also rebuilds the dependence on the public purse the Treasury just refused."
+C. Screen: "Wait and compare. Keep workloads with Oracle at iXAfrica, Huawei and South Africa until Azure's local pricing is known." Phone: "Wait, compare providers". Score 40.
+Debrief: "Rational for any single buyer: Oracle's region through iXAfrica, Huawei's 100-plus clients and Nxtra's 44 MW are already here (section 3.2). But it leaves the fog exactly as thick as Microsoft found it, and hands the first-mover position to the others."
 
-D. The Engineer. Screen: "Trust the 97.5%. Kenya has the world's highest AI usage, inference must sit near users, so build now." Phone: "Build for 97.5% AI usage". Score 25.
-Debrief: "97.5% is of online Kenyans, who are 40.5% of the population; Microsoft's own measure is 8.7% of all Kenyans (Whitehead, 2026). 77.5 million mobile connections is 134% of the population, which counts SIMs, not data-centre load (section 3.2). Proximity matters for inference (Direct LTx, n.d.), but it does not size the plant."
+D. Screen: "Skills first. No commitments until the innovation lab and training promised in 2024 replace the development centre that is closing." Phone: "Skills lab before contracts". Score 35.
+Debrief: "The development centre employed about 500 people and was meant to feed the innovation lab (Namunwa, 2026; Otieno, 2026), so the grievance is real. But it ties demand to a different problem and gives Microsoft no reason to build."
 
-Microsoft's view. The headline demand signals are the wrong denominator. The right one is paying load: 20 MW today, a market worth less than the project even in 2031. Early entry is an advantage when the enabling infrastructure exists (Instacart) and a trap when it does not (Webvan). Staged capacity is the real option that captures the upside without betting on the fog.
+Local Businesses' view. Demand is the thing hidden in the fog, and only the buyers can make it visible (A) or build it themselves (B). Waiting (C) and bargaining (D) leave the fog where it is.
 
-### 5.4 Round 4, the Decision: what should Microsoft do?
+### 5.4 Round 4, the core. Wizards (Microsoft), the whole party: what should Microsoft do?
 
-Narration. "The Deadlock's core is exposed. Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. What should Microsoft do?"
+Narration. "The Deadlock's core is exposed. Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. Wizards, this is your strike, and the whole party casts with you: what should Microsoft do?"
 
 A. Screen: "Proceed with the full 1 GW build, taking a larger stake and securing dedicated generation." Phone: "Full 1 GW build".
 B. Screen: "Build a 24 to 60 MW facility now and expand in stages as contracts and power arrive." Phone: "Build small, expand later".
 C. Screen: "Pause Kenya. Put the capital into South Africa and return when power, finances and demand improve." Phone: "Wait, invest elsewhere".
-D. Screen: "Become the tenant. G42 and local partners build and own; Microsoft anchors it with Azure capacity." Phone: "G42 builds, Microsoft rents".
+D. Screen: "Become the tenant. Local partners such as EcoCloud build and own the facility; Microsoft anchors it with Azure capacity." Phone: "Partners build, we rent".
 
 No evidence scores. Synergy table (earlier-round majorities coherent with each final option):
 
-| Final option | Round 1 | Round 2 | Round 3 |
+| Final option | Round 1 (Rogues) | Round 2 (Knights) | Round 3 (Bards) |
 |---|---|---|---|
-| A, full build | A, C | A, C | A, D |
-| B, build small | B | B, D | B |
-| C, wait | D | A | B |
-| D, tenant | A, B | C | A, B |
+| A, full build | C | A, D | A |
+| B, build small | B, D | C, D | A, B |
+| C, wait | A | B | C, D |
+| D, tenant | B, C | C, D | B |
 
-Debrief for round 4 is the ending cutscene (section 4.6). The facilitator's closing question is the rubric's: what should Microsoft do, and why.
-
-Microsoft's view, for the facilitator only (never shown as a right answer). If the class follows the evidence in rounds 1 to 3, the coherent decision is B, possibly structured as D. The case's own Decision section says every option has significant drawbacks; the point of round 4 is that the class owns the trade-off it picks and can say what must be true for it to work.
+Microsoft's view, for the facilitator only and never shown as a right answer. If the class follows the evidence in rounds 1 to 3, the coherent decision is B, possibly structured as D. The case's own Decision section says every option has significant drawbacks; the point of round 4 is that the class owns the trade-off it picks and can say what must be true for it to work.
 
 ### 5.5 Exhibit pickups (travel segments)
 
-Three per segment, each worth +5 damage in the next round. Shown as a toast with the figure and source.
+Three per segment, each +5 damage in the next round, shown as a toast with the figure and source.
 
-- Travel 1 (before round 1): "Olkaria generates about 950 MW (James, 2026)"; "Record peak demand 2,444 MW, January 2026 (James, 2026)"; "1 GW = about 31% of installed capacity (Exhibit 2)".
-- Travel 2 (before round 2): "Public debt about 68% of GDP, June 2025 (Ecofin Agency, 2025)"; "48.5% of ordinary revenue goes to debt service (People Daily, 2025)"; "PPP liabilities need Parliament's approval, September 2026 (Capital FM, 2026)".
-- Travel 3 (before round 3): "Kenya's data-centre market is about 20 MW (The Analyst, 2026b)"; "Market worth US$266 million in 2025, US$805 million by 2031 (Semafor, 2026)"; "97.5% of online Kenyans vs 8.7% of all Kenyans used AI (Whitehead, 2026)".
-- Travel 4 (before round 4): "US$1 billion is 0.6% of Microsoft's FY2027 capex (Exhibit 4)"; "Nairobi development centre closing, October 2026 (Namunwa, 2026)"; "Microsoft committed US$329 million more to South Africa, April 2026 (Kamau, 2026)".
-
-### 5.7 Projector lines
-
-The debrief panel on the projector shows one line per option (130 characters or fewer). The full debriefs in 5.1 to 5.3 go to the phones and the facilitator notes.
-
-Round 1: A "Baseload power, but new wells take years and Olkaria expansion displaced Maasai families (Krebs, 2022)." B "100 MW is about 4% of peak demand, and 60 MW EcoCloud talks already exist (Exhibit 2; Vimal, 2026)." C "The 10 GW target lands in 2032, the flagship record is mixed, and lines already run above 120% (Exhibit 6)." D "Avoids Kenya's grid, but South Africa runs on coal, inference needs proximity, and Oracle is already in Nairobi (Exhibit 7)."
-
-Round 2: A "The Treasury already said no; Tanui: Kenya cannot guarantee others' procurement; elections in 2027 (Semafor, 2026)." B "A compromise on the table, but the state still stands behind KenGen and the IMF may count it (The Analyst, 2026b)." C "Cuts Microsoft's capital at risk, but G42 may turn cautious; the risk moves, it does not shrink (Steffens Herrera, 2026)." D "US$1 billion is 0.6% of FY2027 capex; at 24 to 60 MW the exposure is small; needs no Kenyan signature (Exhibit 4)."
-
-Round 3: A "Oracle, Nxtra and Huawei are moving, but even the 2031 market is under US$1 billion; Webvan built too early (4.2)." B "A 20 MW market with 36% of homes online; Instacart won where Webvan failed by waiting for the infrastructure (4.2, 7)." C "The policies raise local demand, but there is no AI budget line, no framework, and tenders are swayed by connections (USTR, 2026)." D "97.5% is of online Kenyans, who are 40% of people; Microsoft's own measure is 8.7%; SIMs are not load (Whitehead, 2026)."
+- Travel 1: "Olkaria generates about 950 MW (James, 2026)"; "Record peak demand 2,444 MW, January 2026 (James, 2026)"; "1 GW = about 31% of installed capacity (Exhibit 2)".
+- Travel 2: "Public debt about 68% of GDP, June 2025 (Ecofin Agency, 2025)"; "48.5% of ordinary revenue goes to debt service (People Daily, 2025)"; "PPP liabilities need Parliament's approval, September 2026 (Capital FM, 2026)".
+- Travel 3: "Kenya's data-centre market is about 20 MW (The Analyst, 2026b)"; "Market worth US$266 million in 2025, US$805 million by 2031 (Semafor, 2026)"; "97.5% of online Kenyans vs 8.7% of all Kenyans used AI (Whitehead, 2026)".
+- Travel 4: "US$1 billion is 0.6% of Microsoft's FY2027 capex (Exhibit 4)"; "Nairobi development centre closing, October 2026 (Namunwa, 2026)"; "Microsoft committed US$329 million more to South Africa, April 2026 (Kamau, 2026)".
 
 ### 5.6 Characters who speak
 
-- The narrator (dungeon master) voice is the game's; the facilitator reads it.
-- PS John Tanui appears in the lobby and before round 2 with his quote: the project is "not failed or withdrawn" but its scale "requires some structuring" (James, 2026; Vimal, 2026).
+- The narrator voice is the game's; the facilitator reads it.
+- PS John Tanui appears in the lobby and before round 2: the project is "not failed or withdrawn" but its scale "requires some structuring" (James, 2026; Vimal, 2026).
 - President Ruto's "shut off power for half the country" (Semafor, 2026) is the Grid Wyrm's taunt.
 - Brad Smith's "single biggest step to advance the availability of digital technology" (Vimal, 2026) opens the lobby.
+
+### 5.7 Projector lines
+
+One line per option on the debrief panel, 130 characters or fewer.
+
+Round 1: A "Protects a stretched grid (lines above 120%), but forgoes the hub while Oracle and Huawei move (The Analyst, 2026a; 3.2)." B "100 MW is about 4% of peak demand; 60 MW EcoCloud talks already exist; growth tied to new generation (Exhibit 2; Vimal, 2026)." C "1 GW is 31% of installed capacity; the skills centre is closing; benefits concentrated, risks spread (Exhibit 2; Exhibit 9)." D "Olkaria expansion displaced Maasai families; the right ask for who benefits, not for how much power (Krebs, 2022)."
+
+Round 2: A "IMF counts it as debt, 48.5% of revenue already services debt, Parliament must approve, elections 2027 (The Analyst, 2026b)." B "Protects taxpayers and matches Tanui's line, but leaves the deal stalled while competitors build (Musau, 2026; 3.2)." C "The compromise on the table; KenGen gains a customer, but the state still stands behind it (The Analyst, 2026b)." D "Cloud Policy demand without a guarantee, but multi-year purchases may face the PPP review (4.4; Capital FM, 2026)."
+
+Round 3: A "The demand Microsoft wants; M-Pesa's 40m users and localisation rules make it real, but today's market is 20 MW (4.2)." B "The 60 MW EcoCloud talks exist; local partners win the contracts and become builders, not hoped-for customers (Vimal, 2026)." C "Rational for one buyer, but Oracle, Huawei and Nxtra are already here and the fog stays as thick as before (3.2)." D "The closing development centre makes the grievance real, but it ties demand to a different problem (Namunwa, 2026)."
 
 ## 6. Technical design
 
@@ -256,111 +254,104 @@ Round 3: A "Oracle, Nxtra and Huawei are moving, but even the 2031 market is und
 
 One repository, `~/olkaria`, TypeScript throughout.
 
-- `host/`: the projector game. Phaser 3 with Vite for the world layer (boss, party, platforms, HP bar); an HTML layer over the canvas for everything textual (narration, option cards, banner, debrief, QR, toasts, key map). Scenes: Boot, Lobby, Travel, Battle, Ending, Leaderboard. A router starts the right scene for the saved phase and round when the host page loads or reconnects.
-- `player/`: the phone page. Plain TypeScript and CSS, no framework. Nine states (section 3.3) plus reconnecting.
+- `host/`: the projector game. Phaser 3 with Vite for the world layer (boss, party, platforms, HP bar); an HTML layer over the canvas for everything textual (narration, cards, banner, debrief, QR, toasts, key map). Scenes: Boot, Lobby, Travel, Battle, Ending, Leaderboard. A router starts the right scene for the saved phase and round on load or reconnect.
+- `player/`: the phone page. Plain TypeScript and CSS, no framework. The states in section 3.3.
 - `worker/`: a Cloudflare Worker that serves both pages as static assets and hosts a Durable Object per room over WebSockets.
-- `shared/`: types, the content schema, scoring, and the room reducer. Pure functions, unit tested, used by the Durable Object (authoritative) and by the host's offline mode.
-- `content/case.json`: everything in section 5 plus endings, party members, exhibit pickups and the synergy table. Validated by a schema test.
+- `shared/`: types, the content schema, scoring, the room reducer. Pure functions, unit tested, used by the Durable Object (authoritative) and by the host's offline mode.
+- `content/case.json`: everything in section 5, the roles, the lead role per round, endings, exhibit pickups, synergy table, quotes and scoring constants.
 
-Why this stack. Phaser 3 is the standard browser engine for pixel platformers and has a pixel-art render mode and arcade physics. Cloudflare Workers with Durable Objects gives one deploy, one URL, server-side vote tallies that survive a host reload, and no idle-pause problem; the free plan includes SQLite-backed Durable Objects. Caleb already has a Worker deployed (spark-bot) and a Cloudflare account. The alternative, Supabase Realtime, needs less server code but Caleb's free-tier projects pause when idle, which is the wrong failure mode for a one-shot class slot.
+Why this stack. Phaser 3 is the standard browser engine for pixel platformers with a pixel-art render mode and arcade physics. Cloudflare Workers with Durable Objects gives one deploy, one URL, server-side tallies that survive a host reload, no idle pause, and the free plan includes SQLite-backed Durable Objects. It deploys to the Cloudflare account this Mac's wrangler is logged into, the one spark-bot uses (Caleb's decision). Supabase Realtime was the alternative; Caleb's free-tier projects pause when idle, the wrong failure mode for a class slot.
 
 ### 6.2 Room state machine (authoritative, in `shared/room-logic.ts`)
 
-Phases: `lobby`, `travel`, `vote`, `locked`, `reveal`, `ending`, `leaderboard`. Round index runs 0 to 3; it is -1 in the lobby.
+Phases: `lobby`, `travel`, `vote`, `locked`, `reveal`, `ending`, `leaderboard`. Round index runs 0 to 3; -1 in the lobby. Each round has a lead role from content (`citizen`, `government`, `business`, `microsoft`).
 
 Transitions
 
-- `lobby` → `travel` on host `start` (round becomes 0).
+- `lobby` → `travel` on host `start` (round 0).
 - `travel` → `vote` on host `openVote` with a window in seconds (default 30). Sets the deadline and schedules an alarm.
-- `vote` → `locked` on host `closeVote` or when the alarm fires at the deadline.
-- In `locked`, host `callout` picks a random player who voted this round and has not been called this round (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 2 per round; when no player is eligible (offline mode, or nobody voted) the call-out is recorded with no player so the facilitator can still cold-call by hand. Host `judge` with awarded true or false resolves the pending call-out and sets the called player's call-out points (30 awarded, 10 declined). `callout` while one is pending, or outside `locked`, is an error.
-- `locked` → `reveal` on host `reveal`. Computes the round's damage from the tally and the awarded call-outs, applies it to the boss, awards points (vote points plus any call-out points), records the majority. A still-pending call-out is treated as declined.
-- `reveal` → `travel` (round + 1) on host `next` while round < 3; `reveal` → `ending` after round 3.
-- `ending` → `leaderboard` on host `next`.
-- `locked` → `vote` on host `reopen`, with a fresh deadline of now plus the window; existing votes stand and the original opening time stays, so earlier voters keep their speed bonus. In `vote`, `reopen` extends the deadline to now plus the window. In any other phase it is an error; a reveal is final.
-- Any phase → `lobby` on host `reset` (players kept, scores and tallies cleared).
-- Host `exhibit` during `travel` adds a pickup for the current round (max 3).
-- Host `injectVotes` during `vote` or `locked` adds synthetic votes to the current round's tally (manual mode and bots). Synthetic voters never appear in the player list or the leaderboard.
-- Host `kick` removes a player.
+- `vote` → `locked` on host `closeVote` or when the alarm fires.
+- In `locked`, host `callout` picks a random player who voted this round and has not been called this round, preferring players of the lead role while any remain (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 2 per round; with no eligible player it records a call-out with no player so the facilitator can cold-call by hand. Host `judge` resolves the pending call-out (30 points awarded, 10 declined). A second `callout` while one is pending, or outside `locked`, is an error.
+- `locked` → `reveal` on host `reveal`. Tallies the lead role and the rest separately, computes damage and bonuses, applies damage, awards points (vote points, caster bonus, call-out points), records the majority. A still-pending call-out counts as declined.
+- `locked` → `vote` on host `reopen` with a fresh deadline; existing votes stand and the opening time stays. In `vote`, `reopen` extends the deadline. Elsewhere it is an error; a reveal is final.
+- `reveal` → `travel` (round + 1) on host `next` while round < 3; `reveal` → `ending` after round 3. `ending` → `leaderboard` on `next`.
+- Any phase → `lobby` on host `reset` (players kept, scores, tallies, call-outs and damage cleared).
+- Host `exhibit` during `travel` adds a pickup for the current round (max 3). Host `injectVotes` during `vote` or `locked` adds synthetic votes to the current round's support tally (manual mode and bots); synthetic voters never appear as players. Host `kick` removes a player. Host `hideNames` toggles names on the lobby and leaderboard.
 
 Player events
 
-- `join` with a client id and a name. A repeat `join` with a known client id is a rejoin and keeps name, votes and score. Names are trimmed, stripped of control characters, cut to 16 characters. The phone requires a name before it will join; if an empty name still arrives, the server gives a generated one (two words from a Kenya and geothermal word list, for example "Steam Gecko") so the room never shows a blank.
-- `vote` with round and option. Rejected unless the phase is `vote`, the round is the current one, the player exists and has not voted this round. The first vote locks; there is no changing an answer.
+- `join` with a client id, a name, a role and an optional table name. A repeat `join` with a known client id is a rejoin and keeps everything. Names and table names are trimmed, stripped of control characters and cut to 16 characters; a role outside the four is rejected; an empty name gets a generated one so the room never shows a blank.
+- `vote` with round and option. Rejected unless the phase is `vote`, the round is current, the player exists and has not voted this round. The first vote locks.
 
-The reducer signature is `reduce(state, event, content) → { state, effects }`, where effects are `setAlarm`, `clearAlarm` or `error`. The Durable Object runs the effects. The host's offline mode ignores alarms and uses a timer.
+Reducer signature: `reduce(state, event, content) → { state, effects }` with effects `setAlarm`, `clearAlarm`, `error`. The Durable Object runs the effects; the offline mode uses a timer.
 
 ### 6.3 Transport (Cloudflare Worker and Durable Object)
 
 - `POST /api/rooms` creates a room: a 4-letter code from A to Z without I and O, and a random host key. Returns `{ code, hostKey, joinUrl }`.
-- `GET /ws/:code?role=host&key=…` and `GET /ws/:code?role=player&clientId=…` upgrade to WebSockets handled by the room's Durable Object (WebSocket hibernation API, tagged by role and client id).
-- The Durable Object stores the state after every reduce, broadcasts a host view to the host and a per-player view to each player after every change, and uses a storage alarm for the vote deadline. Rooms self-delete after 6 hours of silence.
-- `GET /j/:code` serves the player page; `GET /` redirects to `/host/`. Everything else is static assets from the Vite build.
-- Host commands carry the host key. Player messages carry the client id. No other auth.
+- `GET /ws/:code?role=host&key=…` and `GET /ws/:code?role=player&clientId=…` upgrade to WebSockets handled by the room's Durable Object (hibernation API). The Durable Object stores the state after every reduce, broadcasts a host view and per-player views after every change, uses a storage alarm for the deadline, and deletes itself after 6 hours of silence.
+- `GET /j/:code` serves the player page; `GET /` redirects to `/host/`; everything else is static assets.
+- Host commands carry the host key; player messages carry the client id. No other auth.
 
-Views. The host view is the full state minus the host key. The player view has: phase, round, the player's own vote this round and their picks for every round so far, points for the last round, running score, rank, player count, server time (for the countdown), the pending call-out (name, option, and whether it is this player), and the tally only once the phase is `reveal` or later.
+Views. The host view is the full state minus the host key, plus the current round's lead tally, support tally and combined tally. The player view has: phase, round, the lead role, whether this player's class leads, their role and table, their vote this round and picks for every round so far, points for the last round, running score, rank, player count, server time, the pending call-out (name, option, whether it is them), and the tallies only once the phase is `reveal` or later.
 
-Reconnect. The host page remembers its room for the tab. On load or reconnect it reads the saved phase and round and starts the matching scene: `lobby` the Lobby; `travel` the start of that travel segment (N skips it); `vote` and `locked` the Battle at that state; `reveal` the Battle's debrief directly, without replaying the strike; `ending` and `leaderboard` those screens.
+Reconnect. The host page remembers its room for the tab and resumes at the saved phase: `lobby` the Lobby; `travel` the start of that segment; `vote` and `locked` the Battle at that state; `reveal` the debrief directly without replaying the strike; `ending` and `leaderboard` those screens.
 
 ### 6.4 Offline and manual mode
 
-The host page opened with `?mode=offline` never touches the network. It runs the same reducer in the browser. Keys 1 to 4 add one vote each to the current round, Shift+1 to Shift+4 add ten, B adds 30 random bot votes weighted toward the strongest option, and every other key works as it does online. This is the rehearsal mode and the plan B if the room's Wi-Fi fails: the facilitator counts hands and types the tallies. The same keys also work in online mode (they call `injectVotes`), so a half-working room can be topped up by hand.
+`?mode=offline` on the host runs the same reducer in the browser with no network. Keys 1 to 4 add one support vote each to the current round, Shift+1 to Shift+4 add ten, B adds 30 bot votes weighted toward the strongest option. The same keys work online (they call `injectVotes`). With no real players there is no lead class; the blended share falls back to the support share, so rehearsal numbers are the plain evidence-weighted ones.
 
 ### 6.5 Host keyboard
 
-Space: advance (start, lock, reveal, next). C: call out a random voter (locked phase only). Y or N: judge the pending call-out, convincing or not. R: reopen a locked vote, or extend an open one (those two phases only). Arrow keys and Space in travel: move and jump. A: auto-run. N in travel: skip to the arena. H: hide player names on the projector (the call-out banner still shows the called student's name, since that is the point). F: fullscreen. Esc: show the key map. 1 to 4, Shift+1 to Shift+4, B: tallies (section 6.4).
+Space: advance (start, lock, reveal, next). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: auto-run. N in travel: skip. H: hide names on lobby and leaderboard (the banner still names the called student). F: fullscreen. Esc: key map. 1 to 4, Shift+1 to Shift+4, B: tallies.
 
 ### 6.6 Content file
 
-`content/case.json` holds: party members (id, name, class, lens, colour, shape), four rounds (id `grid`, `debt`, `fog`, `core`; boss name; narration; options with letter, member, screen text, phone label, evidence score or null, full debrief, projector line, and the round's discuss line), the synergy table, five endings (title, must-be-true bullets, risk bullets, holds listing), four exhibit sets, the quotes in section 5.6, and the scoring constants (round HP, focus threshold and bonus, exhibit bonus and cap, call-out bonus, cap and points, decision base, synergy bonus, speed bonus cap, vote window, ending tiers). A test validates the schema and the invariants: four rounds, four options each, evidence scores on rounds 1 to 3 only, synergy keys that exist, phone labels of 28 characters or fewer, projector lines of 130 characters or fewer, and a non-empty debrief and projector line on every option of rounds 1 to 3 (round 4 has the endings instead).
+`content/case.json` holds: roles (id, stakeholder name, class name, one-line description), four rounds (id `grid`, `debt`, `fog`, `core`; boss name; lead role; narration; options with letter, screen text, phone label, evidence score or null, full debrief, projector line; discuss line), the synergy table, five endings, four exhibit sets, the quotes, and the scoring constants (round HP, focus threshold and bonus, alignment bonus, caster bonus, exhibit bonus and cap, call-out bonus, cap and points, decision base, synergy bonus, speed bonus cap, vote window, ending tiers). A test validates the schema and invariants: four rounds, four options each, each round's lead role distinct and in the order above, evidence scores on rounds 1 to 3 only, synergy keys that exist, phone labels of 28 characters or fewer, projector lines of 130 or fewer, non-empty debrief and projector line on every option of rounds 1 to 3.
 
-## 7. Visual direction
+## 7. Visual direction: dark-fantasy medieval platformer
 
-- World layer: virtual resolution 320 × 180, scaled by a whole-number zoom (6× at 1080p, 4× at 1366 × 768) and centred, recomputed on resize, Phaser `pixelArt` mode, no smoothing. Nothing textual is drawn on the canvas except damage numbers and the HP bar label.
-- Text layer: an HTML element positioned exactly over the canvas, with a `--zoom` variable so sizes scale with the world. Minimum sizes at 1080p: 24 px for card and debrief copy, 30 px for narration, 42 px for the banner name and titles. The pixel look comes from a pixel-style web font (Pixelify Sans, OFL) for titles and labels, with body copy in the same font at the larger sizes or in a plain sans if a rehearsal from the back row says it is hard to read.
-- Palette: a dusk-savanna neutral range (ochre, umber, warm greys) with one accent, geothermal teal, and steam white for highlights. Option colours (red, blue, yellow, green) are muted and appear only where they carry meaning: option cards, bars, the banner, and the striker's flash (section 4.1).
-- The phone page uses a plain sans (DM Sans or system) per the anti-vibecode standard.
-- Art order: build with placeholder rectangles and text first, swap in sprites last. Tiles, props and party sprites from CC0 packs (Kenney Pixel Platformer and Tiny Dungeon are the defaults). The three bosses are built procedurally from tiles and particles (pylon-chain serpent, carved block golem, number fog), which fits the theme and avoids licensing. A `CREDITS.md` lists every asset and licence.
-- Sound: optional, CC0 (Kenney interface and RPG packs). Cut first if time is short.
-- Phone page: anti-vibecode. Flat buttons with dim strokes, one tier, labels never wrap, generous spacing, 17 px base type, no gradients. The four option buttons use the muted option colours as fills with the letter and shape; this is the one place colour is used for meaning on that page.
+- World layer: 320 × 180 at a whole-number zoom (6× at 1080p), Phaser `pixelArt`, no smoothing. Only damage numbers and the HP label are drawn on the canvas.
+- Text layer: an HTML element over the canvas with a `--zoom` variable. Minimum sizes at 1080p: 24 px card and debrief copy, 30 px narration, 42 px banner name and titles. Titles and labels in a medieval pixel face (Alagard if its licence checks out, else Pixelify Sans); body copy in the same face at the larger sizes, or a plain sans if a rehearsal from the back row says so.
+- Palette: cold stone (near-black blue-grey background, slate panels), one accent, torch amber, and bone white for highlights. Option colours (muted red, blue, yellow, green) appear only where they carry meaning: cards, bars, banner, and the flash on a strike.
+- Classes: Rogue hooded with daggers, Knight in plate with a shield, Bard with a lute and a coin purse, Wizard with a staff and a tome. Bosses as in section 4.2, drawn with chains, carved numerals and particle fog.
+- Assets: GitHub first, author pages second, every file's licence recorded in `CREDITS.md` before it is copied. The one sizeable licensed pixel-art repository on GitHub is `sparklinlabs/superpowers-asset-packs` (CC0); `Siilwyn/awesome-pixel-art` is the index for finding more. The dark-fantasy platformer packs that fit this brief (ansimuz's Gothicvania series, 0x72's Dungeon Tileset II, brullov's Oak Woods, LuizMelo's medieval packs) are published on itch.io under free-use licences and only mirrored on GitHub inside other people's game projects without their licences, so they are taken from the author's page with the licence text copied. Procedural bosses from tiles and particles remain the fallback.
+- Build with placeholder rectangles first; swap in sprites last. Sound is optional (CC0 from the same sources) and the first cut if time is short.
+- The phone page follows the anti-vibecode standard: plain sans, flat buttons, one accent, option colours as fills only on the four vote buttons and the four role buttons carry class icons, not colour.
 
 ## 8. Risks and rehearsal
 
-- Classroom network. Phones and the host both use the deployed URL, so the campus Wi-Fi only has to reach the internet; students on cellular are fine. Test from the actual room or an equivalent UNC network a week before.
-- Server or Wi-Fi failure mid-session: offline mode with hand counts (section 6.4). Rehearse the switch once.
-- Projector and laptop: integer scaling handles any resolution; run `caffeinate` so the laptop never sleeps; fullscreen with F; close everything else.
-- Join friction: the QR must be large, the code and URL printed under it, and the join page must load in under two seconds on a phone (the player bundle stays under 100 KB).
-- Trolling names: names are required and will be read aloud on a call-out, which is its own deterrent; 16-character cap, H hides names on the lobby and leaderboard, kick from the host.
-- Shy students: the call-out is random among voters, so no one is singled out for being wrong, and the facilitator can press N or skip the call-out entirely. The phone shows "You're up" so the student knows before their name is read.
-- Timing: every sequence skippable with Space; the facilitator decides when to lock; travel can be skipped with N.
-- Content disagreement: the team signs off on scores and debrief text in `content/case.json` before the case document deadline.
-- Load: a script simulates 60 phones voting; run it against the deployed room before class.
-- Rubric fit: the final screen asks the class what Microsoft should do and why; the facilitator must say it out loud too.
+- Classroom network: phones and host use the deployed URL; cellular works; test from the room or an equivalent UNC network a week before.
+- Failure mid-session: offline mode and hand counts; rehearse the switch once.
+- Role imbalance: the lobby shows counts and the lead class always carries half the attack, so a class with three Bards still works; a class with zero of the lead role falls back to the party's votes and the debrief says so.
+- Projector and laptop: whole-number zoom handles any resolution; `caffeinate`; fullscreen with F.
+- Join friction: large QR, code and URL printed under it, player bundle under 100 KB.
+- Names: required and read aloud on a call-out, 16-character cap, H hides them elsewhere, kick from the host.
+- Shy students: the call-out is random, the facilitator can press N or skip, and the phone shows "You're up" before the name is read.
+- Timing: everything skippable with Space; travel skippable with N; the 12-minute table in section 3.1 assumes N on travel 2 to 4.
+- Content disagreement: the team signs off on scores and debriefs in `content/case.json` before the case document deadline.
+- Load: a script simulates 60 phones with roles; run it against the deployed room before class.
+- Rubric: the final screen asks what Microsoft should do and why; the facilitator says it aloud too.
 
-Rehearsal checklist lives in `RUNBOOK.md` in the repo: deploy, create room, five teammates join on phones, full run in 12 minutes, switch to offline mode once, full run with 60 simulated clients.
+`RUNBOOK.md` carries the checklist: deploy, create the room, five teammates join with roles, a full 12-minute run, one switch to offline mode, a run with 60 simulated clients.
 
 ## 9. Open questions for Caleb
 
-Most important first. The build can start under the stated defaults; these change copy or scope, not architecture.
+1. Presentation date and section. The plan front-loads a demoable slice; art and sound are the first cuts if the date is close.
+2. The evidence scores in section 5, now written from each stakeholder's side. Does the team agree with them?
+3. Round 4 option D: the tenant model (default) or an open "Something else, tell us" button scoring a flat 50?
+4. Role choice: free with counts shown (default), or should the join page also take a table number so the leaderboard can rank tables? The optional table name covers this if people fill it in.
 
-1. Presentation date and section. The plan is ordered so the first demoable slice is early; the art pass and sound are the first cuts if the date is close.
-2. Game as the spine of the 30 minutes (default) or a 12-minute segment?
-3. The evidence scores in section 5. Does the team agree with them? They are the "answers" the game teaches.
-4. Round 4 option D: the tenant model (default) or an open "Something else, tell us" button that scores a flat 50?
-5. Which Cloudflare account hosts it: Caleb's personal account (default) or SPARK's?
-6. Art: procedural bosses plus CC0 packs (default), or hand-drawn sprites if someone on the team draws?
+Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute segment; party of four stakeholder roles as classes chosen at join; one class leads each round's special attack; G42 folded into Microsoft and the fourth role is Local Businesses; dark-fantasy medieval art sourced from GitHub where a licensed copy exists.
 
 ## 10. Calls I made
 
-- Microsoft's deal team is the party; the Deadlock with three heads is the boss; Kenya appears as characters, never as the enemy.
-- Four party members map to the four buttons and voice the options each round.
-- Scoring: evidence scores on rounds 1 to 3, synergy-based scores on round 4, a +15 focus bonus at 60%, +5 per exhibit, ending tiers at 260 and 180 of 400.
-- Round 4's fourth option is the tenant model from section 6 of the case.
-- 30-second votes; the first vote locks; late joiners can vote in later rounds.
-- Call-outs (Caleb's mechanic): random among this round's voters, at most two per round, +10 damage each when judged convincing, 30 points to the student when awarded and 10 for speaking, resolved before the attack animation. Names are required at join, capped at 16 characters, shown on the call-out banner even when H hides them elsewhere.
-- Host can hide names on the lobby and leaderboard and can kick.
-- Phaser 3 on Vite for the host, plain TypeScript for the phone page, Cloudflare Worker plus Durable Objects for the room, content in one JSON file.
-- Text lives in an HTML layer over the canvas, not in canvas text; the canvas stays at 320 × 180 with whole-number zoom. Projector debriefs are one line per option; the full debrief goes to each phone for the option its owner chose.
-- Colour is bound to the letter, never to the party member. Arrow keys only in travel (A is auto-run). R reopens a locked vote or extends an open one and does nothing else; a reveal is final. A host reload resumes at the saved phase and round, and a saved `reveal` resumes at the debrief without replaying the strike.
-- Offline mode and hand-count keys are in scope from the first build, not an afterthought.
-- Placeholder art first, procedural bosses, CC0 packs, sound last.
+- Roles map to classes as Citizen Rogue, Government Knight, Local Businesses Bard, Microsoft Wizard, and lead the rounds in that order so Microsoft's decision closes the segment as the rubric asks. Bard for Local Businesses is my pick (trade, networks, deals); it is one word in the content file to change.
+- Round 3 is written from the buyers' side: with G42 folded into Microsoft, the demand head belongs to the businesses who would buy or build the capacity.
+- The lead class carries half the attack regardless of headcount; the alignment bonus is +10; the caster bonus is 10 points.
+- Rounds 1 to 3 are written from the lead stakeholder's side with evidence scores; round 4 keeps Microsoft's four options and the synergy table.
+- Call-outs: random among the lead class's voters first, then anyone, at most two per round, +10 damage when convincing, 30 points to the student when awarded and 10 for speaking.
+- Names and roles are required; table name optional; 16-character caps; generated fallback name only on the server.
+- Colour is bound to the option letter, never to a class. Arrow keys only in travel. R reopens or extends only. A reveal is final. Host reload resumes at the saved phase; a saved reveal resumes at the debrief.
+- Text in an HTML layer over a 320 × 180 canvas at whole-number zoom; projector debriefs are one line per option; full debriefs go to the phones.
+- Phaser 3 on Vite, plain TypeScript phone page, Cloudflare Worker plus Durable Objects, content in one JSON file, offline mode from the first build.
+- Assets from GitHub where a licensed copy exists, otherwise from the author's page with the licence copied; placeholder art first, procedural bosses as the fallback, sound last.
