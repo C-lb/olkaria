@@ -6,7 +6,7 @@
     "target": "ES2022",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["@cloudflare/workers-types", "vite/client"]
+    "types": ["vite/client"]
   },
-  "include": ["shared", "host", "player", "worker", "scripts", "tests"]
+  "include": ["shared", "host", "player", "scripts", "tests", "content/*.json"]
 }
