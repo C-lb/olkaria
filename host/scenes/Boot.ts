@@ -23,7 +23,7 @@ export class Boot extends Phaser.Scene {
   create(): void {
     makeBossArt(this);
     makePlaceholders(this);
-    const lobby: SceneData = { round: -1, resume: false };
+    const lobby: SceneData = { round: -1, resume: false, trip: 0 };
     this.scene.start('Lobby', lobby);
   }
 }

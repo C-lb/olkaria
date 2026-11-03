@@ -44,6 +44,8 @@ type Keys = Record<'left' | 'right' | 'up' | 'down' | 'space', Phaser.Input.Keyb
 
 export class Travel extends Phaser.Scene {
   private round = 0;
+  /** The trip the room was on when this road started, which the Battle at the gate is started with. */
+  private trip = 0;
   /** The round as an index into the roads and the content: the room only travels in rounds 0 to 3. */
   private roundIndex = 0;
   private client!: RoomClient;
@@ -76,6 +78,7 @@ export class Travel extends Phaser.Scene {
   /** A resumed travel is no different: the segment starts over, and create() leaves out the exhibits the room already has. */
   init(data: Partial<SceneData>): void {
     this.round = data.round ?? 0;
+    this.trip = data.trip ?? 0;
   }
 
   create(): void {
@@ -203,7 +206,7 @@ export class Travel extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     this.registry.set(SPACE_LOCK_KEY, this.time.now + SEND_LOCK_MS);
-    this.scene.start('Battle', { round: this.round, resume: false } satisfies SceneData);
+    this.scene.start('Battle', { round: this.round, resume: false, trip: this.trip } satisfies SceneData);
   }
 
   // ---- Views ----------------------------------------------------------------------------------------------

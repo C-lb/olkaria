@@ -1,27 +1,35 @@
-// Which scene the projector should be showing for the room's phase and round, and the switch to it. On a load or a
-// reconnect the host resumes where the room is (spec 6.3): the lobby, the start of a travel segment, the battle at its
-// state, or the ending and leaderboard screens. A scene that already fits is left alone.
+// Which scene the projector should be showing for the room's phase, round and trip, and the switch to it. On a load or
+// a reconnect the host resumes where the room is (spec 6.3): the lobby, the start of a travel segment, the battle at
+// its state, or the ending and leaderboard screens. A scene that already fits is left alone. A Travel or a Battle fits
+// only when its round and its trip are the view's as well: a goto to the round already on screen is a new trip, so its
+// road starts again instead of being taken for the gate's own hand-over from Travel to Battle.
 import type Phaser from 'phaser';
 import type { Phase } from '../shared/types';
 
-/** What every scene is started with: the round it belongs to, and whether it picks up a phase already under way. */
-export interface SceneData { round: number; resume: boolean }
+/** What every scene is started with: its round and trip, and whether it picks up a phase already under way. */
+export interface SceneData { round: number; resume: boolean; trip: number }
 
-/** The scene running now, by key, and the round it was started for (-1 for the lobby). */
-export interface ActiveScene { key: string; round: number }
+/** The scene running now, by key, and the round and trip it was started for (round -1 for the lobby). */
+export interface ActiveScene { key: string; round: number; trip: number }
+
+/** What the router reads of a view: the room's phase and round, and how many roads it has set off on. */
+type RoutedView = { phase: Phase; round: number; trips: number };
 
 /**
  * The scene to start for `view`, or null when `active` already fits it. Travel's gate starts the Battle while the room
- * is still in `travel`, so a Battle for that round fits `travel` too. Battle started from here always resumes: the
+ * is still in `travel`, so a Battle for that round and trip fits `travel` too. `trips` counts the roads the room has
+ * set off on: a Travel or a Battle fits only when key, round and trip all match, so the same round on a new trip starts
+ * again, while the lobby, the ending and the leaderboard fit by key alone. Battle started from here always resumes: the
  * strike of a saved `reveal` is never replayed, the debrief shows directly.
  */
 export function sceneFor(
-  view: { phase: Phase; round: number },
+  view: RoutedView,
   active: ActiveScene | null,
 ): { key: string; data: SceneData } | null {
-  const { phase, round } = view;
-  const at = (key: string): boolean => active !== null && active.key === key && active.round === round;
-  const start = (key: string, resume = false) => ({ key, data: { round, resume } });
+  const { phase, round, trips } = view;
+  const at = (key: string): boolean =>
+    active !== null && active.key === key && active.round === round && active.trip === trips;
+  const start = (key: string, resume = false) => ({ key, data: { round, resume, trip: trips } });
   switch (phase) {
     case 'lobby':
       return active?.key === 'Lobby' ? null : start('Lobby');
@@ -48,22 +56,30 @@ export function sceneFor(
  * the DOM key event, outside its frame, and offline a command sent from one of them comes back as a new view before
  * send() returns: switching there would stop the scene in the middle of its own handler. So every switch waits for a
  * microtask, which runs once the handler (and whatever called it) has returned. Until then the waiting switch counts as
- * the active scene, so the views that keep arriving do not ask for it again, and a newer view can still replace it. A
- * switch that a newer view has made unnecessary (a reset straight after a start, say) does nothing.
+ * the active scene, so the views that keep arriving do not ask for it again, and a newer view can still replace it.
+ * When the microtask runs, `sceneFor` is asked once more about the scene that is up by then, so a switch that a newer
+ * view has made unnecessary (a reset straight after a start, say) does nothing.
  *
  * Scenes are told apart by `settings.active`, which Phaser sets from a scene's start until it stops (this game never
- * pauses or sleeps a scene), and their round is read from the data they were started with, so a scene that starts
- * another (Travel's gate starting Battle) must pass `{ round, resume }` as well. Boot is never the active scene.
+ * pauses or sleeps a scene), and their round and trip are read from the data they were started with, so a scene that
+ * starts another (Travel's gate starting Battle) must pass `{ round, resume, trip }` as well. Starting a scene that is
+ * running shuts it down and starts it again, which is how a new trip puts a road back at its start. Boot is never the
+ * active scene.
  */
-export function makeRouter(game: Phaser.Game): (view: { phase: Phase; round: number }) => void {
-  let waiting: { key: string; data: SceneData } | null = null;
+export function makeRouter(game: Phaser.Game): (view: RoutedView) => void {
+  /** The switch to make, with the view it was made for. */
+  let waiting: { key: string; data: SceneData; view: RoutedView } | null = null;
 
   const running = (): ActiveScene | null => {
     for (const scene of game.scene.getScenes(false)) {
       const { key, active, data } = scene.sys.settings;
       if (key === 'Boot' || !active) continue;
-      const round = (data as Partial<SceneData> | undefined)?.round;
-      return { key, round: typeof round === 'number' ? round : -1 };
+      const started = data as Partial<SceneData> | undefined;
+      return {
+        key,
+        round: typeof started?.round === 'number' ? started.round : -1,
+        trip: typeof started?.trip === 'number' ? started.trip : 0,
+      };
     }
     return null;
   };
@@ -72,8 +88,7 @@ export function makeRouter(game: Phaser.Game): (view: { phase: Phase; round: num
     const next = waiting;
     waiting = null;
     if (next === null) return;
-    const now = running();
-    if (now !== null && now.key === next.key && now.round === next.data.round) return;
+    if (sceneFor(next.view, running()) === null) return;
     for (const scene of game.scene.getScenes(false)) {
       const { key, active } = scene.sys.settings;
       if (active && key !== next.key) game.scene.stop(key);
@@ -82,10 +97,11 @@ export function makeRouter(game: Phaser.Game): (view: { phase: Phase; round: num
   };
 
   return (view) => {
-    const active = waiting !== null ? { key: waiting.key, round: waiting.data.round } : running();
+    const active: ActiveScene | null =
+      waiting !== null ? { key: waiting.key, round: waiting.data.round, trip: waiting.data.trip } : running();
     const next = sceneFor(view, active);
     if (next === null) return;
     if (waiting === null) queueMicrotask(go);
-    waiting = next;
+    waiting = { ...next, view };
   };
 }
