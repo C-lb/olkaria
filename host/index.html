@@ -3,9 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Olkaria host</title>
+    <meta name="color-scheme" content="dark" />
+    <title>Olkaria: the Deadlock</title>
+    <link rel="icon" href="data:," />
+    <!-- The title face until Task 11 bundles it. Offline, the HUD falls back to the system sans. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" />
+    <link rel="stylesheet" href="./hud/hud.css" />
   </head>
   <body>
-    <p>Olkaria host page. The projector game replaces this placeholder.</p>
+    <div id="stage">
+      <div id="game"></div>
+      <div id="hud"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
   </body>
 </html>

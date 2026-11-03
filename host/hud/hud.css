@@ -1,0 +1,376 @@
+/* Projector HUD: the HTML text layer over the 320 x 180 game canvas (spec 7).
+   Every size is in canvas pixels, calc(var(--zoom) * Npx), so the layout is the same at every whole zoom and only
+   scales: body 4, narration 5, titles and the banner 7, which is 24, 30 and 42 px at zoom 6 (1080p).
+   Built from the house anti-vibecode tokens: flat slate panels at 85% over the world, one accent (torch amber, for
+   the Discuss line and the rally flash only), option colours only on letter badges and bars.
+   Every colour and font below comes from the token block; nothing else in the file names one. */
+
+:root {
+  color-scheme: dark;
+
+  /* Cold stone. The page and the world behind the art share one colour, so the letterbox reads as one surface. */
+  --bg:          #15141c;
+  --panel:       rgba(38, 43, 56, .85);     /* slate at 85%: the world shows faintly through */
+  --surface-1:   #262b38;                   /* the same slate, solid: overlays above a scrim */
+  --surface-2:   #333a48;                   /* bar tracks, key caps, the waiting square */
+  --line:        rgba(255, 255, 255, .07);
+  --scrim:       rgba(8, 8, 12, .6);
+
+  --ink:         #ebe6d9;                   /* bone white */
+  --ink-2:       #a9afbb;
+  --ink-3:       #7c8290;
+
+  /* The one accent: torch amber, for the Discuss line and the rally flash, nothing else. */
+  --accent:      #eda34f;
+
+  /* Ink on the option colours. The colours themselves arrive as --option, from OPTION_COLORS in Hud.ts. */
+  --option-ink:   #ffffff;
+  --option-ink-c: #16130d;                  /* white on the yellow is 2.4 to 1, near-black is 7.7 to 1 */
+
+  --shadow-pop:  0 24px 50px -18px rgba(0, 0, 0, .72);
+
+  /* Pixel face for titles, banner names and letter badges; a plain sans for reading from the back of the room. */
+  --font-title:  'Pixelify Sans', system-ui, sans-serif;
+  --font-body:   system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+
+  /* The pixel face draws about 1.2 em tall, so nothing set in it goes under --lh-title or its glyphs overrun the line. */
+  --lh-title: 1.22; --lh-lead: 1.42; --lh-body: 1.3; --lh-flat: 1;
+  --tr-title: -.01em; --tr-eyebrow: .012em;
+
+  --z-base: 0; --z-sticky: 40; --z-scrim: 60; --z-overlay: 70; --z-toast: 80;
+}
+
+/* ---- Page: the stage holds the canvas and, laid over it by applyZoom, the HUD --------------------------- */
+
+html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; background: var(--bg); }
+#stage { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
+#game { position: absolute; inset: 0; }
+#game canvas { display: block; }
+#hud { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+/* ---- HUD root: the canvas-pixel scale ------------------------------------------------------------------- */
+
+.hud {
+  --zoom: 4;                                /* applyZoom sets the real value on the element */
+  --hud-h:    calc(var(--zoom) * 180px);
+  --t-body:   calc(var(--zoom) * 4px);
+  --t-narr:   calc(var(--zoom) * 5px);
+  --t-badge:  calc(var(--zoom) * 6px);
+  --t-title:  calc(var(--zoom) * 7px);
+  --t-code:   calc(var(--zoom) * 12px);
+  --t-flash:  calc(var(--zoom) * 12px);
+  --s1: calc(var(--zoom) * 1px); --s2: calc(var(--zoom) * 2px); --s3: calc(var(--zoom) * 3px);
+  --s4: calc(var(--zoom) * 4px); --s5: calc(var(--zoom) * 6px); --s6: calc(var(--zoom) * 8px);
+  --r-sm: calc(var(--zoom) * 1.5px); --r-md: calc(var(--zoom) * 2px); --r-lg: calc(var(--zoom) * 3px);
+  --on-option: var(--option-ink);
+
+  width: calc(var(--zoom) * 320px);
+  height: var(--hud-h);
+  color: var(--ink);
+  font: 500 var(--t-body)/var(--lh-body) var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+.hud *, .hud *::before, .hud *::after { box-sizing: border-box; margin: 0; padding: 0; min-width: 0; }
+.hud [hidden] { display: none !important; }
+.hud [data-option="C"] { --on-option: var(--option-ink-c); }
+
+.hud-screen, .hud-keymap { position: absolute; inset: 0; }
+.hud-screen { z-index: var(--z-base); }
+
+/* ---- Shared pieces -------------------------------------------------------------------------------------- */
+
+.panel { background: var(--panel); border-radius: var(--r-lg); padding: var(--s4) var(--s5); }
+.stack { display: flex; flex-direction: column; gap: var(--s2); }
+.title {
+  font: 600 var(--t-title)/var(--lh-title) var(--font-title);
+  letter-spacing: var(--tr-title);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+/* Sentence case, never uppercase. Block, so an eyebrow never shares a line with what it names. */
+.eyebrow { display: block; font-weight: 600; letter-spacing: var(--tr-eyebrow); color: var(--ink-2); }
+.hint { color: var(--ink-2); }
+.muted { color: var(--ink-3); }
+.quote { color: var(--ink-2); overflow-wrap: anywhere; }
+.cite { color: var(--ink-3); }
+.sep { height: 1px; margin: var(--s1) calc(var(--s5) * -1); background: var(--line); }
+
+/* The letter on its colour. A square on cards, a smaller one in rows, a word-sized one inside a sentence. */
+.badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: calc(var(--zoom) * 9px);
+  height: calc(var(--zoom) * 9px);
+  border-radius: var(--r-sm);
+  background: var(--option);
+  color: var(--on-option);
+  font: 600 var(--t-badge)/var(--lh-flat) var(--font-title);
+}
+.badge.is-row {
+  width: calc(var(--t-body) * var(--lh-body));
+  height: calc(var(--t-body) * var(--lh-body));
+  font-size: var(--t-body);
+}
+.badge.is-inline {
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: var(--r-sm);
+  font-size: inherit;
+  vertical-align: middle;
+}
+
+/* A thin track filled in the option's colour, with the share in figures after it. */
+.bar-track { height: calc(var(--zoom) * 2px); border-radius: var(--r-sm); background: var(--surface-2); overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--option); }
+.bar-value { text-align: right; font-variant-numeric: tabular-nums; }
+
+.split { list-style: none; display: grid; gap: var(--s1); }
+.split-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) calc(var(--zoom) * 12px);
+  align-items: center;
+  column-gap: var(--s3);
+}
+
+/* ---- Lobby: one panel across the top; the bottom third stays clear for the skyline and the avatars ---- */
+
+.lobby { position: absolute; top: var(--s4); left: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s4); }
+.lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s6); }
+.lobby-hint { flex: 0 1 auto; text-align: right; }
+.lobby-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s6);
+}
+/* The QR and whatever stands in for it are a square 45% of the HUD's height (spec 3.2 asks for a quarter or more). */
+.qr, .join { width: calc(var(--hud-h) * .45); height: calc(var(--hud-h) * .45); }
+.qr { display: block; border-radius: var(--r-sm); image-rendering: pixelated; }
+.join {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.join-title { font: 600 var(--t-title)/var(--lh-title) var(--font-title); }
+.join-url { font-size: var(--t-narr); font-weight: 600; line-height: var(--lh-title); overflow-wrap: anywhere; }
+.code { font: 600 var(--t-code)/var(--lh-title) var(--font-title); letter-spacing: .04em; }
+.joined { font-size: var(--t-narr); font-weight: 600; line-height: var(--lh-title); }
+.counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s1) var(--s4); color: var(--ink-2); }
+.counts b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
+.recent { list-style: none; display: grid; gap: var(--s1); }
+.recent li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Narration: anchored to the bottom, so the boss stays in view above it ----------------------------- */
+
+.narration {
+  position: absolute;
+  left: 0; right: 0; bottom: var(--s4);
+  width: min(calc(100% - 2 * var(--s4)), calc(var(--zoom) * 264px));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.narration-text { font-size: var(--t-narr); line-height: var(--lh-lead); }
+
+/* ---- Options: a status line, then the cards in a 2 x 2 grid over the lower 45% -------------------------- */
+
+.status {
+  position: absolute;
+  left: var(--s4); right: var(--s4); bottom: calc(45% + var(--s2));
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: var(--s5);
+  padding: var(--s1) var(--s4);
+  border-radius: var(--r-md);
+}
+.status-lead { color: var(--ink-2); }
+.timer { font: 600 var(--t-title)/var(--lh-title) var(--font-title); font-variant-numeric: tabular-nums; }
+.status-hint { margin-left: auto; text-align: right; }
+.cards {
+  position: absolute;
+  left: var(--s4); right: var(--s4); top: 55%; bottom: var(--s3);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--s2) var(--s3);
+}
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "badge text" "bars bars";
+  column-gap: var(--s3);
+  row-gap: var(--s2);
+  padding: var(--s2) var(--s4);   /* the longest option is three lines over two bars: the vertical inset stays tight to leave a spare line */
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.card > .badge { grid-area: badge; }
+.card-text { grid-area: text; overflow-wrap: anywhere; }
+.bars { grid-area: bars; display: grid; gap: var(--s1); }
+.bar {
+  display: grid;
+  grid-template-columns: calc(var(--zoom) * 20px) minmax(0, 1fr) calc(var(--zoom) * 12px);
+  align-items: center;
+  column-gap: var(--s2);
+}
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+
+/* ---- Banner and toasts: one column at the top, so a toast never lands on the banner --------------------- */
+
+.hud-top {
+  position: absolute;
+  top: var(--s4); left: var(--s4); right: var(--s4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+}
+.banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  max-width: 100%;
+  padding: var(--s3) var(--s5);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  text-align: center;
+  animation: hud-in .18s ease-out;
+}
+.banner-line { font: 600 var(--t-title)/var(--lh-title) var(--font-title); overflow-wrap: anywhere; text-wrap: balance; }
+.toasts { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: 100%; }
+.toast {
+  max-width: calc(var(--zoom) * 260px);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-pop);
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: hud-in .18s ease-out;
+}
+
+/* ---- Rally flash: under the banner, above the status line ---------------------------------------------- */
+
+.hud-flash { position: absolute; left: 0; right: 0; top: 30%; z-index: var(--z-sticky); display: flex; justify-content: center; }
+.flash {
+  padding: var(--s2) var(--s5);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  font: 700 var(--t-flash)/var(--lh-title) var(--font-title);
+  color: var(--ink-2);
+  white-space: nowrap;
+  animation: hud-pop .16s ease-out;
+}
+.flash.is-bonus { color: var(--accent); }
+
+/* ---- Debrief: anchored to the bottom, the boss and its bar stay in view above ---------------------------- */
+
+.debrief { position: absolute; left: var(--s4); right: var(--s4); bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.debrief-lines { list-style: none; display: grid; gap: var(--s2); }
+.debrief-line {
+  display: grid;
+  grid-template-columns: auto calc(var(--zoom) * 12px) minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--s3);
+}
+.debrief-damage { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.debrief-text { overflow-wrap: anywhere; }
+.breakdown { font-weight: 600; font-variant-numeric: tabular-nums; }
+.discuss { font-weight: 600; color: var(--accent); }
+
+/* ---- Ending ----------------------------------------------------------------------------------------------- */
+
+.ending { position: absolute; left: var(--s4); right: var(--s4); bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.ending-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; gap: var(--s6); margin-top: var(--s1); }
+.ending-text { gap: var(--s3); }
+.bullets { padding-left: 1.1em; display: grid; gap: var(--s1); }
+.bullets li::marker { color: var(--ink-3); }
+.holds { list-style: none; display: grid; gap: var(--s2); }
+.holds-row {
+  display: grid;
+  grid-template-columns: calc(var(--zoom) * 16px) minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--s3);
+}
+.holds-round { color: var(--ink-2); }
+.holds-needed { color: var(--ink-2); white-space: nowrap; }
+
+/* ---- Leaderboard: names and awards on the left, the closing question and the split on the right --------- */
+
+.leaderboard {
+  position: absolute;
+  inset: var(--s4);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-content: center;
+  gap: var(--s6);
+}
+.board { list-style: none; display: grid; gap: var(--s2); }
+.board-row {
+  display: grid;
+  grid-template-columns: calc(var(--zoom) * 5px) minmax(0, 1fr) auto calc(var(--zoom) * 14px);
+  align-items: baseline;
+  column-gap: var(--s3);
+  font-size: var(--t-narr);
+}
+.board-rank { font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.board-class { color: var(--ink-2); }
+.board-score { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- Key map: a scrim over everything, the panel low on the screen so the banner stays readable ---------- */
+
+.hud-keymap {
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--s4);
+  background: var(--scrim);
+}
+.keymap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: min(100%, calc(var(--zoom) * 288px));
+  padding: var(--s4) var(--s5);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-pop);
+}
+/* Read down each column: the room's keys on the left, travel and the page on the right. */
+.keys { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(7, auto); grid-auto-flow: column; gap: var(--s2) var(--s6); }
+.key-row { display: grid; grid-template-columns: calc(var(--zoom) * 30px) minmax(0, 1fr); align-items: baseline; column-gap: var(--s3); }
+.key {
+  justify-self: start;
+  padding: 0 var(--s1);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- Motion --------------------------------------------------------------------------------------------- */
+
+@keyframes hud-in { from { opacity: 0; transform: translateY(calc(var(--zoom) * -2px)); } to { opacity: 1; transform: none; } }
+@keyframes hud-pop { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hud * { animation: none !important; }
+}
+
+/* ---- Startup failure: shown in place of the game when the page cannot start -------------------------------- */
+
+.boot-error { position: fixed; inset: 0 auto auto 0; margin: 0; padding: 24px; color: var(--ink); font: 500 20px/1.4 var(--font-body); }
