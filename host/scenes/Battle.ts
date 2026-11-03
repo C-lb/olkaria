@@ -41,8 +41,8 @@ const HP_X = BOSS_X - 20;
 const HP_Y = 18;
 const HP_W = 52;
 /**
- * The damage numbers rise in the open space between the party and the boss, above the sprites: x from about 112 to 219
- * (the lead's rest box ends at 110, the boss's box starts at 248), bottoms from y 48 up to 38, while no sprite reaches
+ * The damage numbers rise in the open space between the party and the boss, above the sprites: x from about 111 to 200
+ * (the lead's rest box ends at 110, the boss's box starts at 240), bottoms from y 48 up to 38, while no sprite reaches
  * above y 52 (the lead at its dash peak is 32 px tall on the floor at 84). So a number never covers the boss or a sprite.
  */
 const NUMBER_X = 172;
@@ -311,7 +311,7 @@ export class Battle extends Phaser.Scene {
     return votedText(view.tally, Object.keys(view.players).length, view.synthetic[this.round], this.client.mode === 'offline');
   }
 
-  /** Counts the clock down between views, which offline come only when something changes. */
+  /** Counts the clock down between views, which come only when something changes. */
   private tickClock(): void {
     const view = this.view;
     if (this.stage !== 'live' || view === null || view.phase !== 'vote') return;

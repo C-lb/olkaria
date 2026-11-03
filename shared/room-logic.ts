@@ -52,9 +52,16 @@ const refuse = (state: RoomState, msg: string, clientId?: string): Result =>
 
 const badPhase = (state: RoomState): Result => refuse(state, 'bad phase');
 
-/** A changed state: the patch applied to a copy, stamped with the time of the event that caused it. */
+/**
+ * The updatedAt of a change: the time of the event, or a millisecond past the last change when that is later, because
+ * two changes can share a clock reading. Every change moves it forward and nothing else does, and the Durable Object
+ * relies on that: it stores and broadcasts a state only when its updatedAt has moved.
+ */
+const stamp = (state: RoomState, now: number): number => Math.max(now, state.updatedAt + 1);
+
+/** A changed state: the patch applied to a copy, stamped (see stamp) with the time of the event that caused it. */
 const update = (state: RoomState, now: number, patch: Partial<RoomState>, effects: Effect[] = []): Result =>
-  ({ state: { ...state, ...patch, updatedAt: now }, effects });
+  ({ state: { ...state, ...patch, updatedAt: stamp(state, now) }, effects });
 
 export function initialState(code: string, hostKey: string, now: number, content: CaseContent): RoomState {
   return {
@@ -248,7 +255,7 @@ function reset(state: RoomState, now: number, content: CaseContent): Result {
     [id, { ...p, score: 0, lastPoints: 0, votes: {} }]));
   const fresh = initialState(state.code, state.hostKey, state.createdAt, content);
   return {
-    state: { ...fresh, updatedAt: now, players, banned: state.banned, hideNames: state.hideNames },
+    state: { ...fresh, updatedAt: stamp(state, now), players, banned: state.banned, hideNames: state.hideNames },
     effects: state.phase === 'vote' ? [{ type: 'clearAlarm' }] : [],
   };
 }

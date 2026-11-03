@@ -2,6 +2,7 @@
 // projector is drawn here, never on the canvas (spec 7), so it wraps, stays crisp, and scales with --zoom. One method
 // per screen, each building its screen from its arguments alone. Nothing from the room or a player goes through
 // innerHTML. Layers, bottom to top: the screen, the rally flash, the banner with the toasts under it, the key map.
+import { OPTION_SHAPE, SHAPE_MARKUP } from '../../shared/shapes';
 import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
 import { SPEAKERS } from '../quotes';
 
@@ -160,9 +161,17 @@ function tint<E extends HTMLElement>(el: E, letter: OptionId): E {
   return el;
 }
 
-/** The letter on a square of its colour. */
+/** The shape bound to `letter` (shared/shapes.ts), as an inline SVG in the ink of the badge it sits in. The markup is a constant. */
+function shape(letter: OptionId): Element {
+  const holder = document.createElement('span');
+  const name = OPTION_SHAPE[letter];
+  holder.innerHTML = `<svg class="badge-shape" viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-shape="${name}">${SHAPE_MARKUP[name]}</svg>`;
+  return holder.firstElementChild as Element;
+}
+
+/** The letter, then its shape, on its colour. */
 function badge(letter: OptionId, size = ''): HTMLElement {
-  return tint(h('span', { class: size === '' ? 'badge' : `badge ${size}` }, letter), letter);
+  return tint(h('span', { class: size === '' ? 'badge' : `badge ${size}` }, letter, shape(letter)), letter);
 }
 
 /** A flat slate panel, the surface every screen is built on. */

@@ -107,30 +107,34 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .cite { color: var(--ink-3); }
 .sep { height: 1px; margin: var(--s1) calc(var(--s5) * -1); background: var(--line); }
 
-/* The letter on its colour. A square on cards, a smaller one in rows, a word-sized one inside a sentence. */
+/* The letter, then its shape, on the option's colour: the same height as the letter alone had, as wide as the two need.
+   On cards, smaller in rows, word-sized inside a sentence. The shape takes the badge's ink and the phone's stroke. */
 .badge {
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .25em;
   flex: none;
-  width: calc(var(--zoom) * 9px);
   height: calc(var(--zoom) * 9px);
+  padding-inline: calc(var(--zoom) * 1.5px);
   border-radius: var(--r-sm);
   background: var(--option);
   color: var(--on-option);
   font: 600 var(--t-badge)/var(--lh-flat) var(--font-title);
 }
 .badge.is-row {
-  width: calc(var(--t-body) * var(--lh-body));
   height: calc(var(--t-body) * var(--lh-body));
+  padding-inline: var(--s1);
   font-size: var(--t-body);
 }
 .badge.is-inline {
-  width: 1.3em;
   height: 1.3em;
+  padding-inline: .2em;
   border-radius: var(--r-sm);
   font-size: inherit;
   vertical-align: middle;
 }
+.badge-shape { display: block; flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* A thin track filled in the option's colour, with the share in figures after it. */
 .bar-track { height: calc(var(--zoom) * 2px); border-radius: var(--r-sm); background: var(--surface-2); overflow: hidden; }

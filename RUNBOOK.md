@@ -17,10 +17,11 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
    The room is created when the page loads, and a room closes after 6 hours with no activity.
    `?new=1` makes it a fresh room, so the class does not land in a rehearsal room with its old players.
    The page drops `?new=1` from the address by itself, so a reload stays in this room.
+   Only this tab on this laptop hosts: the room's key lives in the tab. A co-presenter who opens the host address on their own laptop makes a second room.
 5. Open a second tab at https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline and leave it there.
    Once loaded it needs no network, so offline mode is one tab away.
    Chrome can unload a tab it thinks is idle, and reloading it needs the network.
-   So add the site in Chrome settings, Performance, "Always keep these sites active", or click the offline tab just before class.
+   So add olkaria.sparkbot-worker.workers.dev in Chrome settings, Performance, "Always keep these sites active", or click the offline tab just before class.
 6. Use that offline tab for the real fullscreen look on the projector.
    F, then Space shows the travel backdrop, then N shows the Grid Wyrm and its HP bar.
    Check the backdrop, the boss, the HP bar, the class figures and the text sizes.
@@ -38,7 +39,7 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 
 | Time | Beat | On the projector | You |
 |---|---|---|---|
-| 0:00 to 1:30 | Lobby | QR, code, address, counts per class, avatars dropping in | "Tables of four. Scan, type your name and your table number, pick your role: one of each per table." Space starts. |
+| 0:00 to 1:30 | Lobby | QR, code, address, counts per class, avatars dropping in | "Tables of four. Scan, type your name, pick your role (one of each per table), then type your table number, just the number." Space starts. |
 | 1:30 to 2:00 | Travel 1 | The party runs toward Olkaria past three exhibit pickups | Run with the arrows or A. Read each fact as it pops. N skips to the arena. |
 | 2:00 to 4:30 | Round 1, Grid Wyrm | The Rogues' special attack: what Kenyans accept on power | 30 s vote, one call-out, strike, 45 s debrief |
 | 4:30 to 7:00 | Round 2, Debt Golem | The Knights' special attack: what the Government offers | Same shape |
@@ -74,9 +75,9 @@ Travels 2 to 4: press N straight away unless you are running early.
 | F | Fullscreen on or off |
 | Esc | Show or hide the key map. In fullscreen, Chrome takes Esc to leave fullscreen. |
 | Shift+R twice | Within 3 s: back to the lobby. Players stay; votes and scores go. |
-| Cmd+R | Reload. Needs the network. The same room and screen come back, except that the narration comes back as the start of travel. |
+| Cmd+R | Reload. Needs the network. The same room and screen come back, except that the narration comes back as the start of travel, and a strike in progress comes back as its debrief. |
 
-Space rests for a second after each press. A Space inside that second is ignored without a note, so a double press never sends twice.
+In the arena, Space rests about a second after each press, and a second and a half once the vote locks. A second press inside the rest is ignored without a note.
 If Space seems to do nothing, wait a moment and press it again.
 A key the room refuses, such as C before the vote locks, shows a short note such as "Bad phase" and changes nothing.
 The vote keys (1 to 4, Shift, B) work while a vote is open or locked. They count for the party, never the lead class.
@@ -153,6 +154,10 @@ Read out the address beside the QR, with the `/j/` and the four-letter code at t
 The bare address without `/j/` opens the projector page, not the join page.
 A phone that says "Can't reach room" most likely has the wrong code.
 
+**A student picked the wrong role.**
+While the lobby is up, they tap Change on their phone and pick again; the counts per class move with them.
+Once the game has started, roles stay as they are.
+
 **A class has no one in the lead role.**
 The lead strike is skipped, the party carries the whole attack, and the debrief says so ("No Rogues voted this round"). Carry on.
 
@@ -176,7 +181,7 @@ R reopens it with a fresh 30 s, even after it locked. Once the party has struck,
 **Names should not be on screen.**
 H hides them in the lobby list and on the leaderboard.
 Everything about a call-out still names the student: the banner, the line under the cards, the rally strike and the debrief's rally line.
-There is no kick on the projector, and none will be built before the presentation. A rude name stays in the room.
+There is no kick on the projector, and none will be built. A rude name stays in the room.
 H keeps it off the lobby list and the leaderboard. If a call-out lands on it, press N straight away.
 The banner shows the name until you do, and the line under the cards keeps it until the debrief.
 

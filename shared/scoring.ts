@@ -123,16 +123,22 @@ export function pointsFor(args: {
     + (isLead ? k.casterBonus : 0);
 }
 
-/** The ending is the final round's blended majority, unless total damage is under the fragile tier. */
+/**
+ * The ending is the final round's blended majority, unless total damage is under the fragile tier. A tie goes to the
+ * earlier letter (majorityOf), and `tiedWith` names the letters it was level with, so the screen can say so; it is
+ * empty when the majority won outright.
+ */
 export function endingFor(args: {
   content: CaseContent; finalLead: Tally; finalSupport: Tally; totalDamage: number;
-}): { ending: OptionId | 'holds'; tier: 'decisive' | 'fragile' | 'holds'; majority: OptionId } {
+}): { ending: OptionId | 'holds'; tier: 'decisive' | 'fragile' | 'holds'; majority: OptionId; tiedWith: OptionId[] } {
   const { content, finalLead, finalSupport, totalDamage } = args;
-  const { majority } = majorityOf(blendShares(finalLead, finalSupport));
+  const blended = blendShares(finalLead, finalSupport);
+  const { majority, tied } = majorityOf(blended);
+  const tiedWith = tied ? OPTION_IDS.filter((o) => o !== majority && blended[o] >= blended[majority] - EPS) : [];
   const { tiers } = content.scoring;
-  if (totalDamage >= tiers.decisive) return { ending: majority, tier: 'decisive', majority };
-  if (totalDamage >= tiers.fragile) return { ending: majority, tier: 'fragile', majority };
-  return { ending: 'holds', tier: 'holds', majority };
+  if (totalDamage >= tiers.decisive) return { ending: majority, tier: 'decisive', majority, tiedWith };
+  if (totalDamage >= tiers.fragile) return { ending: majority, tier: 'fragile', majority, tiedWith };
+  return { ending: 'holds', tier: 'holds', majority, tiedWith };
 }
 
 /** Synergy hits of a player's round 4 pick against their own first three; null if they missed a round. */
@@ -153,23 +159,31 @@ export function consistencyAward(players: Player[], content: CaseContent): strin
   return ranked[0]?.id ?? null;
 }
 
-/** Highest mean score among named tables with at least two members. */
+/** A table name as the award groups it: trimmed, inner runs of space as one, lower case. "Table 3" and "table  3" are one table. */
+const tableKey = (table: string): string => table.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * Highest mean score among named tables with at least two members, named the way its first member spelled it. A
+ * mean of zero wins nothing: a top table where nobody scored says nothing.
+ */
 export function tableAward(players: Player[]): { table: string; mean: number } | null {
-  const byTable = new Map<string, { total: number; n: number }>();
+  const byTable = new Map<string, { table: string; total: number; n: number }>();
   for (const p of players) {
     if (p.table === null) continue;
-    const acc = byTable.get(p.table);
+    const key = tableKey(p.table);
+    const acc = byTable.get(key);
     if (acc) {
       acc.total += p.score;
       acc.n += 1;
     } else {
-      byTable.set(p.table, { total: p.score, n: 1 });
+      byTable.set(key, { table: p.table, total: p.score, n: 1 });
     }
   }
   let best: { table: string; mean: number } | null = null;
-  for (const [table, { total, n }] of byTable) {
+  for (const { table, total, n } of byTable.values()) {
     if (n < 2) continue;
     const mean = total / n;
+    if (mean <= 0) continue;
     if (best === null || mean > best.mean) best = { table, mean };
   }
   return best;

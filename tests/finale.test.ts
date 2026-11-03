@@ -109,6 +109,17 @@ describe('endingArgs: whose majority, and the rounds with no votes', () => {
     });
   });
 
+  it('says in the eyebrow when the final round was tied: the earlier letter is the ending, tied with the other', () => {
+    const decisive = play([{ B: 10 }, { B: 10 }, { B: 10 }, { A: 4, C: 4 }]);
+    expect(damage(decisive)).toEqual([95, 60, 95, 58]);   // 308: decisive
+    expect(endingArgs(c, decisive)).toMatchObject({ title: c.endings.A.title, tier: 'decisive, tied with C', split: T(4, 0, 4, 0), holds: null });
+    const fragile = play([{ C: 2 }, { A: 2 }, { A: 2 }, { B: 1, D: 1 }]);
+    expect(damage(fragile)).toEqual([30, 25, 85, 65]);    // 205: fragile
+    expect(endingArgs(c, fragile)).toMatchObject({ title: 'The Seed Plant', tier: 'fragile, tied with D' });
+    expect(endingArgs(c, play([{ B: 10 }, { B: 10 }, { B: 10 }, { B: 3, C: 3, D: 3 }])).tier).toBe('decisive, tied with C and D');
+    expect(outcomeOf(c, decisive)).toEqual({ ending: 'A', tier: 'decisive', majority: 'A', tiedWith: ['C'] });
+  });
+
   it('names the letter alone when the round has no option with that letter, so no phone label to show', () => {
     const view = play([{ C: 2 }, { A: 2 }, { D: 2 }, { B: 2 }]);
     const noC = { ...c, rounds: c.rounds.map((r, i) => (i === 0 ? { ...r, options: r.options.filter((o) => o.id !== 'C') } : r)) };
@@ -118,9 +129,9 @@ describe('endingArgs: whose majority, and the rounds with no votes', () => {
 
 describe('outcomeOf: whether the core cracks', () => {
   it('is the option at its tier, the Deadlock holding below the fragile tier, and holding with no majority on no final votes', () => {
-    expect(outcomeOf(c, play([{ B: 10 }, { B: 10 }, { B: 10 }, { B: 10 }]))).toEqual({ ending: 'B', tier: 'decisive', majority: 'B' });
-    expect(outcomeOf(c, play([{ C: 2 }, { A: 2 }, { D: 2 }, { B: 2 }]))).toEqual({ ending: 'holds', tier: 'holds', majority: 'B' });
-    expect(outcomeOf(c, play([{ B: 10 }, { B: 10 }, { B: 10 }, {}]))).toEqual({ ending: 'holds', tier: 'holds', majority: null });
+    expect(outcomeOf(c, play([{ B: 10 }, { B: 10 }, { B: 10 }, { B: 10 }]))).toEqual({ ending: 'B', tier: 'decisive', majority: 'B', tiedWith: [] });
+    expect(outcomeOf(c, play([{ C: 2 }, { A: 2 }, { D: 2 }, { B: 2 }]))).toEqual({ ending: 'holds', tier: 'holds', majority: 'B', tiedWith: [] });
+    expect(outcomeOf(c, play([{ B: 10 }, { B: 10 }, { B: 10 }, {}]))).toEqual({ ending: 'holds', tier: 'holds', majority: null, tiedWith: [] });
   });
 });
 

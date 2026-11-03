@@ -16,8 +16,11 @@ const QUESTION = 'What should Microsoft do, and why?';
 /** Said in place of the Deadlock's sentence when the final round had no votes: no option can be the ending then. */
 const NO_FINAL_VOTES = 'No one voted in the final round.';
 
-/** The ending the class reached, its tier, and the final round's blended majority: null when nobody voted in it. */
-export interface Outcome { ending: OptionId | 'holds'; tier: 'decisive' | 'fragile' | 'holds'; majority: OptionId | null }
+/**
+ * The ending the class reached, its tier, the final round's blended majority (null when nobody voted in it), and the
+ * letters that majority was tied with, which the earlier letter won.
+ */
+export interface Outcome { ending: OptionId | 'holds'; tier: 'decisive' | 'fragile' | 'holds'; majority: OptionId | null; tiedWith: OptionId[] }
 
 /**
  * The final round's blended majority at the tier the four rounds' damage reaches, or the Deadlock holding below the
@@ -26,23 +29,27 @@ export interface Outcome { ending: OptionId | 'holds'; tier: 'decisive' | 'fragi
  * through the ending and the leaderboard.
  */
 export function outcomeOf(content: CaseContent, view: HostView): Outcome {
-  if (OPTION_IDS.every((o) => view.tally[o] === 0)) return { ending: 'holds', tier: 'holds', majority: null };
+  if (OPTION_IDS.every((o) => view.tally[o] === 0)) return { ending: 'holds', tier: 'holds', majority: null, tiedWith: [] };
   const totalDamage = view.damageLog.reduce((sum, d) => sum + d.total, 0);
   return endingFor({ content, finalLead: view.leadTally, finalSupport: view.supportTally, totalDamage });
 }
 
+/** "C", "C and D", "B, C and D". */
+const letters = (list: readonly OptionId[]): string =>
+  (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
+
 /**
- * The ending screen, over round 4's split. An option's ending: its title and tier, what must be true and the risk
- * accepted. The Deadlock holding: no tier (its title says it), its sentence, then for each earlier round what its
- * lead class chose beside the letters the final majority needed there. With no votes in the final round there is
- * nothing to compare, so no rows.
+ * The ending screen, over round 4's split. An option's ending: its title and tier ("decisive, tied with C" when the
+ * final round was a tie the earlier letter won), what must be true and the risk accepted. The Deadlock holding: no
+ * tier (its title says it), its sentence, then for each earlier round what its lead class chose beside the letters
+ * the final majority needed there. With no votes in the final round there is nothing to compare, so no rows.
  */
 export function endingArgs(content: CaseContent, view: HostView): EndingArgs {
-  const { ending, tier, majority } = outcomeOf(content, view);
+  const { ending, tier, majority, tiedWith } = outcomeOf(content, view);
   const split = view.tally;
   if (ending !== 'holds') {
     const { title, mustBeTrue, risk } = content.endings[ending];
-    return { title, tier, split, mustBeTrue, risk, holds: null };
+    return { title, tier: tiedWith.length > 0 ? `${tier}, tied with ${letters(tiedWith)}` : tier, split, mustBeTrue, risk, holds: null };
   }
   const { title, text } = content.endings.holds;
   if (majority === null) return { title, tier: '', text: NO_FINAL_VOTES, split, mustBeTrue: [], risk: [], holds: [] };

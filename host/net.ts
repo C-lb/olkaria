@@ -23,9 +23,9 @@ export interface RoomClient {
   /** A host command. One that cannot be delivered is dropped and reported through onError. */
   send(cmd: HostCmd): void;
   /**
-   * The first view of the room on connect, then later ones. Online, the room sends a view after every event it handles,
-   * a refusal or an early alarm tick included; offline, a view comes only when the state changed. Views are read-only:
-   * every listener is handed the same object. Returns the function that unsubscribes.
+   * The first view of the room on connect, then one each time the state changes, online and offline alike: a refusal
+   * or an early alarm tick brings none. Online, every new connection also starts with a view, which can repeat the last
+   * one. Views are read-only: every listener is handed the same object. Returns the function that unsubscribes.
    */
   onState(cb: (view: HostView) => void): () => void;
   /** Refusals such as "bad phase", and "not connected". Returns the function that unsubscribes. */

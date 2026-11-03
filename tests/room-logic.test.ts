@@ -365,7 +365,8 @@ describe('vote window details', () => {
   it('a tick outside an open vote changes nothing and arms nothing, even in locked where the old deadline is still stored', () => {
     const lockedState = cmd(toVote(), { k: 'closeVote' }).state;
     expect(lockedState.voteDeadline).toBe(t0 + 30000);
-    for (const s of [mk(), cmd(mk(), { k: 'start' }).state, lockedState, closeAndReveal(toVote())]) {
+    const { ending, leaderboard } = finished();
+    for (const s of [mk(), cmd(mk(), { k: 'start' }).state, lockedState, closeAndReveal(toVote()), ending, leaderboard]) {
       for (const now of [t0, t0 + 29999, t0 + 30000, t0 + 99999]) {
         const out = reduce(s, { type: 'tick', now }, c);
         expect(out.effects).toEqual([]);
@@ -509,6 +510,68 @@ describe('guard rails and bookkeeping', () => {
     expect(reduce(voted, vote('p1', 0, 'C', t0 + 8000), c).state.updatedAt).toBe(t0 + 6000);             // refused
     expect(reduce(voted, { type: 'tick', now: t0 + 9000 }, c).state.updatedAt).toBe(t0 + 6000);          // nothing due
     expect(reduce(voted, { type: 'tick', now: t0 + 30000 }, c).state.updatedAt).toBe(t0 + 30000);        // locks
+  });
+  // The converse of the test above, and the guard for the Durable Object, which stores and broadcasts a state only when
+  // its updatedAt has moved: an accepted event that left it alone would never reach a screen. All at one clock reading,
+  // because two changes inside one millisecond are ordinary when sixty phones vote at once.
+  it('moves updatedAt forward on every accepted event of a whole game, even within one millisecond, and on no refusal', () => {
+    const at = t0;
+    const end = t0 + 30000;   // the reopened vote's deadline: the tick that locks it, and everything after it, come then
+    const steps: [string, RoomEvent, boolean][] = [
+      ['join', join('p1', 'Ann', 'citizen', at), true],
+      ['second join', join('p2', 'Bo', 'government', at), true],
+      ['third join', join('p3', 'Cy', 'business', at), true],
+      ['change of role in the lobby', join('p3', 'Cy', 'microsoft', at), true],
+      ['bad role', join('p4', 'Di', 'dragon', at), false],
+      ['vote in the lobby', vote('p1', 0, 'B', at), false],
+      ['bad host key', { type: 'cmd', key: 'wrong', cmd: { k: 'start' }, now: at }, false],
+      ['start', K({ k: 'start' }, at), true],
+      ['start again', K({ k: 'start' }, at), false],
+      ['rejoin after the start', join('p1', 'Other', 'business', at), false],
+      ['exhibit', K({ k: 'exhibit', exhibitId: 'x1' }, at), true],
+      ['openVote', K({ k: 'openVote' }, at), true],
+      ['early tick', { type: 'tick', now: at }, false],
+      ['vote', vote('p1', 0, 'B', at), true],
+      ['second vote', vote('p2', 0, 'A', at), true],
+      ['vote again', vote('p1', 0, 'C', at), false],
+      ['injectVotes', K({ k: 'injectVotes', counts: { D: 2 } }, at), true],
+      ['hideNames', K({ k: 'hideNames', hide: true }, at), true],
+      ['callout while open', K({ k: 'callout', pick: 0 }, at), false],
+      ['closeVote', K({ k: 'closeVote' }, at), true],
+      ['callout', K({ k: 'callout', pick: 0 }, at), true],
+      ['judge', K({ k: 'judge', awarded: true }, at), true],
+      ['judge again', K({ k: 'judge', awarded: true }, at), false],
+      ['reopen', K({ k: 'reopen' }, at), true],
+      ['tick that locks', { type: 'tick', now: end }, true],
+      ['tick after the lock', { type: 'tick', now: end }, false],
+      ['reveal', K({ k: 'reveal' }, end), true],
+      ['reveal again', K({ k: 'reveal' }, end), false],
+      ['next', K({ k: 'next' }, end), true],
+      ['kick', K({ k: 'kick', playerId: 'p2' }, end), true],
+      ['banned rejoin', join('p2', 'Bo', 'government', end), false],
+      ['kick nobody', K({ k: 'kick', playerId: 'ghost' }, end), false],
+      ['reset', K({ k: 'reset' }, end), true],
+    ];
+    const { reveal } = finished();
+    const last = reveal.updatedAt;   // the closing screens, at the same reading as the change before them
+    const closing: [string, RoomEvent, boolean][] = [
+      ['next to the ending', K({ k: 'next' }, last), true],
+      ['next to the leaderboard', K({ k: 'next' }, last), true],
+      ['next on the leaderboard', K({ k: 'next' }, last), false],
+    ];
+    for (const [from, walk] of [[mk(), steps], [reveal, closing]] as const) {
+      let s = from;
+      for (const [what, ev, accepted] of walk) {
+        const next = reduce(s, ev, c).state;
+        if (accepted) {
+          expect(next.updatedAt, what).toBeGreaterThan(s.updatedAt);
+          expect({ ...next, updatedAt: 0 }, `${what} changes something`).not.toEqual({ ...s, updatedAt: 0 });
+        } else {
+          expect(next, what).toEqual(s);
+        }
+        s = next;
+      }
+    }
   });
   it('an init event rebuilds the room from scratch', () => {
     const r = reduce(toVote(), { type: 'init', code: 'WXYZ', hostKey: 'other-key', now: t0 + 5 }, c);

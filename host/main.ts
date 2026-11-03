@@ -1,7 +1,8 @@
 // The projector page. It loads the case, picks the room client (online, or offline with ?mode=offline), lays the HUD
 // over a 320 x 180 Phaser world at a whole-number zoom, and lets the router start whichever scene the room's phase
-// calls for. Every scene reads the same registry: 'client', 'content', 'hud', and 'view', the latest HostView or null
-// (listen for 'changedata-view').
+// calls for. The scenes share one registry: 'client', 'content', 'hud', 'view', the latest HostView or null (listen
+// for 'changedata-view'), and 'spaceLockedUntil' (SPACE_LOCK_KEY in strikers.ts), the game time before which Space
+// does nothing, which Lobby, Travel, Battle and Ending set so that a press's rest holds across a scene switch.
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
 import { installHotkeys } from './hotkeys';

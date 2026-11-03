@@ -121,9 +121,9 @@ describe('points, endings, awards', () => {
   });
   it('picks the ending by final blended majority and total damage tier', () => {
     const f = { content: c, finalLead: T(1, 5, 1, 1), finalSupport: T(4, 20, 4, 4) };
-    expect(endingFor({ ...f, totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B' });
-    expect(endingFor({ ...f, totalDamage: 200 })).toEqual({ ending: 'B', tier: 'fragile', majority: 'B' });
-    expect(endingFor({ ...f, totalDamage: 179 })).toEqual({ ending: 'holds', tier: 'holds', majority: 'B' });
+    expect(endingFor({ ...f, totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B', tiedWith: [] });
+    expect(endingFor({ ...f, totalDamage: 200 })).toEqual({ ending: 'B', tier: 'fragile', majority: 'B', tiedWith: [] });
+    expect(endingFor({ ...f, totalDamage: 179 })).toEqual({ ending: 'holds', tier: 'holds', majority: 'B', tiedWith: [] });
   });
   it('puts each tier boundary inside the tier it opens', () => {
     const f = { content: c, finalLead: T(1, 5, 1, 1), finalSupport: T(4, 20, 4, 4) };
@@ -133,7 +133,12 @@ describe('points, endings, awards', () => {
   });
   it('picks the ending from the blend of both groups, not from either alone', () => {
     // The lead class alone would say A and the rest alone C; the blend says B.
-    expect(endingFor({ content: c, finalLead: T(8, 7, 0, 5), finalSupport: T(0, 7, 8, 5), totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B' });
+    expect(endingFor({ content: c, finalLead: T(8, 7, 0, 5), finalSupport: T(0, 7, 8, 5), totalDamage: 300 })).toEqual({ ending: 'B', tier: 'decisive', majority: 'B', tiedWith: [] });
+  });
+  it('names the letters a tied final round was level with: the earlier letter is the ending, as before', () => {
+    expect(endingFor({ content: c, finalLead: T(1, 0, 1, 0), finalSupport: T(3, 0, 3, 0), totalDamage: 300 })).toEqual({ ending: 'A', tier: 'decisive', majority: 'A', tiedWith: ['C'] });
+    expect(endingFor({ content: c, finalLead: Z, finalSupport: T(0, 3, 3, 3), totalDamage: 200 })).toEqual({ ending: 'B', tier: 'fragile', majority: 'B', tiedWith: ['C', 'D'] });
+    expect(endingFor({ content: c, finalLead: T(0, 1, 0, 0), finalSupport: T(0, 0, 1, 0), totalDamage: 179 })).toEqual({ ending: 'holds', tier: 'holds', majority: 'B', tiedWith: ['C'] });
   });
   const p = (id: string, picks: string, score: number, table: string | null = null, role: Role = 'citizen'): Player => ({
     id, name: id, role, table, joinedAt: 0, score, lastPoints: 0,
@@ -151,5 +156,11 @@ describe('points, endings, awards', () => {
   it('averages every member of a table and keeps the first table when the means are equal', () => {
     const rows = [p('a', '', 10, 'T1'), p('b', '', 20, 'T1'), p('c', '', 30, 'T1'), p('d', '', 20, 'T2'), p('e', '', 20, 'T2')];
     expect(tableAward(rows)).toEqual({ table: 'T1', mean: 20 });
+  });
+  it('groups tables whatever the case and spacing, names one by its first spelling, and never crowns a zero mean', () => {
+    // Apart, the two spellings of table 3 would each be a table of one and drop out, and Red would win.
+    expect(tableAward([p('a', '', 90, 'Table 3'), p('b', '', 70, 'table  3'), p('c', '', 40, 'Red'), p('d', '', 40, 'RED ')])).toEqual({ table: 'Table 3', mean: 80 });
+    expect(tableAward([p('a', '', 0, 'T1'), p('b', '', 0, 't1')])).toBeNull();
+    expect(tableAward([p('a', '', 0, 'T1'), p('b', '', 0, 'T1'), p('c', '', 10, 'T2'), p('d', '', 0, 'T2')])).toEqual({ table: 'T2', mean: 5 });
   });
 });

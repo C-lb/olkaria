@@ -3,6 +3,7 @@
 // every vote, and replacing a button in the middle of a press would swallow the tap.
 import type { CaseContent } from '../shared/content';
 import { synergyHits } from '../shared/scoring';
+import { OPTION_SHAPE, SHAPE_MARKUP } from '../shared/shapes';
 import { OPTION_IDS, type OptionId, type PlayerView, type Role } from '../shared/types';
 
 export type UiState = {
@@ -42,22 +43,20 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...
 }
 
 // Icons are drawn inline in one family: 24 px grid, 2 px stroke, round caps and joins. No icon font and no request.
+// The four option shapes come from shared/shapes.ts, which the projector's badges draw from too.
 const GLYPHS = {
   dagger: '<g transform="rotate(45 12 12)"><path d="M12 1.5 14.5 5v9h-5V5z"/><path d="M6.5 14h11M12 14v5"/><circle cx="12" cy="21" r="1.5"/></g>',
   shield: '<path d="M12 2.5 20 5.5v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10v-6z"/><path d="M12 2.5v19"/>',
   lute: '<ellipse cx="9" cy="15" rx="5" ry="6.4" transform="rotate(45 9 15)"/><circle cx="9" cy="15" r="1.3"/><path d="M13.5 10.5 20.5 3.5M18.7 1.7l3.6 3.6"/>',
   staff: '<path d="M4 20 14.4 9.6"/><path d="M17.5 2 19.1 4.9 22 6.5 19.1 8.1 17.5 11 15.9 8.1 13 6.5 15.9 4.9z"/>',
-  triangle: '<path d="M12 4.5 20 18.5H4z"/>',
-  diamond: '<path d="M12 3.5 20.5 12 12 20.5 3.5 12z"/>',
-  circle: '<circle cx="12" cy="12" r="8"/>',
-  square: '<rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/>',
+  ...SHAPE_MARKUP,
   check: '<path d="M5 12.5 10 17.5 19 7"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
 } as const;
 type Glyph = keyof typeof GLYPHS;
 
 const ROLE_GLYPH: Record<Role, Glyph> = { citizen: 'dagger', government: 'shield', business: 'lute', microsoft: 'staff' };
-const OPTION_GLYPH: Record<OptionId, Glyph> = { A: 'triangle', B: 'diamond', C: 'circle', D: 'square' };
+const OPTION_GLYPH: Record<OptionId, Glyph> = OPTION_SHAPE;
 
 function icon(glyph: Glyph): Element {
   const holder = document.createElement('div');

@@ -136,6 +136,21 @@ describe('options and banner', () => {
     expect(badges.map((b) => b.style.getPropertyValue('--option'))).toEqual(['A', 'B', 'C', 'D'].map((o) => OPTION_COLORS[o as 'A']));
   });
 
+  it('draws the shape bound to each letter inside its badge, after the letter, on the cards, the banner and the debrief', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '', votedText: '', leadShares: null, supportShares: null, footer: '' });
+    const badges = [...root.querySelectorAll<HTMLElement>('[data-card] > .badge')];
+    expect(badges.map((b) => b.querySelector('svg')?.getAttribute('data-shape'))).toEqual(['triangle', 'diamond', 'circle', 'square']);
+    expect(badges.map((b) => b.querySelector('svg > *')?.tagName.toLowerCase())).toEqual(['path', 'path', 'circle', 'rect']);
+    expect(badges.map((b) => b.querySelector('svg')?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true', 'true']);
+    expect(badges.map((b) => [b.firstChild?.textContent, b.textContent])).toEqual([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'D']]);
+    hud.showBanner({ name: 'Sarah', letter: 'C', phone: 'Wait, compare providers', footer: '' });
+    expect(root.querySelector('.banner .badge svg')?.getAttribute('data-shape')).toBe('circle');
+    expect(text(root, '.banner-line')).toBe('Sarah, defend C: Wait, compare providers');
+    hud.showDebrief({ lines: [{ letter: 'D', damage: 9, text: 'd' }], breakdown: { base: 9, focus: 0, alignment: 0, exhibit: 0, rally: 0, total: 9, capped: false, cap: 100 }, alignment: '', rally: null, discuss: '' });
+    expect(root.querySelector('[data-debrief-line=D] .badge svg')?.getAttribute('data-shape')).toBe('square');
+  });
+
   it('keeps the banner up when the cards are redrawn, and takes it down for any other screen', () => {
     const { root, hud } = fresh();
     hud.showBanner({ name: 'Sarah', letter: 'B', phone: 'Yes to 60 to 100 MW, tied', footer: 'Y convincing, N not' });
@@ -186,6 +201,12 @@ describe('narration, debrief, ending and leaderboard', () => {
     expect(text(root, '.holds-row')).toBe('Round 1Rogues chose BNeeded: B or D');
     expect(root.querySelector('.bullets')).toBeNull();
     expect([...root.querySelectorAll('.split .bar-value')].map((v) => v.textContent)).toEqual(['0%', '0%', '0%', '0%']);
+  });
+
+  it('puts a tied ending\'s tier in the eyebrow with its first letter in capitals', () => {
+    const { root, hud } = fresh();
+    hud.showEnding({ title: 'The Tenant', tier: 'decisive, tied with C', split: { A: 4, B: 0, C: 4, D: 0 }, mustBeTrue: ['x'], risk: ['y'], holds: null });
+    expect(text(root, '.ending .eyebrow')).toBe('Decisive, tied with C');
   });
 
   it('opens the Deadlock holding on its title with no tier over it, then its sentence above the rows, and no sentence without text', () => {

@@ -242,20 +242,28 @@ export class Room extends DurableObject<Env> {
     return this.state;
   }
 
-  /** Reduce, persist, run the effects in order, then tell everyone. Memory is only updated once the write is accepted. */
+  /**
+   * Reduce, persist, run the effects in order, then tell everyone. Memory is only updated once the write is accepted.
+   * A refusal or a no-op leaves updatedAt where it was (the reducer moves it on every change and on nothing else, see
+   * tests/room-logic.test.ts), so it is neither stored nor broadcast and does not count as activity: its effects (an
+   * error, a kick, an alarm) still run. A phone that rejoins has had its view already, when its socket was accepted.
+   */
   private async apply(ev: RoomEvent): Promise<void> {
     const state = await this.load();
     if (!state) return;
     const { state: next, effects } = reduce(state, ev, this.content);
-    // A tick is the clock, not a person. alarm() reads lastActivity to decide a room is idle, so a tick must not refresh it.
-    const lastActivity = ev.type === 'tick' ? this.lastActivity : ev.now;
-    await this.ctx.storage.put({ state: next, lastActivity });
-    this.state = next;
-    this.lastActivity = lastActivity;
+    const changed = next.updatedAt !== state.updatedAt;
+    if (changed) {
+      // A tick is the clock, not a person. alarm() reads lastActivity to decide a room is idle, so a tick must not refresh it.
+      const lastActivity = ev.type === 'tick' ? this.lastActivity : ev.now;
+      await this.ctx.storage.put({ state: next, lastActivity });
+      this.state = next;
+      this.lastActivity = lastActivity;
+    }
     for (const effect of effects) await this.run(effect);
     // One alarm slot: the vote deadline while a vote is open (the reducer sets it), the idle cleanup otherwise.
-    if (next.phase !== 'vote') await this.ctx.storage.setAlarm(lastActivity + IDLE_MS);
-    this.broadcast();
+    if (next.phase !== 'vote') await this.ctx.storage.setAlarm(this.lastActivity + IDLE_MS);
+    if (changed) this.broadcast();
   }
 
   private async run(effect: Effect): Promise<void> {
