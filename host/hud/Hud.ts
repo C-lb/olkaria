@@ -1,11 +1,13 @@
 // The projector's text layer: an HTML element laid exactly over the 320 x 180 game canvas. Every word on the
 // projector is drawn here, never on the canvas (spec 7), so it wraps, stays crisp, and scales with --zoom. One method
 // per screen, each building its screen from its arguments alone. Nothing from the room or a player goes through
-// innerHTML. Layers, bottom to top: the screen, the rally flash, the menu on its scrim, the banner with the toasts
-// under it.
+// innerHTML. Layers, bottom to top: the screen, the rally flash, the menu on its scrim or the how-to on its full-bleed
+// dialog (host/hud/HowTo.ts), the banner with the toasts under it.
+import { figureSvg } from '../../shared/figures';
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../../shared/shapes';
 import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
 import { SPEAKERS } from '../quotes';
+import { howToPanel, type HowToArgs } from './HowTo';
 
 /** The option colours, bound to the letters everywhere: badges, bars, the banner letter, the strike flash (spec 7). */
 export const OPTION_COLORS: Record<OptionId, string> = { A: '#b5473d', B: '#3f6fa3', C: '#c9a227', D: '#4f8a5b' };
@@ -123,9 +125,9 @@ const KEYS: readonly (readonly [string, string])[] = [
 
 // ---- Builders ---------------------------------------------------------------------------------------
 
-type Kid = Node | string | false | null | undefined;
+export type Kid = Node | string | false | null | undefined;
 
-function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: Kid[]): HTMLElementTagNameMap[K] {
+export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: Kid[]): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
   for (const kid of kids) {
@@ -162,7 +164,7 @@ function breakdownText(b: Breakdown): string {
 }
 
 /** Marks `el` as option `letter`: its colour as --option, and data-option, from which the stylesheet takes the ink. */
-function tint<E extends HTMLElement>(el: E, letter: OptionId): E {
+export function tint<E extends HTMLElement>(el: E, letter: OptionId): E {
   el.setAttribute('data-option', letter);
   el.style.setProperty('--option', OPTION_COLORS[letter]);
   return el;
@@ -177,8 +179,15 @@ function shape(letter: OptionId): Element {
 }
 
 /** The letter, then its shape, on its colour. */
-function badge(letter: OptionId, size = ''): HTMLElement {
+export function badge(letter: OptionId, size = ''): HTMLElement {
   return tint(h('span', { class: size === '' ? 'badge' : `badge ${size}` }, letter, shape(letter)), letter);
+}
+
+/** One class figure as an element: figureSvg(role, scale) through a holder, the first element. The markup is a constant. */
+export function figure(role: Role, scale: number): Element {
+  const holder = document.createElement('span');
+  holder.innerHTML = figureSvg(role, scale);
+  return holder.firstElementChild as Element;
 }
 
 /** A flat slate panel, the surface every screen is built on. */
@@ -254,6 +263,8 @@ export class Hud {
   private readonly toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   /** The menu on its scrim while it is up (showMenu). */
   private menu: HTMLElement | null = null;
+  /** The how-to on its dialog while it is up (showHowTo). */
+  private howto: HTMLElement | null = null;
   /** The two toast slots: one that stays until replaced or cleared, and one that times out. */
   private sticky: HTMLElement | null = null;
   private timed: { el: HTMLElement; timer: ReturnType<typeof setTimeout> } | null = null;
@@ -497,6 +508,22 @@ export class Hud {
     const el = document.activeElement;
     if (this.menu === null || el === null || !this.menu.contains(el)) return null;
     return el.getAttribute('data-menu-item');
+  }
+
+  /** Whether the menu is up. */
+  menuOpen(): boolean {
+    return this.menu !== null;
+  }
+
+  /**
+   * The how-to on its full-bleed dialog (host/howto.ts). Each call draws the slide afresh so its motion restarts; null
+   * takes it down. clear() leaves it. It sits over the screen and the rally flash, at the menu's layer, and under the
+   * banner and the toasts; a sibling of the screen, so a new screen drawn under it leaves it up.
+   */
+  showHowTo(a: HowToArgs | null): void {
+    this.howto?.remove();
+    this.howto = a === null ? null : howToPanel(a);
+    if (this.howto !== null) this.root.append(this.howto);
   }
 
   /** Empties the screen and takes down the banner, the flash and every toast. */

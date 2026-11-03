@@ -518,3 +518,69 @@ describe('menu', () => {
     expect(root.querySelector('.hud-menu')).not.toBeNull();
   });
 });
+
+// ---- How to play: one slide at a time on a full-bleed dialog, and whether the menu is up -------------------------
+import raw from '../content/case.json';
+import { howtoSlides } from '../host/howto';
+import { loadContent } from '../shared/content';
+
+const c = loadContent(raw);
+
+describe('how to play', () => {
+  it('showHowTo draws one slide on a full-bleed dialog with the dots and the keycaps, restarts on each call, and null takes it down', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    const slides = howtoSlides(c); const onNext = vi.fn(); const onClose = vi.fn();
+    hud.showHowTo({ slide: slides[2], index: 2, count: 8, onNext, onClose });
+    const dialog = root.querySelector('.hud-howto')!;
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-label')).toBe('How to play');
+    expect(dialog.parentElement).toBe(root);   // a sibling of the screen, so a redraw of the screen leaves it
+    expect(dialog.querySelector('.howto-slide')!.getAttribute('data-kind')).toBe('round');
+    expect(dialog.textContent).toContain('Grid Wyrm');
+    expect(dialog.textContent).toContain('2:00');
+    expect(dialog.querySelectorAll('.howto-option')).toHaveLength(4);
+    expect(dialog.querySelectorAll('.howto-dot')).toHaveLength(8);
+    expect(dialog.querySelector('.howto-dot[aria-current]')).toBe(dialog.querySelectorAll('.howto-dot')[2]);
+    expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['Esc', 'Close']]);
+    (dialog.querySelector('.howto-slide') as HTMLElement).click();
+    expect(onNext).toHaveBeenCalledTimes(1);
+    hud.showHowTo({ slide: slides[7], index: 7, count: 8, onNext, onClose });
+    expect(root.querySelectorAll('.hud-howto')).toHaveLength(1);
+    expect([...root.querySelectorAll('.howto-key span')].map((s) => s.textContent)).toEqual(['Close', 'Close']);
+    hud.showLobby(lobby({}));   // a screen change under the dialog
+    expect(root.querySelector('.hud-howto')).not.toBeNull();
+    hud.showHowTo(null);
+    expect(root.querySelector('.hud-howto')).toBeNull();
+  });
+  it('every slide draws, and the party slides draw the shared figures with the lead stepping forward', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    const slides = howtoSlides(c); const noop = () => {};
+    for (const [i, slide] of slides.entries()) {
+      hud.showHowTo({ slide, index: i, count: slides.length, onNext: noop, onClose: noop });
+      expect(root.querySelector('.howto-slide')!.getAttribute('data-kind')).toBe(slide.kind);
+      expect(root.querySelector('.howto-slide .eyebrow')!.textContent).toBe(slide.eyebrow);
+    }
+    hud.showHowTo({ slide: slides[0], index: 0, count: 8, onNext: noop, onClose: noop });
+    expect([...root.querySelectorAll('.howto-member svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
+    expect(root.querySelector('.howto-name')!.textContent).toBe('Olkaria');
+    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop, onClose: noop });
+    expect(root.querySelector('.howto-member.howto-lead svg.figure')!.getAttribute('data-role')).toBe('citizen');
+    hud.showHowTo({ slide: slides[5], index: 5, count: 8, onNext: noop, onClose: noop });
+    expect(root.querySelectorAll('.howto-chunk')).toHaveLength(5);
+    expect((root.querySelector('.howto-chunk') as HTMLElement).style.getPropertyValue('--w')).toBe('50%');
+  });
+  it('clear() leaves the how-to up, as it leaves the menu', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    hud.showHowTo({ slide: howtoSlides(c)[0], index: 0, count: 8, onNext: () => {}, onClose: () => {} });
+    hud.clear();
+    expect(root.querySelector('.hud-howto')).not.toBeNull();
+  });
+  it('menuOpen says whether the menu is up', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    expect(hud.menuOpen()).toBe(false);
+    hud.showMenu({ actions: [], stages: [], stagesHint: '', onPick: () => {}, onClose: () => {} });
+    expect(hud.menuOpen()).toBe(true);
+    hud.showMenu(null);
+    expect(hud.menuOpen()).toBe(false);
+  });
+});
