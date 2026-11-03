@@ -79,10 +79,12 @@ const phoneLabel = (content: CaseContent, round: number, option: OptionId): stri
   content.rounds[round]?.options.find((o) => o.id === option)?.phone ?? '';
 const roundName = (view: PlayerView, content: CaseContent): string => `Round ${view.round + 1} of ${content.rounds.length}`;
 
-/** "23 s" from the room's clock: the deadline minus the time the view said it was, minus the time since the view arrived. */
+/** "1:23" from the room's clock: the deadline minus the time the view said it was, minus the time since the view arrived. */
 export function formatCountdown(deadline: number, serverNow: number, localNow: number, localAtServerNow: number): string {
   const remainingMs = deadline - serverNow - (localNow - localAtServerNow);
-  return `${Math.max(0, Math.ceil(remainingMs / 1000))} s`;
+  // The m:ss of clockText in host/strikers.ts, copied: the phone page must not import host code.
+  const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 /** Rewrites the clock on the mounted vote screen in place, so a tick never rebuilds the buttons. */

@@ -14,9 +14,9 @@ import { describe } from 'vitest';
 import { computeDamage } from '../shared/scoring';
 import type { Callout, DamageResult, OptionId, Player, Role, Tally } from '../shared/types';
 import {
-  alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, debriefFor, DRAIN_MS, FRAME_MS, judgedNotes, judgeFlash,
-  lockedByClock, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS, spaceAction, strikePlan, timerText,
-  votedText,
+  alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, clockText, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, FRAME_MS,
+  judgedNotes, judgeFlash, lockedByClock, lockedEarly, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS,
+  spaceAction, strikePlan, timerText, votedText,
   type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
 import { SPEAKERS } from '../host/quotes';
@@ -209,19 +209,47 @@ describe('the debrief', () => {
 
 describe('the words around the vote', () => {
   it('counts the votes against the room online, each bot vote counted as a voter, and the votes alone offline', () => {
-    expect(votedText(T(1, 2, 0, 0), 5, undefined, false)).toBe('3 of 5 voted');
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, false)).toBe('3 of 5 voted');
     // Two phones voted, one did not, and three bot votes came in: 5 of the 6 who could vote.
-    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false)).toBe('5 of 6 voted');
-    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true)).toBe('12 voted');
-    expect(votedText(Z, 0, undefined, false)).toBe('0 of 0 voted');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, false)).toBe('5 of 6 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, false)).toBe('12 voted');
+    expect(votedText(Z, 0, undefined, false, false)).toBe('0 of 0 voted');
+  });
+
+  it('the count says who is still to vote while the vote is open, and who voted once it is locked', () => {
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, true)).toBe('2 still to vote');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, true)).toBe('1 still to vote');
+    expect(votedText(T(1, 2, 0, 0), 3, undefined, false, true)).toBe('Everyone has voted');
+    expect(votedText(T(5, 0, 0, 0), 2, T(5, 0, 0, 0), false, true)).toBe('2 still to vote');
+    expect(votedText(T(5, 0, 0, 0), 2, undefined, false, true)).toBe('Everyone has voted');   // more votes than players: none to go
+    expect(votedText(Z, 0, undefined, false, true)).toBe('No players yet');
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, false)).toBe('3 of 5 voted');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, false)).toBe('5 of 6 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, true)).toBe('12 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, false)).toBe('12 voted');
   });
 
   it('counts the clock down in whole seconds, rounding up, never below zero', () => {
-    expect(timerText(31_000, 1_000)).toBe('30 s');
-    expect(timerText(31_000, 1_001)).toBe('30 s');
-    expect(timerText(31_000, 30_001)).toBe('1 s');
-    expect(timerText(31_000, 31_000)).toBe('0 s');
-    expect(timerText(31_000, 45_000)).toBe('0 s');
+    expect(timerText(31_000, 1_000)).toBe('0:30');
+    expect(timerText(31_000, 1_001)).toBe('0:30');
+    expect(timerText(31_000, 30_001)).toBe('0:01');
+    expect(timerText(31_000, 31_000)).toBe('0:00');
+    expect(timerText(31_000, 45_000)).toBe('0:00');
+    expect(timerText(null, 0)).toBe('');
+  });
+
+  it('the clock reads minutes and seconds, rounded up', () => {
+    expect(clockText(120)).toBe('2:00');
+    expect(clockText(9)).toBe('0:09');
+    expect(clockText(0)).toBe('0:00');
+    expect(clockText(-3)).toBe('0:00');
+    expect(clockText(600)).toBe('10:00');
+    expect(timerText(121_000, 1_000)).toBe('2:00');
+    expect(timerText(121_000, 1_001)).toBe('2:00');
+    expect(timerText(121_000, 61_500)).toBe('1:00');
+    expect(timerText(121_000, 112_000)).toBe('0:09');
+    expect(timerText(121_000, 121_000)).toBe('0:00');
+    expect(timerText(121_000, 150_000)).toBe('0:00');
     expect(timerText(null, 0)).toBe('');
   });
 
@@ -374,6 +402,23 @@ describe('Space', () => {
     expect(lockedByClock('vote', view('vote', 30000))).toBe(false);
     expect(lockedByClock('vote', view('locked', 30000, null))).toBe(false);
     expect(CLOCK_LOCK_NOTE).toBe('Locked by the clock. C calls a student out, Space strikes');
+  });
+
+  it('tells an early lock from the clock lock and from a Space lock', () => {
+    const players = { p1: player('p1', 'Sarah', 'citizen') };
+    const voted = (id: string, option: OptionId) => ({ ...players.p1, id, name: id, votes: { 0: { option, at: 1 } } });
+    const everyone = { p1: voted('p1', 'B'), p2: voted('p2', 'A') };
+    const early = { phase: 'locked' as const, updatedAt: 50_000, voteDeadline: 121_000, players: everyone, round: 0 };
+    expect(lockedEarly('vote', early)).toBe(true);
+    expect(lockedByClock('vote', early)).toBe(false);
+    expect(lockedEarly('vote', { ...early, players: { ...everyone, p3: { ...players.p1, id: 'p3', votes: {} } } })).toBe(false);   // Space, with p3 still to vote
+    expect(lockedEarly('vote', { ...early, players: {} })).toBe(false);
+    expect(lockedEarly('vote', { ...early, updatedAt: 121_000 })).toBe(false);   // the clock
+    expect(lockedEarly('vote', { ...early, round: 1 })).toBe(false);             // their votes are for round 0
+    expect(lockedEarly('locked', early)).toBe(false);                             // already locked: a later change
+    expect(lockedEarly(null, early)).toBe(false);                                 // a reload into the locked vote
+    expect(lockedEarly('vote', { ...early, phase: 'vote' as const })).toBe(false);
+    expect(EVERYONE_LOCK_NOTE).toBe('Everyone has voted. C calls a student out, Space strikes');
   });
 });
 

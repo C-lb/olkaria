@@ -62,8 +62,11 @@ describe('player render', () => {
   });
 });
 it('formats the countdown from server time, never negative', () => {
-  expect(formatCountdown(31000, 1000, 5000, 1000)).toBe('26 s');
-  expect(formatCountdown(31000, 1000, 99000, 1000)).toBe('0 s');
+  expect(formatCountdown(31000, 1000, 5000, 1000)).toBe('0:26');
+  expect(formatCountdown(31000, 1000, 99000, 1000)).toBe('0:00');
+  expect(formatCountdown(121000, 1000, 1000, 1000)).toBe('2:00');
+  expect(formatCountdown(121000, 1000, 1500, 1000)).toBe('2:00');
+  expect(formatCountdown(121000, 1000, 61500, 1000)).toBe('1:00');
 });
 
 // ---- Beyond the brief: the behaviours the page relies on that the four tests above do not pin ----------
@@ -134,13 +137,13 @@ describe('vote buttons', () => {
     render(el, base, c, joined, first);
     const before = votes(el);
     const clock = el.querySelector('[data-countdown]') as HTMLElement;
-    expect(clock.textContent).toBe('30 s');
+    expect(clock.textContent).toBe('0:30');
     updateCountdown(el, base, 6000, 1000);
-    expect(clock.textContent).toBe('25 s');
+    expect(clock.textContent).toBe('0:25');
     render(el, { ...base, serverNow: 9000, playerCount: 13 }, c, joined, second);
     expect(votes(el).every((b, i) => b === before[i])).toBe(true);
     expect(el.querySelector('[data-countdown]')).toBe(clock);
-    expect(clock.textContent).toBe('22 s');
+    expect(clock.textContent).toBe('0:22');
     before[0].click();
     expect(first.vote).not.toHaveBeenCalled();
     expect(second.vote).toHaveBeenCalledWith('A');
@@ -164,7 +167,7 @@ describe('vote buttons', () => {
   it('show the countdown to a player who has locked in, and not once voting has closed', () => {
     const el = mount();
     render(el, { ...base, myVote: 'B' }, c, joined, noop);
-    expect(el.querySelector('[data-countdown]')?.textContent).toBe('30 s');
+    expect(el.querySelector('[data-countdown]')?.textContent).toBe('0:30');
     expect(el.textContent).toContain('Waiting for the others.');
     render(el, { ...base, phase: 'locked', myVote: 'B' }, c, joined, noop);
     expect(el.querySelector('[data-countdown]')).toBeNull();

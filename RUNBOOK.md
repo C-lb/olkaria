@@ -41,13 +41,15 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 |---|---|---|---|
 | 0:00 to 1:30 | Lobby | QR, code, address, counts per class, avatars dropping in | "Tables of four. Scan, type your name, pick your role (one of each per table), then type your table number, just the number." Space starts. |
 | 1:30 to 2:00 | Travel 1 | The party runs toward Olkaria past three exhibit pickups | Run with the arrows or A. Read each fact as it pops. N skips to the arena. |
-| 2:00 to 4:30 | Round 1, Grid Wyrm | The Rogues' special attack: what Kenyans accept on power | 30 s vote, one call-out, strike, 45 s debrief |
+| 2:00 to 4:30 | Round 1, Grid Wyrm | The Rogues' special attack: what Kenyans accept on power | Up to 2 min vote, locks when everyone has voted, up to four call-outs, strike, 45 s debrief |
 | 4:30 to 7:00 | Round 2, Debt Golem | The Knights' special attack: what the Government offers | Same shape |
 | 7:00 to 9:30 | Round 3, Fog of Demand | The Bards' special attack: what Kenya's businesses commit | Same shape |
 | 9:30 to 11:30 | Round 4, the core | The Wizards' special attack: Microsoft's decision, then the ending | "What should Microsoft do, and why?" |
 | 11:30 to 12:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hand the split to the discussion |
 
 Travels 2 to 4: press N straight away unless you are running early.
+
+The times above are for a 30 s vote and one call-out. A vote of up to 2 min and up to four call-outs can stretch each round, so the run can pass 12:00 and every time from 2:00 on slides later with it. Time it at the rehearsal.
 
 ### Keys
 
@@ -67,7 +69,7 @@ Travels 2 to 4: press N straight away unless you are running early.
 | N | In travel: skip to the arena. With a call-out up: not convincing. |
 | C | Call a student out, once the vote is locked |
 | Y | Call-out convincing |
-| R | Reopen a locked vote, or extend an open one, with a fresh 30 s |
+| R | Reopen a locked vote, or extend an open one, with a fresh 2:00 |
 | 1 to 4 | Add one vote for A to D |
 | Shift+1 to 4 | Add ten votes for A to D |
 | B | Add 30 bot votes, weighted toward the evidence |
@@ -85,14 +87,15 @@ The vote keys (1 to 4, Shift, B) work while a vote is open or locked. They count
 ### Every round
 
 1. You arrive at the arena with the narration up. Space opens the vote.
-2. The vote runs 30 s and locks itself at 0 s. Space locks it early.
-   When the vote locks itself, Space does nothing for a second and a half, and a note says the clock locked it.
+2. The vote runs 2:00 and locks itself at 0:00, or as soon as everyone has voted. Space locks it early.
+   The status line counts who is still to vote.
+   When the vote locks itself, Space does nothing for a second and a half, and a note says why: the clock ran out, or everyone voted.
    Then C calls a student out, and Space strikes.
 3. Once locked, each card shows two bars: the lead class and the rest of the party.
-   C calls out a voter, from the lead class while any of them voted.
+   C calls out a voter whose option the round has not heard yet, at random among them (anyone uncalled once every voted option has been heard).
    The student defends their choice.
    Y if convincing: +10 damage and 30 points to them. N if not: no bonus and 10 points.
-   C again for a second one. Two per round at most.
+   C again for the next voice. Four per round at most.
 4. Space: the party strikes. Space during the strike skips to the debrief.
 5. Debrief: read the discuss line and take a comment or two. Space moves on to the next travel.
 
@@ -172,11 +175,13 @@ If it comes back in the game, carry on. If it comes back at a lobby with a new c
 
 **A call-out nobody wants.**
 N declines it: no bonus, and the student still gets 10 points.
-C again calls someone else, two per round at most.
-Space with the call-out still up strikes at once and counts it as declined, so there is no second call-out that round.
+C again calls someone else, four per round at most.
+Space with the call-out still up strikes at once and counts it as declined, so there is no further call-out that round.
 
 **A vote needs more time.**
-R reopens it with a fresh 30 s, even after it locked. Once the party has struck, the round is final.
+R reopens it with a fresh 2:00, even after it locked. Once the party has struck, the round is final.
+A vote that locked because everyone had voted reopens the same way, for a late joiner. It locks again once everyone has voted.
+If nobody new votes, the reopened vote stays open and the status line reads "Everyone has voted". Space or the clock closes it.
 
 **Names should not be on screen.**
 H hides them in the lobby list and on the leaderboard.
@@ -201,7 +206,7 @@ For 4 November, on the projector if you can.
 
 - [ ] Five phones join with the same table number and every role covered. There are four roles, so one comes twice.
 - [ ] A full 12-minute run, timed against the run of show.
-- [ ] One call-out per round, judged with Y or N.
+- [ ] Up to four call-outs per round, one voice per option, judged with Y or N.
 - [ ] Round 2: switch to the offline tab on purpose and play the round with hand counts. Then go back to the online tab and carry on.
 - [ ] Round 3: reload the host page once (Cmd+R) after the vote opens. It should come back to the same screen, or to the debrief if the strike was playing. Do it in the online tab, since offline mode starts over on a reload.
 - [ ] The leaderboard names the shared table as the top table.

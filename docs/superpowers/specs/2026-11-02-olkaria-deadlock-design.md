@@ -95,8 +95,8 @@ Four phases of 100 HP each, 400 in total, drawn in a dark-fantasy register.
 ### 4.3 Shape of a round
 
 1. Narration: the situation in two to four sentences with one quote from the case, ending with the lead class's call to strike ("Rogues, this is your strike: what will Kenyans accept?").
-2. Four options on screen (full text) and on phones (short label). Everyone votes. 30-second timer; Space locks early; the timer locks automatically.
-3. Lock: two bars per option, the lead class and the rest of the party. Call-out: C picks a random voter from the lead class first (any voter once the lead class is used up), shows their name and choice; they defend it; Y awards a rally strike, N does not. Up to two per round.
+2. Four options on screen (full text) and on phones (short label). Everyone votes. Two-minute timer; the vote locks itself as soon as every player has voted; Space locks early; the timer locks at 0:00.
+3. Lock: two bars per option, the lead class and the rest of the party. Call-out: C picks a random voter whose option the round has not heard yet (any uncalled voter once every voted option has been heard), shows their name and choice; they defend it; Y awards a rally strike, N does not. Up to four per round.
 4. Reveal: the special attack by the lead class (the lead half of base), the combined support strike (the support half), a flourish per bonus, rally strikes. The numbers shown sum to the damage drained.
 5. Debrief: per option, damage and projector line; the breakdown line; the alignment line; the discuss line. Space moves on.
 
@@ -115,7 +115,7 @@ Damage for a round:
 - focus bonus = +15 if the top option holds at least 60% of the blended share
 - alignment bonus = +10 if the lead class's majority and the rest of the party's majority are the same option (both groups voted, neither tied)
 - exhibit bonus = +5 per exhibit collected in the preceding travel segment, maximum 3
-- rally bonus = +10 per call-out the facilitator judged convincing, maximum 2
+- rally bonus = +10 per call-out the facilitator judged convincing, maximum 4
 - damage = round(base + focus + alignment + exhibit + rally), clamped to 0 to 100
 
 Majority of a round = the option with the most blended share; on a tie, the earliest letter, flagged tied.
@@ -277,9 +277,9 @@ Phases: `lobby`, `travel`, `vote`, `locked`, `reveal`, `ending`, `leaderboard`. 
 Transitions
 
 - `lobby` → `travel` on host `start` (round 0).
-- `travel` → `vote` on host `openVote` with a window in seconds (default 30). Sets the deadline and schedules an alarm.
+- `travel` → `vote` on host `openVote` with a window in seconds (default 120). Sets the deadline and schedules an alarm. A vote that leaves no player without a vote locks at once.
 - `vote` → `locked` on host `closeVote` or when the alarm fires.
-- In `locked`, host `callout` picks a random player who voted this round and has not been called this round, preferring players of the lead role while any remain (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 2 per round; with no eligible player it records a call-out with no player so the facilitator can cold-call by hand. Host `judge` resolves the pending call-out (30 points awarded, 10 declined). A second `callout` while one is pending, or outside `locked`, is an error.
+- In `locked`, host `callout` picks a random player who voted this round and has not been called this round, from those whose option the round has not heard yet, or from any uncalled voter once every voted option has been heard (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 4 per round; with no eligible player it records a call-out with no player so the facilitator can cold-call by hand. Host `judge` resolves the pending call-out (30 points awarded, 10 declined). A second `callout` while one is pending, or outside `locked`, is an error.
 - `locked` → `reveal` on host `reveal`. Tallies the lead role and the rest separately, computes damage and bonuses, applies damage, awards points (vote points, caster bonus, call-out points), records the majority. A still-pending call-out counts as declined.
 - `locked` → `vote` on host `reopen` with a fresh deadline; existing votes stand and the opening time stays. In `vote`, `reopen` extends the deadline. Elsewhere it is an error; a reveal is final.
 - `reveal` → `travel` (round + 1) on host `next` while round < 3; `reveal` → `ending` after round 3. `ending` → `leaderboard` on `next`.
@@ -360,9 +360,11 @@ Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute 
 - Every number shown during a strike adds up to the damage drained, bonuses included; a kick bans the client id so it sticks; Space never resets, Shift+R twice does; the lobby shows names in a text-layer list rather than on the sprites; the discuss lines are content and live in section 5 for the team's sign-off.
 - The lead class carries half the attack regardless of headcount; the alignment bonus is +10; the caster bonus is 10 points.
 - Rounds 1 to 3 are written from the lead stakeholder's side with evidence scores; round 4 keeps Microsoft's four options and the synergy table.
-- Call-outs: random among the lead class's voters first, then anyone, at most two per round, +10 damage when convincing, 30 points to the student when awarded and 10 for speaking.
+- Call-outs: random among voters of an option not yet heard this round, then anyone uncalled, at most four per round, +10 damage when convincing, 30 points to the student when awarded and 10 for speaking.
 - Names and roles are required; table name optional; 16-character caps; generated fallback name only on the server.
 - Colour is bound to the option letter, never to a class. Arrow keys only in travel. R reopens or extends only. A reveal is final. Host reload resumes at the saved phase; a saved reveal resumes at the debrief.
 - Text in an HTML layer over a 320 × 180 canvas at whole-number zoom; projector debriefs are one line per option; full debriefs go to the phones.
 - Phaser 3 on Vite, plain TypeScript phone page, Cloudflare Worker plus Durable Objects, content in one JSON file, offline mode from the first build.
 - Assets from GitHub where a licensed copy exists, otherwise from the author's page with the licence copied; placeholder art first, procedural bosses as the fallback, sound last.
+
+Amended on 3 Nov 2026 at Caleb's request: sections 4.3, 4.4 and 6.2 and the call-outs line in section 10 now carry the two-minute vote, the early lock and the four call-outs, one voice per option. The change is specified in `2026-11-03-olkaria-vote-window-and-callouts-design.md`.

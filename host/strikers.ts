@@ -156,7 +156,8 @@ export const SEND_LOCK_MS = 1000;
 export const SKIP_LOCK_MS = 600;
 /**
  * Once a view shows the vote moving from open to locked, Space rests at least this long. The room locks the vote by
- * itself at 0 s, and a press meant to lock it that lands a moment later would otherwise reveal at once, skipping the call-out.
+ * itself at 0:00 or when the last player votes, and a press meant to lock it that lands a moment later would otherwise
+ * reveal at once, skipping the call-out.
  */
 export const AUTO_LOCK_MS = 1500;
 
@@ -198,7 +199,9 @@ export function lockoutAfterLock(prev: Phase | null, next: Phase, lockedUntil: n
 
 /** What the HUD says when the clock locked the vote: in this one lockout the press was meant for another command, so silence would read as a broken key. */
 export const CLOCK_LOCK_NOTE = 'Locked by the clock. C calls a student out, Space strikes';
-/** How long that note stays, in ms. */
+/** What it says when the last vote locked it instead: the same lockout, so the same silence to break. */
+export const EVERYONE_LOCK_NOTE = 'Everyone has voted. C calls a student out, Space strikes';
+/** How long either note stays, in ms. */
 export const CLOCK_LOCK_NOTE_MS = 2000;
 
 /**
@@ -207,6 +210,17 @@ export const CLOCK_LOCK_NOTE_MS = 2000;
  */
 export function lockedByClock(prev: Phase | null, view: Pick<HostView, 'phase' | 'updatedAt' | 'voteDeadline'>): boolean {
   return prev === 'vote' && view.phase === 'locked' && view.voteDeadline !== null && view.updatedAt >= view.voteDeadline;
+}
+
+/**
+ * True when a view moves the vote from open to locked before its deadline with every player holding a vote this round,
+ * and at least one player: the last vote locked it. A Space lock with a player still to vote reads false. Space on a
+ * reopened vote that already had every vote reads true, and the note is still right.
+ */
+export function lockedEarly(prev: Phase | null, view: Pick<HostView, 'phase' | 'updatedAt' | 'voteDeadline' | 'players' | 'round'>): boolean {
+  const players = Object.values(view.players);
+  return prev === 'vote' && view.phase === 'locked' && view.voteDeadline !== null && view.updatedAt < view.voteDeadline
+    && players.length > 0 && players.every((p) => p.votes[view.round] !== undefined);
 }
 
 /** Where a class sprite stands: the centre of its feet, and its width. */
@@ -291,12 +305,18 @@ export function narrationFor(content: CaseContent, roundIndex: number): Narratio
 }
 
 /**
- * "12 of 40 voted": every vote of the round against everyone who could vote, the phones in the room plus the bot and
- * key votes (`synthetic`, each a voter of its own). Offline there is no room: "12 voted".
+ * The count on the status line. While the vote is `open` it says who is still to vote: "5 still to vote" (the players
+ * without a vote), "Everyone has voted", or "No players yet" in an empty room. Once it is locked, "12 of 40 voted": every
+ * vote of the round against everyone who could vote, the phones in the room plus the bot and key votes (`synthetic`, each
+ * a voter of its own). Offline there is no room, open or locked: "12 voted".
  */
-export function votedText(tally: Tally, playerCount: number, synthetic: Tally | undefined, offline: boolean): string {
+export function votedText(tally: Tally, playerCount: number, synthetic: Tally | undefined, offline: boolean, open: boolean): string {
   const count = (t: Tally | undefined): number => (t === undefined ? 0 : OPTION_IDS.reduce((sum, o) => sum + t[o], 0));
-  return offline ? `${count(tally)} voted` : `${count(tally)} of ${playerCount + count(synthetic)} voted`;
+  if (offline) return `${count(tally)} voted`;
+  if (!open) return `${count(tally)} of ${playerCount + count(synthetic)} voted`;
+  if (playerCount === 0) return 'No players yet';
+  const waiting = Math.max(0, playerCount - (count(tally) - count(synthetic)));   // the tally holds the bot and key votes too
+  return waiting === 0 ? 'Everyone has voted' : `${waiting} still to vote`;
 }
 
 /** The hint on the cards' status line: what Space, C, Y and N do in this phase, with these call-outs. */
@@ -308,10 +328,16 @@ export function optionsFooter(content: CaseContent, phase: Phase, callouts: read
   return 'C calls a student out. Space: the party strikes';
 }
 
-/** The seconds left to `deadline` at `now` (the room's clock), "23 s": rounded up, never below 0; empty with no deadline. */
+/** Whole seconds as "m:ss": 120 is "2:00", 9 is "0:09", 0 and below "0:00", 600 "10:00". The phone keeps its own copy (player/render.ts). */
+export function clockText(seconds: number): string {
+  const left = Math.max(0, seconds);
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+
+/** The time left to `deadline` at `now` (the room's clock), "1:23": rounded up, through clockText; empty with no deadline. */
 export function timerText(deadline: number | null, now: number): string {
   if (deadline === null) return '';
-  return `${Math.max(0, Math.ceil((deadline - now) / 1000))} s`;
+  return clockText(Math.ceil((deadline - now) / 1000));
 }
 
 /**
