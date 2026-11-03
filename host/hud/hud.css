@@ -1,6 +1,6 @@
 /* Projector HUD: the HTML text layer over the 320 x 180 game canvas (spec 7).
    Every size is in canvas pixels, calc(var(--zoom) * Npx), so the layout is the same at every whole zoom and only
-   scales: body 4, narration 5, titles and the banner 7, which is 24, 30 and 42 px at zoom 6 (1080p).
+   scales: hints 3.5, body 4, narration 5, titles and the banner 7, which is 21, 24, 30 and 42 px at zoom 6 (1080p).
    Built from the house anti-vibecode tokens: flat slate panels at 85% over the world, one accent (torch amber, for
    the Discuss line and the rally flash only), option colours only on letter badges and bars.
    Every colour and font below comes from the token block; nothing else in the file names one. */
@@ -63,6 +63,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .hud {
   --zoom: 4;                                /* applyZoom sets the real value on the element */
   --hud-h:    calc(var(--zoom) * 180px);
+  --t-hint:   calc(var(--zoom) * 3.5px);
   --t-body:   calc(var(--zoom) * 4px);
   --t-narr:   calc(var(--zoom) * 5px);
   --t-badge:  calc(var(--zoom) * 6px);
@@ -436,9 +437,11 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .menu-btn:disabled { opacity: .4; cursor: default; }
 .menu-btn:focus-visible { outline: var(--s1) solid var(--ink-2); outline-offset: var(--s1); }
 .menu-btn[data-armed] { background: var(--ink); color: var(--bg); }
-.menu-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The button's font sets --lh-flat, too tight for a hint on two lines. */
-.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); line-height: var(--lh-body); color: var(--ink-2); }
+/* The button's font sets --lh-flat, a line box one em tall, and the clip would cut g, p and y off at its bottom.
+   The padding gives the clip room for the descenders, and the margin takes that room back out of the layout. */
+.menu-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-block: .15em; margin-block: -.15em; }
+/* --lh-flat is also too tight for a hint on two lines. */
+.menu-hint { font-weight: 500; font-size: var(--t-hint); line-height: var(--lh-body); color: var(--ink-2); }
 .menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }
 .menu-note { margin-top: calc(var(--s1) * -1); }
 /* Read down each column: the room's keys on the left, travel and the page on the right. */

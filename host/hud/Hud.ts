@@ -471,7 +471,7 @@ export class Hud {
 
   /**
    * The facilitator's menu (host/menu.ts), on a scrim over the screen and the rally flash. The banner and the toasts
-   * stay above the scrim, and the panel sits low so they do not cover it. Each call draws the menu afresh and keeps
+   * stay above the scrim, and the panel sits low so they seldom cover it. Each call draws the menu afresh and keeps
    * the focus on the item that had it, if that item is still enabled; null takes the menu down. clear() leaves it.
    */
   showMenu(a: MenuArgs | null): void {

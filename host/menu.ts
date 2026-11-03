@@ -58,10 +58,11 @@ function reloadState(mode: 'online' | 'offline', link: ConnectionStatus | null):
 
 /**
  * Puts the menu on M and Esc (spec 3.1 and 3.3) with one keydown listener on window in the capture phase, so the menu
- * hears a key before the hotkeys and Phaser, which listen on window in the bubble phase. Browser chords (Ctrl, Alt,
- * Cmd) pass. Closed, M or Esc opens the menu, unless the key is held down or typed into a field. Open, the menu stops
- * every key press: M or Esc closes it, the arrows walk the focus, Enter or Space presses the focused item, any other
- * key does nothing, and a held key neither closes the menu nor presses an item again. Key releases always pass, so a
+ * hears a key before the hotkeys and Phaser, which listen on window in the bubble phase. Closed, M or Esc opens the
+ * menu, unless the key is held down or typed into a field, and browser chords (Ctrl, Alt, Cmd) pass untouched. Open,
+ * the menu stops every key press: M or Esc closes it, the arrows and Tab (back with Shift) walk the focus, Enter or
+ * Space presses the focused item, any other key does nothing, and a held key neither closes the menu nor presses an
+ * item again. A chord is stopped as well but never prevented, so Cmd+R still reloads. Key releases always pass, so a
  * key held as the menu opens does not stick down. An item that changes the room asks twice: the first press arms it
  * for ARM_MS, a second press on it fires it, and a press on another item arms that one instead. Firing closes the
  * menu. Returns the function that removes it all again; installing again removes the earlier install first.
@@ -131,15 +132,17 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
   }
 
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const chord = event.ctrlKey || event.metaKey || event.altKey;
     if (!open) {
-      if (!isToggle(event.key) || event.repeat || typing()) return;
+      if (chord || !isToggle(event.key) || event.repeat || typing()) return;
       event.stopPropagation();
       show();
       return;
     }
-    // Open: no key press gets past the menu, to the hotkeys, to Phaser or to the focused button.
+    // Open: no key press gets past the menu, to the hotkeys, to Phaser or to the focused button. A chord stops here
+    // too, since the scenes take Space with any modifier, but its default stays, so the browser still acts on it.
     event.stopPropagation();
+    if (chord) return;
     switch (event.key) {
       case 'ArrowLeft':
       case 'ArrowUp':
@@ -150,6 +153,12 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
       case 'ArrowDown':
         event.preventDefault();
         hud.moveMenuFocus(1);
+        break;
+      // Tab walks the menu too, so the focus never leaves the page for the browser, where M and Esc would not
+      // reach the menu.
+      case 'Tab':
+        event.preventDefault();
+        hud.moveMenuFocus(event.shiftKey ? -1 : 1);
         break;
       case 'Enter':
       case ' ': {

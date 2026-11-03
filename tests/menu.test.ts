@@ -87,15 +87,22 @@ it('M opens with nothing focused, Esc closes, and M typed into a field does noth
   expect(root.querySelector('[role=dialog]')).toBeNull();
   field.remove();
 });
-it('swallows key presses while open and lets releases and browser chords through', () => {
+it('swallows key presses while open, chords too but left to the browser, and lets releases through', () => {
   const seen = vi.fn();
   window.addEventListener('keydown', seen); window.addEventListener('keyup', seen);
   press('m');
   press('2'); press(' '); press('n');
+  const chord = new KeyboardEvent('keydown', { key: ' ', ctrlKey: true, bubbles: true, cancelable: true });
+  window.dispatchEvent(chord);
   expect(seen).not.toHaveBeenCalled();
+  expect(chord.defaultPrevented).toBe(false);   // never prevented, so Cmd+R still reloads
   window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
-  press('r', { metaKey: true });
+  expect(seen).toHaveBeenCalledTimes(1);
+  press('Escape');
+  press(' ', { ctrlKey: true });   // closed, the same chord passes untouched
   expect(seen).toHaveBeenCalledTimes(2);
+  const passed = seen.mock.calls[1][0] as KeyboardEvent;
+  expect([passed.type, passed.key, passed.ctrlKey, passed.defaultPrevented]).toEqual(['keydown', ' ', true, false]);
   expect(send).not.toHaveBeenCalled();
 });
 it('arms a room-changing item on the first press and fires it on the second within 3 s', () => {
@@ -146,7 +153,31 @@ it('reload fires at once while the link is up, asks twice once it drops, and a c
   expect(root.querySelector('[role=dialog]')).toBeNull();
 });
 
-// ---- Beyond the brief: the tests above are its code unchanged ----------------------------------------------
+// ---- Beyond the brief: the tests above are its code, the chords one amended in review ------------------------
+
+it('Tab and Shift+Tab walk the focus like the arrows, so it never leaves the page', () => {
+  press('m');   // lobby: the first enabled is reload, the last the ending
+  const tab = (shiftKey: boolean): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+    window.dispatchEvent(event);
+    return event;
+  };
+  expect(tab(false).defaultPrevented).toBe(true);
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('reload');
+  tab(false);
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-0');
+  expect(tab(true).defaultPrevented).toBe(true);
+  tab(true);
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');   // back past the first, to the last
+});
+it('closing disarms: an item armed before Esc does not bring the menu back when its time runs out', () => {
+  press('m');
+  (root.querySelector('[data-menu-item=stage-0]') as HTMLButtonElement).click();
+  expect(root.querySelector('[data-menu-item=stage-0]')!.hasAttribute('data-armed')).toBe(true);
+  press('Escape');
+  vi.advanceTimersByTime(ARM_MS + 1);
+  expect(document.querySelector('.hud-menu')).toBeNull();
+});
 
 it('redraws for a new view while open, and stops listening for views once closed', () => {
   press('m');
