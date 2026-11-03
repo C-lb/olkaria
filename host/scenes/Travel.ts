@@ -1,10 +1,12 @@
 // The road between battles (spec 4.5): a short platformer the lead class of the coming round runs, the other three
-// classes trailing it. An exhibit on the way is a case figure: touching one sends it to the room, where it adds an
-// exhibit flourish worth the content's `scoring.exhibitBonus` to the coming strike, and shows it as a toast. The gate at
-// the end, or N, starts the round's Battle. A toggles an auto-run along the segment's baked path, which rests where it
-// picks up an exhibit so the room can read the figure; any arrow key takes control back. No text on the canvas: a sticky
-// toast names the boss ahead and the class that leads. A reload mid-travel starts the segment over, and the exhibits the
-// room already counts are not offered again.
+// classes trailing it. The party walks it by itself: SETOFF_MS after the segment starts it sets off along the
+// segment's baked path, resting where it picks up an exhibit so the room can read the figure, and the gate at the end
+// starts the round's Battle. An exhibit on the way is a case figure: touching one sends it to the room, where it adds
+// an exhibit flourish worth the content's `scoring.exhibitBonus` to the coming strike, and shows it as a toast.
+// A pauses the walk and resumes it from where the lead stands; any arrow key takes control of the lead, and the walk
+// stays off until A resumes it; N skips to the arena. No text on the canvas: a sticky toast names the boss ahead and
+// the class that leads. A reload mid-travel starts the segment over and walks it again, and the exhibits the room
+// already counts are not offered again.
 import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import type { HostView } from '../../shared/types';
@@ -13,7 +15,7 @@ import { PALETTE } from '../art/placeholders';
 import type { Hud } from '../hud/Hud';
 import { standAt, Trail } from '../levels/party';
 import {
-  autoStep, gateColumn, GROUND_Y, JUMP_SPEED, PICKUP_PAUSE_MS, RUN_SPEED, SEGMENTS, START_X, stopAhead, TILE, type Segment,
+  autoStep, gateColumn, GROUND_Y, JUMP_SPEED, PICKUP_PAUSE_MS, RUN_SPEED, SEGMENTS, SETOFF_MS, START_X, stopAhead, TILE, type Segment,
 } from '../levels/road';
 import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
@@ -62,10 +64,16 @@ export class Travel extends Phaser.Scene {
   private exhibits = new Map<string, { sprite: Phaser.GameObjects.Image; overlap: Phaser.Physics.Arcade.Collider }>();
   /** "Travel 1: Grid Wyrm ahead. Rogues lead.", kept in the HUD's sticky toast slot. */
   private label = '';
-  /** Whether auto-run is on, and the first stop of the path it has not reached yet. */
+  /**
+   * Whether the party is walking by itself (on from the start, until A pauses it or an arrow takes over), and the first
+   * stop of the path it has not reached yet.
+   */
   private auto = false;
   private nextStop = 0;
-  /** Auto-run's rest at an exhibit: owed from the pickup until the lead stands, then held until this game time. */
+  /**
+   * The walk's rest at an exhibit: owed from the pickup until the lead stands, then held until this game time. The wait
+   * before it sets off is held the same way.
+   */
   private restOwed = false;
   private restUntil = 0;
   /** Set once the gate or N has started the Battle: nothing else happens here after that. */
@@ -92,10 +100,12 @@ export class Travel extends Phaser.Scene {
     this.stands = [];
     this.trail = new Trail(TRAIL_SIZE);
     this.exhibits = new Map();
-    this.auto = false;
-    this.nextStop = 0;
+    this.auto = true;
+    this.nextStop = stopAhead(this.segment.autoPath, START_X);
     this.restOwed = false;
-    this.restUntil = 0;
+    // The game's step time, which is what update() is given: this scene's own clock only moves while it runs, so in
+    // create() it still reads where the last visit left it (0 on the first).
+    this.restUntil = this.game.getTime() + SETOFF_MS;
     this.leaving = false;
 
     const { lead, support } = classFor(this.content, this.roundIndex);
@@ -213,7 +223,8 @@ export class Travel extends Phaser.Scene {
 
   /** Puts the label back if "Reconnecting to the room" took its slot, and takes away exhibits the room counted meanwhile. */
   private onView(_parent: unknown, view: HostView | null): void {
-    if (view === null || view.phase !== 'travel' || view.round !== this.round) return;   // the router is about to move on
+    // No view, or another phase, round or trip: the router is about to move on.
+    if (view === null || view.phase !== 'travel' || view.round !== this.round || view.trips !== this.trip) return;
     this.hud.showToast(this.label, 0);
     for (const id of this.counted(view)) this.removeExhibit(id);
   }
@@ -221,10 +232,11 @@ export class Travel extends Phaser.Scene {
   // ---- Keys and movement ----------------------------------------------------------------------------------
 
   /**
-   * The arrows move and jump (Space jumps too), and any arrow press ends an auto-run. A toggles auto-run; N skips to the
-   * gate. A held key does not repeat a toggle, and a Ctrl, Alt or Cmd chord is left to the browser. The keys are added
-   * without capture: Phaser keeps a key's capture after its scene stops, so Space and the arrows would otherwise lose
-   * their default actions for the rest of the session.
+   * The party walks by itself, so no key is needed. A pauses the walk and resumes it from where the lead stands; any
+   * arrow press takes control, which turns the walk off, and the arrows then move and jump (Space jumps too, with or
+   * without the walk). N skips to the gate. A held key does not repeat a toggle, and a Ctrl, Alt or Cmd chord is left
+   * to the browser. The keys are added without capture: Phaser keeps a key's capture after its scene stops, so Space
+   * and the arrows would otherwise lose their default actions for the rest of the session.
    */
   private bindKeys(): void {
     const keyboard = this.input.keyboard;

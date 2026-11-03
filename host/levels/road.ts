@@ -35,6 +35,8 @@ export const RUN_SPEED = 90;
 export const JUMP_SPEED = 260;
 /** How long auto-run rests where it picks up an exhibit, so the room can read the figure before the party moves on. */
 export const PICKUP_PAUSE_MS = 2000;
+/** The party stands this long after a segment starts before it sets off, so the road and its label register. */
+export const SETOFF_MS = 1000;
 
 /** The gate's centre stands this far from the end of its segment, and the gate is this wide, as the art draws it. */
 const GATE_INSET = 32;
