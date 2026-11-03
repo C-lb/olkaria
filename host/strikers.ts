@@ -4,7 +4,8 @@
 // No Phaser and no DOM, so all of it is tested.
 import type { CaseContent } from '../shared/content';
 import {
-  OPTION_IDS, ROLES, type Callout, type DamageResult, type HostCmd, type OptionId, type Phase, type Player, type Role, type Tally,
+  OPTION_IDS, ROLES,
+  type Callout, type DamageResult, type HostCmd, type HostView, type OptionId, type Phase, type Player, type Role, type Tally,
 } from '../shared/types';
 import type { BannerArgs, DebriefArgs, NarrationArgs } from './hud/Hud';
 import { SPEAKERS } from './quotes';
@@ -153,6 +154,11 @@ export const SPACE_LOCK_KEY = 'spaceLockedUntil';
 export const SEND_LOCK_MS = 1000;
 /** After the strike is skipped or ends it rests this long, so the press that skipped it cannot also skip the debrief. */
 export const SKIP_LOCK_MS = 600;
+/**
+ * Once a view shows the vote moving from open to locked, Space rests at least this long. The room locks the vote by
+ * itself at 0 s, and a press meant to lock it that lands a moment later would otherwise reveal at once, skipping the call-out.
+ */
+export const AUTO_LOCK_MS = 1500;
 
 /** What Space sees: the room's phase, whether the strike is playing or the debrief is up, and its lockout. */
 export interface SpaceState { phase: Phase; busy: boolean; onDebrief: boolean; lockedUntil: number; time: number }
@@ -178,6 +184,29 @@ export function spaceAction(s: SpaceState): SpaceAction {
     case 'locked': return send({ k: 'reveal' });   // a call-out still pending counts as declined (spec 6.2)
     default: return { kind: 'ignore' };
   }
+}
+
+/**
+ * Space's lockout after a view moves the phase from `prev` to `next`. Vote to locked rests Space until at least
+ * AUTO_LOCK_MS after `time`, and never shortens a lockout already running, so a press that sent closeVote and the view
+ * it causes can arrive in either order. Any other change, and a first view that is already locked (`prev` null, a
+ * reload), leaves the lockout as it is.
+ */
+export function lockoutAfterLock(prev: Phase | null, next: Phase, lockedUntil: number, time: number): number {
+  return prev === 'vote' && next === 'locked' ? Math.max(lockedUntil, time + AUTO_LOCK_MS) : lockedUntil;
+}
+
+/** What the HUD says when the clock locked the vote: in this one lockout the press was meant for another command, so silence would read as a broken key. */
+export const CLOCK_LOCK_NOTE = 'Locked by the clock. C calls a student out, Space strikes';
+/** How long that note stays, in ms. */
+export const CLOCK_LOCK_NOTE_MS = 2000;
+
+/**
+ * True when a view moves the vote from open to locked at or after its deadline, that is when the clock ran out. The
+ * room stamps every change with the time it happened, and Space can only lock early.
+ */
+export function lockedByClock(prev: Phase | null, view: Pick<HostView, 'phase' | 'updatedAt' | 'voteDeadline'>): boolean {
+  return prev === 'vote' && view.phase === 'locked' && view.voteDeadline !== null && view.updatedAt >= view.voteDeadline;
 }
 
 /** Where a class sprite stands: the centre of its feet, and its width. */

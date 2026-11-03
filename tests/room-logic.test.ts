@@ -20,12 +20,48 @@ describe('lobby and joins', () => {
     const s = mk();
     expect(s.phase).toBe('lobby'); expect(s.round).toBe(-1); expect(s.bossHp).toBe(400); expect(s.voteWindowMs).toBe(30000);
   });
-  it('joins keep identity on rejoin, generate names, clean tables', () => {
-    const s = run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', undefined, 'business', t0, '  Table 3 '), join('p1', 'Other', 'microsoft')]).state;
+  it('joins keep identity on rejoin once the game has started, generate names, clean tables', () => {
+    const s = run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', undefined, 'business', t0, '  Table 3 '), { type: 'cmd', key: KEY, cmd: { k: 'start' }, now: t0 }, join('p1', 'Other', 'microsoft')]).state;
     expect(Object.keys(s.players)).toHaveLength(2);
     expect(s.players.p1).toMatchObject({ name: 'Ann', role: 'citizen', table: null });
     expect(s.players.p2.name.split(' ')).toHaveLength(2);
     expect(s.players.p2.table).toBe('Table 3');
+  });
+  // Spec 4.1 fixes roles for the session, which the ruling reads as from the start of the game: in the lobby a phone
+  // that tapped the wrong role joins again with the right one.
+  it('lets a known player change name, role and table in the lobby, and keeps when they joined and what they have', () => {
+    const lobby = run(mk(), [join('p1', 'Ann', 'citizen', t0, 'Table 1'), join('p2', 'Bo', 'government', t0 + 1000)]).state;
+    // Nothing is earned in the lobby (a reset clears it), but a change must not touch it either way.
+    const s: RoomState = { ...lobby, players: { ...lobby.players, p1: { ...lobby.players.p1, score: 40, lastPoints: 5, votes: { 0: { option: 'B', at: t0 } } } } };
+    const r = reduce(s, join('p1', '  Annie ', 'business', t0 + 5000, ' Table 2 '), c);
+    expect(r.state.players.p1).toEqual({ ...s.players.p1, name: 'Annie', role: 'business', table: 'Table 2' });
+    expect(r.state.players.p1).toMatchObject({ joinedAt: t0, score: 40, lastPoints: 5, votes: { 0: { option: 'B', at: t0 } } });
+    expect(r.state.players.p2).toBe(s.players.p2);
+    expect(r.state.updatedAt).not.toBe(s.updatedAt);   // a change: the room stores it and tells every screen
+    expect(r.effects).toEqual([]);
+    expect(playerView(r.state, 'p1', t0 + 5000, c)).toMatchObject({ name: 'Annie', role: 'business', table: 'Table 2' });
+    // Cleaned as on a first join: no name gets the generated one, a blank table none.
+    const fresh = reduce(mk(), join('p1', '', 'government'), c).state.players.p1;
+    expect(reduce(r.state, join('p1', '', 'government', t0 + 6000, '  '), c).state.players.p1).toMatchObject({ name: fresh.name, role: 'government', table: null });
+    // The same details again still count as a change, so the phone that sent them always hears back.
+    expect(reduce(r.state, join('p1', 'Annie', 'business', t0 + 7000, 'Table 2'), c).state.updatedAt).not.toBe(r.state.updatedAt);
+  });
+  it('refuses a change to a bad role and keeps the old details', () => {
+    const s = run(mk(), [join('p1', 'Ann', 'citizen', t0, 'Table 1')]).state;
+    const r = reduce(s, join('p1', 'Annie', 'dragon', t0 + 5000), c);
+    expect(r.state).toEqual(s);
+    expect(r.effects).toEqual([{ type: 'error', clientId: 'p1', msg: 'bad role' }]);
+  });
+  it('ignores a change of details once the game has started, during the vote and in every later phase', () => {
+    const vote = toVote();
+    const r = reduce(vote, join('p1', 'Annie', 'business', t0 + 5000, 'Table 9'), c);
+    expect(r.state).toEqual(vote);
+    expect(r.state.players.p1).toMatchObject({ name: 'Ann', role: 'citizen', table: null });
+    expect(r.effects).toEqual([]);
+    const { reveal, ending, leaderboard } = finished();
+    for (const s of [cmd(run(mk(), [join('p1', 'Ann', 'citizen')]).state, { k: 'start' }).state, cmd(vote, { k: 'closeVote' }).state, reveal, ending, leaderboard]) {
+      expect(reduce(s, join('p1', 'Annie', 'business', t0 + 5000, 'Table 9'), c).state).toEqual(s);
+    }
   });
   it('rejects a bad role and does not create the player', () => {
     const r = reduce(mk(), join('p4', 'Dee', 'dragon'), c);
@@ -217,6 +253,14 @@ const K = (k: HostCmd, now = t0): RoomEvent => ({ type: 'cmd', key: KEY, cmd: k,
 const zero = { A: 0, B: 0, C: 0, D: 0 };
 const closeAndReveal = (s: RoomState) => cmd(cmd(s, { k: 'closeVote' }).state, { k: 'reveal' }).state;
 const nextRound = (s: RoomState) => cmd(cmd(s, { k: 'next' }).state, { k: 'openVote' }).state;
+/** The last round revealed, then the ending and the leaderboard, reached through the real transitions. */
+const finished = () => {
+  let s = toVote();
+  for (let r = 0; r < 3; r++) s = nextRound(closeAndReveal(s));
+  const reveal = closeAndReveal(s);
+  const ending = cmd(reveal, { k: 'next' }).state;
+  return { reveal, ending, leaderboard: cmd(ending, { k: 'next' }).state };
+};
 
 describe('purity', () => {
   const deepFreeze = <T>(x: T): T => {
@@ -226,14 +270,14 @@ describe('purity', () => {
     }
     return x;
   };
-  // One scripted class night through every phase: a rejoin, a bad role, exhibits, injected votes, a tick that
-  // changes nothing and one that locks, a reopen with a late voter, two call-outs (one judged, one left pending),
-  // the ending, the leaderboard, a kick, a banned rejoin, hideNames and a reset.
+  // One scripted class night through every phase: a change of details in the lobby, a bad role, a rejoin after the
+  // start, exhibits, injected votes, a tick that changes nothing and one that locks, a reopen with a late voter, two
+  // call-outs (one judged, one left pending), the ending, the leaderboard, a kick, a banned rejoin, hideNames and a reset.
   const night = (): RoomEvent[] => {
     const evs: RoomEvent[] = [
       join('p1', 'Ann', 'citizen'), join('p2', undefined, 'government'), join('p3', 'Cy', 'microsoft'),
       join('p4', 'Di', 'business', t0, ' Table 3 '), join('p1', 'Other', 'microsoft'), join('p5', 'Eve', 'dragon'),
-      K({ k: 'start' }), K({ k: 'exhibit', exhibitId: 'x1' }), K({ k: 'exhibit', exhibitId: 'x2' }),
+      K({ k: 'start' }), join('p1', 'Ann', 'citizen'), K({ k: 'exhibit', exhibitId: 'x1' }), K({ k: 'exhibit', exhibitId: 'x2' }),
     ];
     for (let r = 0; r < 4; r++) {
       const at = t0 + r * 100_000;
@@ -392,14 +436,6 @@ describe('guard rails and bookkeeping', () => {
     expect(refused(toVote(), { k: 'next' })).toEqual(bad);
     expect(refused({ ...mk(), phase: 'leaderboard' }, { k: 'next' })).toEqual(bad);
   });
-  // The last round revealed, then the ending and the leaderboard, reached through the real transitions.
-  const finished = () => {
-    let s = toVote();
-    for (let r = 0; r < 3; r++) s = nextRound(closeAndReveal(s));
-    const reveal = closeAndReveal(s);
-    const ending = cmd(reveal, { k: 'next' }).state;
-    return { reveal, ending, leaderboard: cmd(ending, { k: 'next' }).state };
-  };
   it('a reveal is final: reopen is refused from reveal, ending and leaderboard', () => {
     const { reveal, ending, leaderboard } = finished();
     expect([reveal.phase, ending.phase, leaderboard.phase]).toEqual(['reveal', 'ending', 'leaderboard']);

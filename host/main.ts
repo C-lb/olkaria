@@ -7,6 +7,7 @@ import { loadContent } from '../shared/content';
 import { installHotkeys } from './hotkeys';
 import { capitalise, Hud } from './hud/Hud';
 import { createRoomClient } from './net';
+import { connectionNotices } from './notices';
 import { makeRouter } from './router';
 import { applyZoom, integerZoom } from './scale';
 import { Battle } from './scenes/Battle';
@@ -63,18 +64,8 @@ async function main(): Promise<void> {
   });
   // Refusals ("bad phase", "not connected") show for 2 s, so a key pressed at the wrong moment is never silent.
   client.onError((msg) => hud.showToast(capitalise(msg), 2000));
-  // A drop keeps "Reconnecting to the room" up for as long as it lasts; the reconnect takes it down.
-  let dropped = false;
-  client.onStatus((status) => {
-    if (status === 'closed') {
-      dropped = true;
-      hud.showToast('Reconnecting to the room', 0);
-    } else if (dropped) {
-      dropped = false;
-      hud.clearToast();
-      hud.showToast('Connected', 1500);
-    }
-  });
+  // A drop keeps "Reconnecting to the room" up for as long as it lasts, and a room that has closed says to reload.
+  client.onStatus(connectionNotices(hud));
 
   const fit = (): void => applyZoom(game, hudRoot);
   game.events.once(Phaser.Core.Events.READY, fit);

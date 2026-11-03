@@ -13,8 +13,8 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 2. In a terminal, run `caffeinate -d` and leave it running.
    It keeps the display awake. Ctrl+C stops it after class.
 3. Mute notifications: turn on Do Not Disturb.
-4. In Chrome, open https://olkaria.sparkbot-worker.workers.dev/host/?new=1.
-   The room is created when the page loads.
+4. In Chrome, open https://olkaria.sparkbot-worker.workers.dev/host/?new=1, no more than about an hour before class.
+   The room is created when the page loads, and a room closes after 6 hours with no activity.
    `?new=1` makes it a fresh room, so the class does not land in a rehearsal room with its old players.
    The page drops `?new=1` from the address by itself, so a reload stays in this room.
 5. Open a second tab at https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline and leave it there.
@@ -85,8 +85,8 @@ The vote keys (1 to 4, Shift, B) work while a vote is open or locked. They count
 
 1. You arrive at the arena with the narration up. Space opens the vote.
 2. The vote runs 30 s and locks itself at 0 s. Space locks it early.
-   Lock early only while the clock shows 3 s or more.
-   A Space pressed just after 0 s lands on the locked vote and strikes at once, which skips the call-out.
+   When the vote locks itself, Space does nothing for a second and a half, and a note says the clock locked it.
+   Then C calls a student out, and Space strikes.
 3. Once locked, each card shows two bars: the lead class and the rest of the party.
    C calls out a voter, from the lead class while any of them voted.
    The student defends their choice.
@@ -142,6 +142,11 @@ If the room does not come back, switch to offline mode:
 8. If the Wi-Fi comes back, you can return to the class tab. It reconnects by itself and shows "Connected".
    Phones that still have the page open reconnect on their own.
    The room is where you left it, except that an open vote will have locked itself. Nothing played offline carries over.
+
+**The projector says "The room has closed. Reload the page for a new room".**
+The room closed after 6 hours with no activity, so the page cannot get back in.
+Before the note, the projector shows "Reconnecting to the room" for several seconds with no Wi-Fi trouble, and every key answers "Not connected".
+Reload the tab (Cmd+R). It opens a new room with a new code, and the class scans the new QR.
 
 **A student cannot join.**
 Read out the address beside the QR, with the `/j/` and the four-letter code at the end. Codes have no I or O.

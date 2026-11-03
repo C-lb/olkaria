@@ -125,6 +125,47 @@ describe('player page wiring', () => {
     expect(app.textContent).not.toContain("Can't reach");
   });
 
+  it('reopens the join form from the lobby on what the room has, sends the change, and closes the form on the answer', async () => {
+    localStorage.setItem('olkaria.join', JSON.stringify({ code: 'ABCD', name: 'Ann', role: 'citizen', table: 'Red' }));
+    const app = await boot();
+    last().open();
+    last().say({ t: 'you', view: { ...lobby, table: 'Red' } });
+    expect(app.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    (app.querySelector('button[data-change]') as HTMLButtonElement).click();
+    const form = app.querySelector('form')!;
+    expect(form).not.toBeNull();
+    expect(nameInput(app).value).toBe('Ann');
+    expect((app.querySelector('input[name=table]') as HTMLInputElement).value).toBe('Red');
+    expect(app.querySelector('button[data-role=citizen]')!.getAttribute('aria-pressed')).toBe('true');
+    last().say({ t: 'you', view: { ...lobby, table: 'Red', playerCount: 2 } });   // someone else joins meanwhile
+    expect(app.querySelector('form')).toBe(form);
+    (app.querySelector('button[data-role=business]') as HTMLButtonElement).click();
+    joinButton(app).click();
+    expect(JSON.parse(last().sent[last().sent.length - 1])).toEqual({ t: 'join', clientId: expect.any(String), name: 'Ann', role: 'business', table: 'Red' });
+    expect(app.querySelector('form')).toBe(form);   // the room has not answered yet
+    expect(joinButton(app).classList.contains('is-loading')).toBe(true);
+    last().say({ t: 'you', view: { ...lobby, role: 'business', isLead: false, table: 'Red', playerCount: 2 } });
+    expect(app.querySelector('form')).toBeNull();
+    expect(app.textContent).toContain("You're in as Ann, Bard. Watch the screen.");
+    expect(JSON.parse(localStorage.getItem('olkaria.join')!)).toEqual({ code: 'ABCD', name: 'Ann', role: 'business', table: 'Red' });
+  });
+
+  it('closes a reopened form when the game starts, and offers no Change after that', async () => {
+    localStorage.setItem('olkaria.join', JSON.stringify({ code: 'ABCD', name: 'Ann', role: 'citizen', table: '' }));
+    const app = await boot();
+    last().open();
+    last().say({ t: 'you', view: lobby });
+    (app.querySelector('button[data-change]') as HTMLButtonElement).click();
+    expect(app.querySelector('form')).not.toBeNull();
+    last().say({ t: 'you', view: { ...lobby, phase: 'travel', round: 0 } });
+    expect(app.querySelector('form')).toBeNull();
+    expect(app.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    expect(app.querySelector('button[data-change]')).toBeNull();
+    last().say({ t: 'you', view: lobby });   // back in the lobby after a reset: the form does not come back by itself
+    expect(app.querySelector('form')).toBeNull();
+    expect(app.querySelector('button[data-change]')).not.toBeNull();
+  });
+
   it('shows the removed screen and opens no more connections once the room removes the phone', async () => {
     const app = await boot();
     last().open();

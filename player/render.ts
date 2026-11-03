@@ -6,6 +6,7 @@ import { synergyHits } from '../shared/scoring';
 import { OPTION_IDS, type OptionId, type PlayerView, type Role } from '../shared/types';
 
 export type UiState = {
+  /** 'joining' is the join form: before the first join, or opened again from the lobby to change the details. */
   status: 'connecting' | 'joining' | 'joined' | 'kicked' | 'offline';
   name: string;
   role: Role | null;
@@ -19,6 +20,8 @@ export type UiState = {
 export type Actions = {
   join(name: string, role: Role, table: string): void;
   vote(option: OptionId): void;
+  /** The lobby's Change button: open the join form again on the details this phone joined with. */
+  change(): void;
 };
 
 /** What the handlers on a mounted screen call. A re-render swaps the actions in without rebuilding the handlers. */
@@ -154,14 +157,24 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
   return form;
 }
 
-function waiting(view: PlayerView, content: CaseContent): HTMLElement {
+/**
+ * Who you are while you wait, in the lobby and between rounds. In the lobby a flat Change button under the card opens
+ * the join form again, because roles are fixed only once the game has started.
+ */
+function waiting(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement {
   const role = content.roles.find((r) => r.id === view.role);
+  let change: HTMLElement | null = null;
+  if (view.phase === 'lobby') {
+    change = h('button', { type: 'button', class: 'btn btn-block', 'data-change': true, title: 'Change your name, role or table' }, 'Change');
+    change.addEventListener('click', () => ref.actions.change());
+  }
   return screen('waiting', [
     h('div', { class: 'card card-lifted' },
       h('span', { class: 'glyph' }, icon(ROLE_GLYPH[view.role])),
       h('h1', { class: 'title' }, `You're in as ${view.name}, ${classNameOf(content, view.role)}. Watch the screen.`),
       h('p', { class: 'cap' }, role?.stakeholder ?? ''),
       view.table ? h('p', { class: 'cap' }, `Table: ${view.table}`) : null),
+    change,
   ], true);
 }
 
@@ -321,13 +334,13 @@ function syncUnreachable(form: Element | null, code: string | null | undefined):
 function choose(view: PlayerView | null, content: CaseContent, ui: UiState, ref: Ref): Built {
   if (ui.status === 'kicked') return { kind: 'kicked', node: kicked() };
   if (ui.status === 'offline') return { kind: 'offline', node: offline(ui.unreachable) };
-  if (view === null) {
-    return ui.status === 'joining' ? { kind: 'join', node: joinForm(content, ui, ref) } : { kind: 'connecting', node: connecting() };
-  }
+  // The form also goes over the lobby's waiting screen when the player asks to change their details.
+  if (ui.status === 'joining') return { kind: 'join', node: joinForm(content, ui, ref) };
+  if (view === null) return { kind: 'connecting', node: connecting() };
   switch (view.phase) {
     case 'lobby':
     case 'travel':
-      return { kind: 'waiting', node: waiting(view, content) };
+      return { kind: 'waiting', node: waiting(view, content, ref) };
     case 'vote':
       return view.myVote === null ? { kind: 'vote', node: voteButtons(view, content, ref) } : { kind: 'locked', node: locked(view, content) };
     case 'locked':

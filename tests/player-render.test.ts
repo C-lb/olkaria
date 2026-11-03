@@ -7,12 +7,12 @@ import type { PlayerView } from '../shared/types';
 const c = loadContent(raw);
 const base: PlayerView = { phase: 'vote', round: 0, serverNow: 1000, voteDeadline: 31000, voteWindowMs: 30000, name: 'Ann', role: 'citizen', table: null, lead: 'citizen', isLead: true, myVote: null, lastPoints: 0, score: 0, rank: 1, playerCount: 12, tally: null, leadTally: null, supportTally: null, majorities: [], picks: [], callout: null };
 const joined = { status: 'joined' as const, name: 'Ann', role: 'citizen' as const, table: '' };
-const noop = { join: vi.fn(), vote: vi.fn() };
+const noop = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
 const mount = () => { const el = document.createElement('div'); document.body.appendChild(el); return el; };
 
 describe('player render', () => {
   it('requires a name and a role before joining', () => {
-    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, null, c, { status: 'joining', name: '', role: null, table: '' }, actions);
     const input = el.querySelector('input[name=nickname]') as HTMLInputElement;
     const roles = [...el.querySelectorAll('button[data-role]')];
@@ -30,7 +30,7 @@ describe('player render', () => {
     expect(actions.join).toHaveBeenCalledWith('Sarah', 'government', '');
   });
   it('renders four vote buttons with phone labels, says when your class leads, and sends a vote', () => {
-    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, base, c, joined, actions);
     const buttons = [...el.querySelectorAll('button[data-option]')];
     expect(buttons.map(b => b.getAttribute('data-option'))).toEqual(['A', 'B', 'C', 'D']);
@@ -100,7 +100,7 @@ describe('join form details', () => {
     expect(input.value).toBe('Mo');
   });
   it('keeps the form and its loader when the saved details arrive after Join is pressed', () => {
-    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, null, c, joining, actions);
     nameInput(el).value = 'Mo'; nameInput(el).dispatchEvent(new Event('input'));
     (el.querySelector('button[data-role=citizen]') as HTMLButtonElement).click();
@@ -111,7 +111,7 @@ describe('join form details', () => {
     expect(joinButton(el).classList.contains('is-loading')).toBe(true);
   });
   it('sends trimmed details, shows the loader, and never joins with a blank name', () => {
-    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, null, c, joining, actions);
     nameInput(el).value = '   '; nameInput(el).dispatchEvent(new Event('input'));
     (el.querySelector('button[data-role=citizen]') as HTMLButtonElement).click();
@@ -130,7 +130,7 @@ describe('join form details', () => {
 
 describe('vote buttons', () => {
   it('are not swapped out by a view that differs only in the clock, and the clock is written in place', () => {
-    const el = mount(); const first = { join: vi.fn(), vote: vi.fn() }; const second = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const first = { join: vi.fn(), vote: vi.fn(), change: vi.fn() }; const second = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, base, c, joined, first);
     const before = votes(el);
     const clock = el.querySelector('[data-countdown]') as HTMLElement;
@@ -147,7 +147,7 @@ describe('vote buttons', () => {
   });
   it('grey out the other options after a tap, take one tap, and come back if the room stays silent', () => {
     vi.useFakeTimers();
-    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn() };
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
     render(el, base, c, joined, actions);
     const [a, b, cc, d] = votes(el);
     b.click();
@@ -185,6 +185,37 @@ describe('the other screens', () => {
     render(el, { ...base, phase: 'travel' }, c, joined, noop);
     expect(el.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
     expect(el.textContent).not.toContain('Table:');
+  });
+  it('offer a Change button in the lobby only, which asks to change the details', () => {
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
+    render(el, { ...base, phase: 'lobby', round: -1, table: 'Red' }, c, joined, actions);
+    const change = el.querySelector('button[data-change]') as HTMLButtonElement;
+    expect(change.textContent).toBe('Change');
+    expect(change.type).toBe('button');
+    expect(change.classList.contains('btn')).toBe(true);
+    expect(change.classList.contains('btn-accent')).toBe(false);   // flat: the accent belongs to Join
+    change.click();
+    expect(actions.change).toHaveBeenCalledTimes(1);
+    expect(actions.join).not.toHaveBeenCalled();
+    const later: PlayerView[] = [{ ...base, phase: 'travel' }, base, { ...base, myVote: 'B' }, { ...base, phase: 'locked' }, { ...base, phase: 'reveal', myVote: 'B', picks: ['B'] }, { ...base, phase: 'ending', round: 3 }];
+    for (const view of later) {
+      render(el, view, c, joined, actions);
+      expect(el.querySelector('button[data-change]'), view.phase).toBeNull();
+    }
+  });
+  it('reopen the join form over the lobby, filled in with the details given, and send a join from it', () => {
+    const el = mount(); const actions = { join: vi.fn(), vote: vi.fn(), change: vi.fn() };
+    const lobbyView: PlayerView = { ...base, phase: 'lobby', round: -1, name: 'Ann', role: 'citizen', table: 'Red' };
+    render(el, lobbyView, c, joined, actions);
+    render(el, lobbyView, c, { status: 'joining', name: 'Ann', role: 'citizen', table: 'Red' }, actions);
+    expect(el.querySelector('[data-screen=waiting]')).toBeNull();
+    expect(nameInput(el).value).toBe('Ann');
+    expect(tableInput(el).value).toBe('Red');
+    expect([...el.querySelectorAll('button[aria-pressed=true]')].map((b) => b.getAttribute('data-role'))).toEqual(['citizen']);
+    expect(joinButton(el).disabled).toBe(false);
+    (el.querySelector('button[data-role=business]') as HTMLButtonElement).click();
+    joinButton(el).click();
+    expect(actions.join).toHaveBeenCalledWith('Ann', 'business', 'Red');
   });
   it('say so when you did not vote, and when nobody is named in the call-out', () => {
     const el = mount();

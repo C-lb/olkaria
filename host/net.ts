@@ -13,8 +13,8 @@ import { forgetRoom, recallRoom, rememberRoom } from './session';
 /** What the host page shows about the room: its code, and the address phones join at (empty offline). */
 export interface RoomInfo { code: string; joinUrl: string }
 
-/** Whether the connection to the room is up. */
-export type ConnectionStatus = 'open' | 'closed';
+/** Whether the connection to the room is up, and 'gone' once the server has said the room no longer exists. */
+export type ConnectionStatus = 'open' | 'closed' | 'gone';
 
 export interface RoomClient {
   readonly mode: 'online' | 'offline';
@@ -31,8 +31,10 @@ export interface RoomClient {
   /** Refusals such as "bad phase", and "not connected". Returns the function that unsubscribes. */
   onError(cb: (msg: string) => void): () => void;
   /**
-   * 'open' when the connection to the room comes up, 'closed' when one that was open drops. A new subscriber is told
-   * the current status at once; before the first connection there is none. Returns the function that unsubscribes.
+   * 'open' when the connection to the room comes up, 'closed' when one that was open drops, and (online only) 'gone'
+   * when the room has closed under the page: the server no longer has it, so the client stops trying and only a reload
+   * (which makes a new room) helps. A new subscriber is told the current status at once; before the first connection
+   * there is none. Returns the function that unsubscribes.
    */
   onStatus(cb: (status: ConnectionStatus) => void): () => void;
   /** Adds n synthetic voters to the current round, leaning toward the options the evidence favours. */
@@ -215,6 +217,12 @@ const BACKOFF_MS = [1000, 2000, 4000, 10000];
 const REQUEST_TIMEOUT_MS = 8000;
 
 /**
+ * After this many sockets in a row that closed without opening, the client asks the server whether the room still
+ * exists, and again after every miss from then on. A wiped room turns every socket away; so can a dropped Wi-Fi.
+ */
+const MISSES_BEFORE_ASKING = 3;
+
+/**
  * A signal that aborts after REQUEST_TIMEOUT_MS, and the call that stops its timer once the request is over. An abort
  * makes fetch fail like any other network error. (AbortSignal.timeout would do the same, but fake timers do not drive it
  * and older browsers lack it.)
@@ -233,6 +241,12 @@ export class WsRoomClient implements RoomClient {
   private room: Room | null = null;
   private ws: WebSocket | null = null;
   private failures = 0;
+  /** Sockets in a row that closed without ever opening. */
+  private misses = 0;
+  /** The next attempt, once one is planned, so a room found gone can call it off. */
+  private retry: ReturnType<typeof setTimeout> | undefined;
+  /** True while the question to the server about the room is out (askIfGone). */
+  private asking = false;
   private view: HostView | null = null;
   private starting: Promise<RoomInfo> | null = null;
   private firstView: (() => void) | null = null;
@@ -359,6 +373,7 @@ export class WsRoomClient implements RoomClient {
       if (this.ws !== ws) return;
       opened = true;
       this.failures = 0;
+      this.misses = 0;
       this.statuses.emit('open');
     });
     ws.addEventListener('message', (ev) => {
@@ -368,15 +383,41 @@ export class WsRoomClient implements RoomClient {
       if (this.ws !== ws) return;
       this.ws = null;
       this.lost();
-      // Only a socket that had opened can close; an attempt that never got through is not news.
+      // Only a socket that had opened can close; an attempt that never got through is not news, unless it keeps happening.
       if (opened) this.statuses.emit('closed');
+      else if (++this.misses >= MISSES_BEFORE_ASKING) void this.askIfGone();
     });
   }
 
   private lost(): void {
     const wait = BACKOFF_MS[Math.min(this.failures, BACKOFF_MS.length - 1)];
     this.failures += 1;
-    setTimeout(() => this.open(), wait);
+    this.retry = setTimeout(() => {
+      this.retry = undefined;
+      this.open();
+    }, wait);
+  }
+
+  /**
+   * Asks the server about the room (isGone) while the retries carry on, one question at a time. A room the server has
+   * wiped, or a key it no longer takes, is forgotten: the planned attempt and any socket still opening are dropped, the
+   * client stops trying and reports 'gone'. Any other answer, or none, proves nothing and changes nothing.
+   */
+  private async askIfGone(): Promise<void> {
+    const { room } = this;
+    if (room === null || this.asking) return;
+    this.asking = true;
+    const gone = await this.isGone(room);
+    this.asking = false;
+    if (!gone || this.room !== room) return;
+    forgetRoom();
+    this.room = null;
+    clearTimeout(this.retry);
+    this.retry = undefined;
+    const opening = this.ws;
+    this.ws = null;   // first, so nothing the socket reports from here on is heard
+    opening?.close();
+    this.statuses.emit('gone');
   }
 
   private handle(data: unknown): void {

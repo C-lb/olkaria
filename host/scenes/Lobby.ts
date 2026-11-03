@@ -57,7 +57,7 @@ export class Lobby extends Phaser.Scene {
   /** The room and its QR, once connect() has resolved and the QR is drawn (or has failed). */
   private room: (RoomInfo & { qr: string | null }) | null = null;
   private connected = false;
-  /** One avatar per player, keyed by id and join time. */
+  /** One avatar per player, keyed by id, join time and role, so a player who changes role gets the new class's figure. */
   private avatars = new Map<string, Phaser.GameObjects.Image>();
   /** What the HUD shows now, so a view that changes nothing it shows does not redraw it. */
   private shown = '';
@@ -156,7 +156,7 @@ export class Lobby extends Phaser.Scene {
     const here = new Set<string>();
     let dropped = 0;
     for (const p of Object.values(view.players).sort((a, b) => a.joinedAt - b.joinedAt)) {
-      const key = `${p.id}@${p.joinedAt}`;
+      const key = `${p.id}@${p.joinedAt}@${p.role}`;
       here.add(key);
       if (!this.avatars.has(key)) this.avatars.set(key, this.dropAvatar(p.role, dropped++));
     }

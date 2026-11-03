@@ -71,7 +71,9 @@ function start(app: HTMLElement, code: string): void {
   let receivedAt = 0;
   let link: 'connecting' | 'open' | 'closed' = 'connecting';
   let kicked = false;
-  /** The room's last refusal and the screen it was raised on. The room always follows a refusal with a view, so the line has to outlive that one. */
+  /** The join form opened again from the lobby ('open'), then sent and waiting for the room's answer ('sent'). */
+  let changing: 'open' | 'sent' | null = null;
+  /** The room's last refusal and the screen it was raised on. It stays, through any view in between, until the phase, the round or this phone's vote moves on. */
   let error: { msg: string; on: string } | null = null;
   let ticker: number | undefined;
 
@@ -82,6 +84,7 @@ function start(app: HTMLElement, code: string): void {
     // The join form stays up whatever the link is doing, so a dropped connection never costs a player what they typed.
     // A join tapped while the link is down is already in `draft` and goes out on the next open.
     if (view === null && !restored) return 'joining';
+    if (changing !== null) return 'joining';   // only ever in the lobby: a view of any other phase ends it
     if (link === 'closed') return 'offline';
     return view ? 'joined' : 'connecting';
   };
@@ -118,7 +121,17 @@ function start(app: HTMLElement, code: string): void {
       writeStore(JOIN_KEY, JSON.stringify(draft));
       restored = false;
       error = null;
+      if (changing !== null) changing = 'sent';
       sendJoin(draft);
+      paint();
+    },
+    change() {
+      // Roles are fixed once the game has started, so only the lobby offers this.
+      if (kicked || view === null || view.phase !== 'lobby') return;
+      // The form opens on what the room has, which is what the waiting screen showed.
+      draft = { code, name: view.name, role: view.role, table: view.table ?? '' };
+      changing = 'open';
+      error = null;
       paint();
     },
     vote(option) {
@@ -130,6 +143,8 @@ function start(app: HTMLElement, code: string): void {
   socket.onView((next) => {
     view = next;
     receivedAt = Date.now();
+    // A change of details ends with the room's answer to it, and in any case once the game has started.
+    if (changing === 'sent' || next.phase !== 'lobby') changing = null;
     // Only a view that changes the phase, the round or this phone's vote ends the error line.
     if (error && error.on !== where(next)) error = null;
     paint();
@@ -143,7 +158,8 @@ function start(app: HTMLElement, code: string): void {
       kicked = true;
     } else if (s === 'open') {
       link = 'open';
-      // Every connection announces who this is again. The room treats a repeat join as a rejoin and changes nothing.
+      // Every connection announces who this is again. A repeat join is a rejoin: in the lobby the room takes the details
+      // again, once the game has started it changes nothing.
       if (draft) sendJoin(draft);
     } else {
       link = 'closed';

@@ -14,8 +14,9 @@ import { describe } from 'vitest';
 import { computeDamage } from '../shared/scoring';
 import type { Callout, DamageResult, OptionId, Player, Role, Tally } from '../shared/types';
 import {
-  alignmentText, bannerFor, BEAT_MS, beatsFor, debriefFor, DRAIN_MS, FRAME_MS, judgedNotes, judgeFlash, lungeReach, narrationFor,
-  optionsFooter, REVEAL_MS, spaceAction, strikePlan, timerText, votedText,
+  alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, debriefFor, DRAIN_MS, FRAME_MS, judgedNotes, judgeFlash,
+  lockedByClock, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS, spaceAction, strikePlan, timerText,
+  votedText,
   type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
 import { SPEAKERS } from '../host/quotes';
@@ -323,6 +324,55 @@ describe('Space', () => {
   it('sends next only from the debrief', () => {
     expect(press({ phase: 'reveal' })).toEqual({ kind: 'ignore' });
     expect(press({ phase: 'reveal', onDebrief: true })).toEqual({ kind: 'send', cmd: { k: 'next' }, lockedUntil: 6000 });
+  });
+
+  // The room locks the vote at 0 s. A Space meant to lock it that lands a moment later used to reveal at once and skip
+  // the call-out (seen live with a 429 ms gap), so the Battle rests Space on every view that moves vote to locked.
+  it('rests Space a second and a half once a view shows the vote moving to locked', () => {
+    expect(AUTO_LOCK_MS).toBe(1500);
+    const until = lockoutAfterLock('vote', 'locked', 0, 5000);
+    expect(until).toBe(5000 + AUTO_LOCK_MS);
+    expect(press({ phase: 'locked', time: 5429, lockedUntil: until })).toEqual({ kind: 'ignore' });   // the press meant to lock
+    expect(press({ phase: 'locked', time: 6499, lockedUntil: until })).toEqual({ kind: 'ignore' });
+    expect(press({ phase: 'locked', time: 6500, lockedUntil: until })).toEqual({ kind: 'send', cmd: { k: 'reveal' }, lockedUntil: 7500 });
+  });
+
+  it('rests again when a reopened vote locks a second time', () => {
+    const first = lockoutAfterLock('vote', 'locked', 0, 5000);
+    const reopened = lockoutAfterLock('locked', 'vote', first, 9000);
+    expect(reopened).toBe(first);   // R reopens without a rest of its own
+    expect(lockoutAfterLock('vote', 'locked', reopened, 40000)).toBe(40000 + AUTO_LOCK_MS);
+  });
+
+  it('does not rest for any other change, nor for a first view that is already locked (a reload)', () => {
+    expect(lockoutAfterLock('travel', 'vote', 0, 5000)).toBe(0);
+    expect(lockoutAfterLock(null, 'locked', 0, 5000)).toBe(0);
+    expect(lockoutAfterLock(null, 'vote', 0, 5000)).toBe(0);
+    expect(lockoutAfterLock('vote', 'vote', 0, 5000)).toBe(0);
+    expect(lockoutAfterLock('locked', 'locked', 0, 5000)).toBe(0);
+    expect(lockoutAfterLock('locked', 'reveal', 0, 5000)).toBe(0);
+  });
+
+  it('keeps a longer lockout, so the order of a press and the view it causes does not matter', () => {
+    expect(lockoutAfterLock('vote', 'locked', 9000, 5000)).toBe(9000);
+    // Space locks the vote itself: its one-second rest becomes a second and a half, whether the view lands inside
+    // send() (offline) or after it (online), because the extension never shortens what the press set.
+    const sent = press({ phase: 'vote', time: 5000 });
+    expect(sent).toEqual({ kind: 'send', cmd: { k: 'closeVote' }, lockedUntil: 5000 + SEND_LOCK_MS });
+    expect(lockoutAfterLock('vote', 'locked', 5000 + SEND_LOCK_MS, 5000)).toBe(6500);
+    expect(lockoutAfterLock('vote', 'locked', 5000 + SEND_LOCK_MS, 5080)).toBe(6580);
+  });
+
+  it('says the clock locked the vote only when the lock came at or after the deadline', () => {
+    const view = (phase: 'vote' | 'locked', updatedAt: number, voteDeadline: number | null = 30000) => ({ phase, updatedAt, voteDeadline });
+    expect(lockedByClock('vote', view('locked', 30000))).toBe(true);
+    expect(lockedByClock('vote', view('locked', 30420))).toBe(true);    // the room's alarm fired a little late
+    expect(lockedByClock('vote', view('locked', 21000))).toBe(false);   // Space locked it with 9 s to go
+    expect(lockedByClock(null, view('locked', 30000))).toBe(false);     // a reload into the locked vote
+    expect(lockedByClock('locked', view('locked', 31000))).toBe(false); // already locked: a later change, a call-out say
+    expect(lockedByClock('vote', view('vote', 30000))).toBe(false);
+    expect(lockedByClock('vote', view('locked', 30000, null))).toBe(false);
+    expect(CLOCK_LOCK_NOTE).toBe('Locked by the clock. C calls a student out, Space strikes');
   });
 });
 

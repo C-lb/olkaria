@@ -544,6 +544,124 @@ describe('WsRoomClient reconnect', () => {
   });
 });
 
+// A room the server has wiped (6 hours idle) closes the projector's socket, then answers every new one with 404: the
+// browser reports each as a close that never opened. Without a question to the server the page would say
+// "Reconnecting to the room" for ever, and every key "not connected".
+describe('WsRoomClient when the room has closed', () => {
+  /** Each attempt is turned away: the drops come at the 1, 2 and 4 s waits after the room closed the open socket. */
+  function threeMisses(): void {
+    ws().drop(1001);                     // the room closes the socket that was open
+    for (const wait of [1000, 2000, 4000]) {
+      vi.advanceTimersByTime(wait);
+      ws().drop();                       // an attempt that never opened
+    }
+  }
+
+  it.each([404, 403])('asks the server after three sockets in a row never opened, and on %i forgets the room, says it is gone and stops', async (status) => {
+    const { client, statuses, errors } = await online();
+    stubFetch((url) => (isProbe(url) ? reply(status) : reply(201, created)));
+    ws().drop(1001);
+    vi.advanceTimersByTime(1000);
+    ws().drop();
+    vi.advanceTimersByTime(2000);
+    ws().drop();
+    await settle();
+    expect(calls).toEqual([]);           // two misses could be the Wi-Fi
+    vi.advanceTimersByTime(4000);
+    ws().drop();                         // the third in a row
+    await settle();
+    expect(calls.map((c) => [c.url, c.init?.method ?? 'GET'])).toEqual([[`${BASE}/ws/WXYZ?role=host&key=fresh-key`, 'GET']]);
+    expect(calls[0].init?.cache).toBe('no-store');
+    expect(recallRoom()).toBeNull();
+    expect(statuses).toEqual(['open', 'closed', 'gone']);
+    expect(vi.getTimerCount()).toBe(0);   // the planned attempt is called off, and the question's time limit stopped
+    const sockets = FakeSocket.all.length;
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(FakeSocket.all).toHaveLength(sockets);   // no more attempts
+    client.send({ k: 'next' });
+    expect(errors).toEqual(['not connected']);
+  });
+
+  it('keeps trying while the answer proves nothing, asks again at each later miss, and stops once it hears the room is gone', async () => {
+    const { statuses } = await online();
+    let answer: () => Response = () => { throw new TypeError('Failed to fetch'); };   // the Wi-Fi is down
+    stubFetch((url) => (isProbe(url) ? answer() : reply(201, created)));
+    threeMisses();
+    await settle();
+    expect(calls).toHaveLength(1);       // no answer is no proof
+    expect(recallRoom()).toEqual({ code: 'WXYZ', hostKey: 'fresh-key' });
+    vi.advanceTimersByTime(9999);
+    expect(FakeSocket.all).toHaveLength(4);
+    vi.advanceTimersByTime(1);
+    expect(FakeSocket.all).toHaveLength(5);   // the next attempt went out on time
+    answer = () => reply(426);           // the room is there after all
+    ws().drop();
+    await settle();
+    expect(calls).toHaveLength(2);
+    expect(statuses).toEqual(['open', 'closed']);
+    vi.advanceTimersByTime(10_000);
+    expect(FakeSocket.all).toHaveLength(6);
+    answer = () => reply(404);           // and now it has gone
+    ws().drop();
+    await settle();
+    expect(calls).toHaveLength(3);
+    expect(statuses).toEqual(['open', 'closed', 'gone']);
+    expect(recallRoom()).toBeNull();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(FakeSocket.all).toHaveLength(6);
+  });
+
+  it('counts misses in a row only: a socket that opens starts the count again', async () => {
+    await online();
+    stubFetch((url) => (isProbe(url) ? reply(404) : reply(201, created)));
+    ws().drop();
+    vi.advanceTimersByTime(1000);
+    ws().drop();
+    vi.advanceTimersByTime(2000);
+    ws().drop();                         // two misses
+    vi.advanceTimersByTime(4000);
+    ws().open();
+    ws().drop();                         // this one got through
+    vi.advanceTimersByTime(1000);
+    ws().drop();
+    vi.advanceTimersByTime(2000);
+    ws().drop();                         // two misses again
+    await settle();
+    expect(calls).toEqual([]);
+    vi.advanceTimersByTime(4000);
+    ws().drop();                         // the third in a row
+    await settle();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('asks one question at a time, and an answer that the room is gone stops the attempt under way', async () => {
+    const { statuses } = await online();
+    let answer: (status: number) => void = () => {};
+    calls = [];
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return new Promise<Response>((resolve) => { answer = (status) => resolve(reply(status)); });
+    });
+    threeMisses();                       // the question goes out and gets no answer yet
+    vi.advanceTimersByTime(10_000);
+    ws().drop();                         // a fourth miss while it is out: no second question
+    expect(calls).toHaveLength(1);
+    vi.advanceTimersByTime(10_000);
+    const underWay = ws();               // the sixth attempt, still opening
+    expect(FakeSocket.all).toHaveLength(6);
+    answer(404);
+    await settle();
+    expect(statuses).toEqual(['open', 'closed', 'gone']);
+    expect(underWay.readyState).toBe(3);   // closed by the client
+    underWay.open();                     // and nothing it reports now counts
+    underWay.say({ t: 'host', state: voting });
+    underWay.drop();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(statuses).toEqual(['open', 'closed', 'gone']);
+    expect(FakeSocket.all).toHaveLength(6);
+  });
+});
+
 describe('WsRoomClient status', () => {
   /** A client whose connect() is under way: the room is made and the first socket exists, but nothing has opened. */
   async function connecting() {

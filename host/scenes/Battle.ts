@@ -14,8 +14,9 @@ import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../h
 import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
 import {
-  bannerFor, beatsFor, classFor, debriefFor, DRAIN_MS, judgedNotes, judgeFlash, labelFor, lungeReach, narrationFor, optionsFooter,
-  SKIP_LOCK_MS, SPACE_LOCK_KEY, spaceAction, strikePlan, timerText, votedText,
+  bannerFor, beatsFor, classFor, CLOCK_LOCK_NOTE, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, judgedNotes, judgeFlash, labelFor,
+  lockedByClock, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, SKIP_LOCK_MS, SPACE_LOCK_KEY, spaceAction, strikePlan,
+  timerText, votedText,
   type Stand, type StrikePlan,
 } from '../strikers';
 import { HpBar } from '../ui/HpBar';
@@ -211,7 +212,13 @@ export class Battle extends Phaser.Scene {
 
   private onView(_parent: unknown, view: HostView | null): void {
     if (view === null || view.round !== this.round || !PHASES.includes(view.phase)) return;   // the router is about to move on
+    const was = this.view?.phase ?? null;
     this.view = view;
+    // The room locks the vote at 0 s, maybe a moment before a Space meant to lock it: Space rests on any move from
+    // vote to locked (lockoutAfterLock), and when the clock did the locking a note says why the next press does nothing.
+    const until = lockoutAfterLock(was, view.phase, this.lockedUntil, this.time.now);
+    if (until !== this.lockedUntil) this.lockedUntil = until;
+    if (lockedByClock(was, view)) this.hud.showToast(CLOCK_LOCK_NOTE, CLOCK_LOCK_NOTE_MS);
     this.offset = view.serverNow - Date.now();
     const first = this.first;
     this.first = false;

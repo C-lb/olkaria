@@ -107,18 +107,23 @@ export function reduce(state: RoomState, ev: RoomEvent, content: CaseContent): {
   }
 }
 
+/**
+ * A new phone joins. A known one rejoins: once the game has started that keeps everything the player had, because
+ * roles are fixed for the session (spec 4.1); in the lobby it takes the name, role and table again, so a mis-tapped
+ * role can be put right. Even the same details count as a change then, so the phone always hears back.
+ */
 function join(state: RoomState, ev: JoinEvent): Result {
   const id = ev.clientId;
   if (state.banned.includes(id)) {
     // The error goes first: the Durable Object closes the socket when it handles `kicked`.
     return { state: { ...state }, effects: [{ type: 'error', clientId: id, msg: 'removed' }, { type: 'kicked', clientId: id }] };
   }
-  if (playerOf(state, id)) return nothing(state);   // a rejoin keeps everything the player had
+  const known = playerOf(state, id);
+  if (known && state.phase !== 'lobby') return nothing(state);
   if (!isRole(ev.role)) return refuse(state, 'bad role', id);
-  const player: Player = {
-    id, name: sanitizeName(ev.name, id), role: ev.role, table: sanitizeTable(ev.table),
-    joinedAt: ev.now, score: 0, lastPoints: 0, votes: {},
-  };
+  const details = { name: sanitizeName(ev.name, id), role: ev.role, table: sanitizeTable(ev.table) };
+  // A change keeps when the player joined and what they have, which in the lobby is nothing yet.
+  const player: Player = known ? { ...known, ...details } : { id, ...details, joinedAt: ev.now, score: 0, lastPoints: 0, votes: {} };
   return update(state, ev.now, { players: { ...state.players, [id]: player } });
 }
 
