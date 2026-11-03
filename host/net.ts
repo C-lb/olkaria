@@ -13,39 +13,58 @@ import { forgetRoom, recallRoom, rememberRoom } from './session';
 /** What the host page shows about the room: its code, and the address phones join at (empty offline). */
 export interface RoomInfo { code: string; joinUrl: string }
 
+/** Whether the connection to the room is up. */
+export type ConnectionStatus = 'open' | 'closed';
+
 export interface RoomClient {
   readonly mode: 'online' | 'offline';
   /** Online: finds or creates the room and resolves once its first view has arrived. Offline: resolves at once. */
   connect(): Promise<RoomInfo>;
   /** A host command. One that cannot be delivered is dropped and reported through onError. */
   send(cmd: HostCmd): void;
-  /** Every view of the room, on connect and after each change. Returns the function that unsubscribes. */
+  /** The first view of the room on connect, then a view after each change. Returns the function that unsubscribes. */
   onState(cb: (view: HostView) => void): () => void;
   /** Refusals such as "bad phase", and "not connected". Returns the function that unsubscribes. */
   onError(cb: (msg: string) => void): () => void;
+  /**
+   * 'open' when the connection to the room comes up, 'closed' when one that was open drops. A new subscriber is told
+   * the current status at once; before the first connection there is none. Returns the function that unsubscribes.
+   */
+  onStatus(cb: (status: ConnectionStatus) => void): () => void;
   /** Adds n synthetic voters to the current round, leaning toward the options the evidence favours. */
   addBots(n: number): void;
 }
 
-/** The callbacks of one kind of event. A callback that throws is logged and does not stop the ones after it. */
+/**
+ * The callbacks of one kind of event. A callback that throws is logged and does not stop the ones after it. With
+ * `replay`, the last value is kept and a new subscriber is told it at once.
+ */
 class Listeners<T> {
   private readonly subs = new Set<{ cb: (value: T) => void }>();
+  private latest: { value: T } | null = null;
+
+  constructor(private readonly replay = false) {}
 
   /** Returns the function that removes this subscription, and only this one. */
   on(cb: (value: T) => void): () => void {
     const sub = { cb };
     this.subs.add(sub);
+    if (this.latest !== null) this.call(sub, this.latest.value);
     return () => { this.subs.delete(sub); };
   }
 
   emit(value: T): void {
+    if (this.replay) this.latest = { value };
     for (const sub of [...this.subs]) {
-      if (!this.subs.has(sub)) continue;   // unsubscribed by an earlier callback of this same emit
-      try {
-        sub.cb(value);
-      } catch (err) {
-        console.error('room client listener threw', err);
-      }
+      if (this.subs.has(sub)) this.call(sub, value);   // not one that an earlier callback of this same emit removed
+    }
+  }
+
+  private call(sub: { cb: (value: T) => void }, value: T): void {
+    try {
+      sub.cb(value);
+    } catch (err) {
+      console.error('room client listener threw', err);
     }
   }
 }
@@ -55,8 +74,8 @@ class Listeners<T> {
 /** Added to every option's score before the bots draw, so a weak option still gets the odd vote, as in a real class. */
 const BOT_FLOOR = 10;
 
-/** Reported when there is no round to add bots to: no view yet, no content to weigh the options with, or the lobby. */
-const NO_VIEW = 'no room view yet';
+/** Reported when there is nothing to add bots to: the lobby, or no view or content yet to build their votes from. */
+const NO_ROUND = 'Start the game before adding bots';
 
 /**
  * n bot votes spread over the options: each of n independent draws lands on an option with probability
@@ -101,15 +120,17 @@ export class OfflineRoomClient implements RoomClient {
   private timer: ReturnType<typeof setInterval> | undefined;
   private readonly views = new Listeners<HostView>();
   private readonly errors = new Listeners<string>();
+  private readonly statuses = new Listeners<ConnectionStatus>(true);
 
   constructor(private readonly content: CaseContent, private readonly now: () => number = () => Date.now()) {
     this.state = initialState('OFFLINE', 'offline', now(), content);
   }
 
-  /** Starts the clock and reports the first view. Calling it again changes nothing. */
+  /** Starts the clock, reports the status open and the first view. Calling it again changes nothing. */
   connect(): Promise<RoomInfo> {
     if (this.timer === undefined) {
       this.timer = setInterval(() => this.tick(), TICK_MS);
+      this.statuses.emit('open');
       this.emit();
     }
     return Promise.resolve({ code: 'OFFLINE', joinUrl: '' });
@@ -128,14 +149,20 @@ export class OfflineRoomClient implements RoomClient {
 
   onState(cb: (view: HostView) => void): () => void { return this.views.on(cb); }
   onError(cb: (msg: string) => void): () => void { return this.errors.on(cb); }
+  onStatus(cb: (status: ConnectionStatus) => void): () => void { return this.statuses.on(cb); }
 
   addBots(n: number): void {
     const counts = botVotes(this.content, this.state, n);
-    if (counts === null) this.errors.emit(NO_VIEW);
+    if (counts === null) this.errors.emit(NO_ROUND);
     else this.send({ k: 'injectVotes', counts });
   }
 
+  /**
+   * Reduces one event and reports a view only if the state changed, so the 250 ms ticks stay silent until one of them
+   * locks the vote. A refusal changes nothing and still reaches onError.
+   */
   private apply(ev: RoomEvent): void {
+    const before = JSON.stringify(this.state);
     const { state, effects } = reduce(this.state, ev, this.content);
     this.state = state;
     for (const effect of effects) {
@@ -151,7 +178,7 @@ export class OfflineRoomClient implements RoomClient {
           effect satisfies never;
       }
     }
-    this.emit();
+    if (JSON.stringify(state) !== before) this.emit();
   }
 
   private emit(): void {
@@ -178,6 +205,7 @@ export class WsRoomClient implements RoomClient {
   private firstView: (() => void) | null = null;
   private readonly states = new Listeners<HostView>();
   private readonly errors = new Listeners<string>();
+  private readonly statuses = new Listeners<ConnectionStatus>(true);
 
   /** `baseUrl` is the page origin. `content` is only needed by addBots. */
   constructor(baseUrl: string, private readonly content?: CaseContent) {
@@ -209,10 +237,11 @@ export class WsRoomClient implements RoomClient {
 
   onState(cb: (view: HostView) => void): () => void { return this.states.on(cb); }
   onError(cb: (msg: string) => void): () => void { return this.errors.on(cb); }
+  onStatus(cb: (status: ConnectionStatus) => void): () => void { return this.statuses.on(cb); }
 
   addBots(n: number): void {
     const counts = botVotes(this.content, this.view, n);
-    if (counts === null) this.errors.emit(NO_VIEW);
+    if (counts === null) this.errors.emit(NO_ROUND);
     else this.send({ k: 'injectVotes', counts });
   }
 
@@ -281,9 +310,13 @@ export class WsRoomClient implements RoomClient {
       return;
     }
     this.ws = ws;
+    let opened = false;
     // Events from a socket that has been replaced or dropped belong to nobody.
     ws.addEventListener('open', () => {
-      if (this.ws === ws) this.failures = 0;
+      if (this.ws !== ws) return;
+      opened = true;
+      this.failures = 0;
+      this.statuses.emit('open');
     });
     ws.addEventListener('message', (ev) => {
       if (this.ws === ws) this.handle(ev.data);
@@ -292,6 +325,8 @@ export class WsRoomClient implements RoomClient {
       if (this.ws !== ws) return;
       this.ws = null;
       this.lost();
+      // Only a socket that had opened can close; an attempt that never got through is not news.
+      if (opened) this.statuses.emit('closed');
     });
   }
 

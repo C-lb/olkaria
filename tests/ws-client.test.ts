@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import raw from '../content/case.json';
-import { OfflineRoomClient, WsRoomClient, botTally, createRoomClient } from '../host/net';
+import { OfflineRoomClient, WsRoomClient, botTally, createRoomClient, type ConnectionStatus } from '../host/net';
 import { recallRoom, rememberRoom } from '../host/session';
 import { loadContent } from '../shared/content';
 import { hostView, initialState } from '../shared/room-logic';
@@ -69,14 +69,16 @@ async function online(first: HostView = lobby, withContent = true) {
   const client = new WsRoomClient(BASE, withContent ? content : undefined);
   const states: HostView[] = [];
   const errors: string[] = [];
+  const statuses: ConnectionStatus[] = [];
   client.onState((v) => states.push(v));
   client.onError((m) => errors.push(m));
+  client.onStatus((s) => statuses.push(s));
   const connecting = client.connect();
   await settle();
   ws().open();
   ws().say({ t: 'host', state: first });
   await connecting;
-  return { client, states, errors };
+  return { client, states, errors, statuses };
 }
 
 const sentCommands = (): unknown[] => ws().sent.map((s) => JSON.parse(s));
@@ -405,7 +407,7 @@ describe('WsRoomClient reconnect', () => {
   });
 
   it('ignores late events from a socket it has replaced, and never has two sockets at once', async () => {
-    const { client, states, errors } = await online();
+    const { client, states, errors, statuses } = await online();
     const old = ws();
     old.drop();
     vi.advanceTimersByTime(1000);
@@ -420,6 +422,7 @@ describe('WsRoomClient reconnect', () => {
     expect(FakeSocket.all).toHaveLength(2);
     expect(states).toEqual([lobby]);
     expect(errors).toEqual([]);
+    expect(statuses).toEqual(['open', 'closed', 'open']);   // nothing from the replaced socket
     client.send({ k: 'start' });
     expect(old.sent).toEqual([]);
     expect(current.sent).toHaveLength(1);
@@ -455,6 +458,102 @@ describe('WsRoomClient reconnect', () => {
   });
 });
 
+describe('WsRoomClient status', () => {
+  /** A client whose connect() is under way: the room is made and the first socket exists, but nothing has opened. */
+  async function connecting() {
+    stubFetch(() => reply(201, created));
+    const client = new WsRoomClient(BASE);
+    const statuses: ConnectionStatus[] = [];
+    client.onStatus((s) => statuses.push(s));
+    const result = client.connect();
+    await settle();
+    return { client, statuses, result };
+  }
+
+  it('reports open for every socket that opens and closed for every open socket that drops, in order', async () => {
+    const { statuses } = await online();
+    expect(statuses).toEqual(['open']);
+    ws().drop();
+    expect(statuses).toEqual(['open', 'closed']);
+    vi.advanceTimersByTime(1000);
+    expect(statuses).toEqual(['open', 'closed']);   // a socket that is still opening is not open yet
+    ws().open();
+    expect(statuses).toEqual(['open', 'closed', 'open']);
+  });
+
+  it('reports open when the socket opens, before the room has sent a view', async () => {
+    const { statuses, result } = await connecting();
+    expect(statuses).toEqual([]);
+    ws().open();
+    expect(statuses).toEqual(['open']);
+    ws().say({ t: 'host', state: lobby });
+    await result;
+    expect(statuses).toEqual(['open']);
+  });
+
+  it('says nothing for a socket that never opened, before or after the first open', async () => {
+    const { statuses } = await connecting();
+    ws().drop();                          // the first socket never opened
+    vi.advanceTimersByTime(1000);
+    ws().drop();                          // nor did the second
+    vi.advanceTimersByTime(2000);
+    expect(statuses).toEqual([]);
+    ws().open();
+    ws().drop();                          // the third opened, so its close is reported
+    expect(statuses).toEqual(['open', 'closed']);
+    vi.advanceTimersByTime(1000);
+    ws().drop();                          // the fourth never opened: still closed, nothing new to say
+    vi.advanceTimersByTime(2000);
+    expect(statuses).toEqual(['open', 'closed']);
+  });
+
+  it('says nothing while the browser will not create the socket', async () => {
+    stubFetch(() => reply(201, created));
+    FakeSocket.refuse = true;
+    const client = new WsRoomClient(BASE);
+    const statuses: ConnectionStatus[] = [];
+    client.onStatus((s) => statuses.push(s));
+    void client.connect();
+    await settle();
+    vi.advanceTimersByTime(30_000);
+    expect(statuses).toEqual([]);
+  });
+
+  it('tells a later subscriber the current status at once, once there is one', async () => {
+    const { client, result } = await connecting();
+    const early: ConnectionStatus[] = [];
+    client.onStatus((s) => early.push(s));
+    expect(early).toEqual([]);            // no socket has opened, so there is no status to tell
+    ws().open();
+    ws().say({ t: 'host', state: lobby });
+    await result;
+    const whileOpen: ConnectionStatus[] = [];
+    client.onStatus((s) => whileOpen.push(s));
+    expect(whileOpen).toEqual(['open']);
+    ws().drop();
+    const whileClosed: ConnectionStatus[] = [];
+    client.onStatus((s) => whileClosed.push(s));
+    expect(whileClosed).toEqual(['closed']);
+    vi.advanceTimersByTime(1000);
+    ws().open();
+    expect(whileOpen).toEqual(['open', 'closed', 'open']);
+    expect(whileClosed).toEqual(['closed', 'open']);
+    expect(early).toEqual(['open', 'closed', 'open']);
+  });
+
+  it('stops reporting to a listener that unsubscribed', async () => {
+    const { client } = await online();
+    const seen: ConnectionStatus[] = [];
+    const off = client.onStatus((s) => seen.push(s));
+    expect(seen).toEqual(['open']);
+    off();
+    ws().drop();
+    vi.advanceTimersByTime(1000);
+    ws().open();
+    expect(seen).toEqual(['open']);
+  });
+});
+
 describe('WsRoomClient.addBots', () => {
   it('sends injectVotes for the round and earlier majorities of the last view', async () => {
     const { client } = await online(voting);
@@ -479,21 +578,21 @@ describe('WsRoomClient.addBots', () => {
     const errors: string[] = [];
     client.onError((m) => errors.push(m));
     client.addBots(10);
-    expect(errors).toEqual(['no room view yet']);
+    expect(errors).toEqual(['Start the game before adding bots']);
     expect(FakeSocket.all).toHaveLength(0);
   });
 
   it('reports an error and sends nothing while the room is still in the lobby', async () => {
     const { client, errors } = await online(lobby);
     client.addBots(10);
-    expect(errors).toEqual(['no room view yet']);
+    expect(errors).toEqual(['Start the game before adding bots']);
     expect(ws().sent).toEqual([]);
   });
 
   it('reports an error and sends nothing when it was built without content', async () => {
     const { client, errors } = await online(voting, false);
     client.addBots(10);
-    expect(errors).toEqual(['no room view yet']);
+    expect(errors).toEqual(['Start the game before adding bots']);
     expect(ws().sent).toEqual([]);
   });
 

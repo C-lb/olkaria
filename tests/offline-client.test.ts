@@ -28,6 +28,7 @@ it('bot votes lean toward the strongest option', () => {
 // Added after the brief's tests. The fake clock keeps the client's 250 ms timer from outliving a test,
 // including the brief's own, which calls connect() and never stops it.
 import { afterEach, beforeEach, describe, vi } from 'vitest';
+import type { ConnectionStatus } from '../host/net';
 import { effectiveScores } from '../shared/scoring';
 import { OPTION_IDS, type HostView, type OptionId, type Tally } from '../shared/types';
 
@@ -111,15 +112,17 @@ describe('botTally', () => {
 });
 
 describe('OfflineRoomClient', () => {
-  /** A client on a clock the test moves by hand, with every view and every error it reports. */
+  /** A client on a clock the test moves by hand, with every view, error and status it reports. */
   function start() {
     const clock = { t: 0 };
     const client = new OfflineRoomClient(c, () => clock.t);
     const views: HostView[] = [];
     const errors: string[] = [];
+    const statuses: ConnectionStatus[] = [];
     client.onState((v) => views.push(v));
     client.onError((m) => errors.push(m));
-    return { clock, client, views, errors };
+    client.onStatus((s) => statuses.push(s));
+    return { clock, client, views, errors, statuses };
   }
 
   it('ticks itself every 250 ms from connect() and locks the vote when the clock reaches the deadline', async () => {
@@ -128,44 +131,61 @@ describe('OfflineRoomClient', () => {
     client.send({ k: 'start' });
     client.send({ k: 'openVote', seconds: 2 });
     const seen = views.length;
-    vi.advanceTimersByTime(249);
-    expect(views).toHaveLength(seen);
     clock.t = 1500;
-    vi.advanceTimersByTime(1);
-    expect(views).toHaveLength(seen + 1);
+    vi.advanceTimersByTime(250);   // the first tick finds the deadline (2000) still ahead
     expect(last(views).phase).toBe('vote');
+    expect(views).toHaveLength(seen);
     clock.t = 2000;
-    vi.advanceTimersByTime(250);
+    vi.advanceTimersByTime(249);   // one millisecond short of the second tick
+    expect(last(views).phase).toBe('vote');
+    vi.advanceTimersByTime(1);
     expect(last(views).phase).toBe('locked');
     expect(last(views).serverNow).toBe(2000);
+    expect(views).toHaveLength(seen + 1);
     // The early tick asked for an alarm and the lock cleared it. Offline there is no alarm, so neither is an error.
     expect(errors).toEqual([]);
   });
 
-  it('starts one timer however often connect() is called, and reports a view on every tick', async () => {
+  it('reports a view only when the room changed: ticks that change nothing are silent, the tick that locks is not', async () => {
+    const { clock, client, views } = start();
+    await client.connect();
+    client.send({ k: 'start' });
+    client.send({ k: 'openVote', seconds: 30 });
+    const seen = views.length;
+    clock.t = 1000;
+    vi.advanceTimersByTime(10 * 250);   // ten ticks, with the deadline (30000) far ahead
+    expect(views).toHaveLength(seen);
+    clock.t = 30000;
+    vi.advanceTimersByTime(250);   // the next tick is past it
+    expect(views).toHaveLength(seen + 1);
+    expect(last(views).phase).toBe('locked');
+    vi.advanceTimersByTime(10 * 250);   // locked: a tick has nothing left to do
+    expect(views).toHaveLength(seen + 1);
+  });
+
+  it('starts one timer however often connect() is called', async () => {
     const { client, views } = start();
     expect(await client.connect()).toEqual({ code: 'OFFLINE', joinUrl: '' });
     expect(await client.connect()).toEqual({ code: 'OFFLINE', joinUrl: '' });
+    expect(vi.getTimerCount()).toBe(1);
     expect(views).toHaveLength(1);
     expect(last(views).phase).toBe('lobby');
-    vi.advanceTimersByTime(1000);
-    expect(views).toHaveLength(5);
   });
 
   it('does not tick before connect()', () => {
     const { views } = start();
     vi.advanceTimersByTime(5000);
     expect(views).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('reports a refused command through onError and still reports the view', async () => {
+  it('reports a refused command through onError and no view, because nothing changed', async () => {
     const { client, views, errors } = start();
     await client.connect();
     const seen = views.length;
     client.send({ k: 'reveal' });
     expect(errors).toEqual(['bad phase']);
-    expect(views).toHaveLength(seen + 1);
-    expect(last(views).phase).toBe('lobby');
+    expect(views).toHaveLength(seen);
   });
 
   it('hands out copies, so a scene that edits a view cannot change the room', async () => {
@@ -174,9 +194,10 @@ describe('OfflineRoomClient', () => {
     const first = last(views);
     first.majorities.push('B');
     first.banned.push('someone');
-    client.tick();
+    client.send({ k: 'start' });
     const second = last(views);
     expect(second).not.toBe(first);
+    expect(second.phase).toBe('travel');
     expect(second.majorities).toEqual([]);
     expect(second.banned).toEqual([]);
   });
@@ -216,7 +237,7 @@ describe('OfflineRoomClient', () => {
     const { client, views, errors } = start();
     await client.connect();
     client.addBots(30);
-    expect(errors).toEqual(['no room view yet']);
+    expect(errors).toEqual(['Start the game before adding bots']);
     expect(last(views).supportTally).toEqual(ZERO);
     expect(last(views).synthetic).toEqual({});
   });
@@ -228,15 +249,63 @@ describe('OfflineRoomClient', () => {
     const offView = client.onState((v) => seenViews.push(v.phase));
     const offError = client.onError((m) => seenErrors.push(m));
     await client.connect();
-    client.send({ k: 'reveal' });
-    expect(seenViews).toEqual(['lobby', 'lobby']);
+    client.send({ k: 'reveal' });   // refused: an error and no view
+    client.send({ k: 'start' });
+    expect(seenViews).toEqual(['lobby', 'travel']);
     expect(seenErrors).toEqual(['bad phase']);
     offView();
     offError();
-    client.send({ k: 'reveal' });
-    client.tick();
-    expect(seenViews).toEqual(['lobby', 'lobby']);
+    client.send({ k: 'reveal' });   // refused again, in travel
+    client.send({ k: 'openVote' });
+    expect(seenViews).toEqual(['lobby', 'travel']);
     expect(seenErrors).toEqual(['bad phase']);
+  });
+
+  it('reports the status open once, when connect() is called, to listeners that subscribed before it', async () => {
+    const { client, statuses } = start();
+    expect(statuses).toEqual([]);   // nothing to report before connect()
+    await client.connect();
+    expect(statuses).toEqual(['open']);
+    await client.connect();
+    client.send({ k: 'start' });
+    vi.advanceTimersByTime(2000);
+    expect(statuses).toEqual(['open']);
+  });
+
+  it('tells a status listener that subscribes later the current status at once, and only once', async () => {
+    const { client } = start();
+    const connecting = client.connect();
+    const sameTick: ConnectionStatus[] = [];
+    client.onStatus((s) => sameTick.push(s));
+    expect(sameTick).toEqual(['open']);   // connect() has been called, so the client is open already
+    await connecting;
+    const later: ConnectionStatus[] = [];
+    client.onStatus((s) => later.push(s));
+    expect(later).toEqual(['open']);
+    client.send({ k: 'start' });
+    vi.advanceTimersByTime(2000);
+    await client.connect();
+    expect(sameTick).toEqual(['open']);
+    expect(later).toEqual(['open']);
+  });
+
+  it('survives a status listener that throws when it is told the current status', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { client } = start();
+    await client.connect();
+    let off: (() => void) | undefined;
+    expect(() => { off = client.onStatus(() => { throw new Error('a scene broke'); }); }).not.toThrow();
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(off).toBeTypeOf('function');
+  });
+
+  it('does not report the status to a listener that unsubscribed before connect()', async () => {
+    const { client } = start();
+    const seen: ConnectionStatus[] = [];
+    const off = client.onStatus((s) => seen.push(s));
+    off();
+    await client.connect();
+    expect(seen).toEqual([]);
   });
 
   it('does not call a listener that an earlier listener unsubscribed during the same report', async () => {
@@ -287,6 +356,7 @@ describe('OfflineRoomClient', () => {
     await client.connect();
     expect(last(views).serverNow).toBe(1_700_000_000_000);
     vi.advanceTimersByTime(250);
+    client.send({ k: 'start' });
     expect(last(views).serverNow).toBe(1_700_000_000_250);
   });
 
