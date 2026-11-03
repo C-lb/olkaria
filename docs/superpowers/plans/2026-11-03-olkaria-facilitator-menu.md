@@ -290,7 +290,7 @@ No unit test covers the scene; the walk is verified in the browser (Step 3). The
 - [ ] **Step 1: Code**
 
 - `road.ts`: `/** The party stands this long after a segment starts before it sets off, so the road and its label register. */ export const SETOFF_MS = 1000;`
-- `Travel.ts` `create()`: `this.auto = true; this.nextStop = stopAhead(this.segment.autoPath, START_X); this.restOwed = false; this.restUntil = this.time.now + SETOFF_MS;`. Rewrite the header comment and the `bindKeys` doc: the party walks by itself; A pauses and resumes; any arrow takes control; N skips. Keep every key's behaviour otherwise.
+- `Travel.ts` `create()`: `this.auto = true; this.nextStop = stopAhead(this.segment.autoPath, START_X); this.restOwed = false; this.restUntil = this.game.getTime() + SETOFF_MS;` (corrected in Task 3: the scene clock `this.time.now` is stale inside `create()`, 0 on the first visit, while `game.getTime()` shares the time domain of `update()`) ``. Rewrite the header comment and the `bindKeys` doc: the party walks by itself; A pauses and resumes; any arrow takes control; N skips. Keep every key's behaviour otherwise.
 - `Hud.ts` `KEYS`: `['Arrows', 'Take over the walk: run and jump; Space jumps too']`, `['A', 'Pause or resume the walk']`, `['N', 'Skip to the arena in travel']`.
 
 - [ ] **Step 2: Run the suite and the check**
