@@ -44,7 +44,12 @@ export interface OptionsArgs {
   leadShares: Record<OptionId, number> | null;
   supportShares: Record<OptionId, number> | null;
   footer: string;
+  /** The call-outs already judged this round ("Sarah: +10 rally"), listed small under the cards. Absent or empty lists nothing. */
+  resolved?: string[];
 }
+
+/** The two parts of the options' status line that change while the cards stay: the clock and the vote count. */
+export interface OptionsStatus { timerText: string; votedText: string }
 
 /** The call-out. No name is a hand call-out: the facilitator picks someone in the room. */
 export interface BannerArgs { name: string | null; letter: OptionId | null; phone: string | null; footer: string }
@@ -210,6 +215,8 @@ export class Hud {
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
   /** The QR image, kept across lobby refreshes so a new joiner does not make it decode again. */
   private qr: HTMLImageElement | null = null;
+  /** The clock and the vote count of the options' status line while the options are up, for updateOptionsStatus(). */
+  private status: { timer: HTMLElement; voted: HTMLElement } | null = null;
 
   constructor(private readonly root: HTMLElement) {
     this.banner.hidden = true;
@@ -264,7 +271,7 @@ export class Hud {
   /**
    * The four cards in a 2 x 2 grid over the lower 45% of the screen, in letter order, under a status line with the
    * lead class, the timer and the vote count. After the lock each card gets two bars: the lead class's split and the
-   * rest of the party's. Leaves a call-out banner up.
+   * rest of the party's. The judged call-outs, if any, go in one small line under the cards. Leaves a call-out banner up.
    */
   showOptions(a: OptionsArgs): void {
     const cards = [...a.options]
@@ -279,13 +286,29 @@ export class Hud {
           h('p', { class: 'card-text' }, o.screen),
           bars.length > 0 ? h('div', { class: 'bars' }, ...bars) : null), o.letter);
       });
-    this.show(h('div', { class: 'options' },
+    // The clock and the count are always there, hidden while empty, so updateOptionsStatus() can fill them in later.
+    const timer = h('span', { class: 'timer' });
+    const voted = h('span', {});
+    const resolved = a.resolved ?? [];
+    this.show(h('div', { class: resolved.length > 0 ? 'options has-resolved' : 'options' },
       h('div', { class: 'panel status' },
         a.leadLabel ? h('span', { class: 'status-lead' }, `${a.leadLabel} lead`) : null,
-        a.timerText ? h('span', { class: 'timer' }, a.timerText) : null,
-        a.votedText ? h('span', {}, a.votedText) : null,
+        timer,
+        voted,
         a.footer ? h('span', { class: 'hint status-hint' }, a.footer) : null),
-      h('div', { class: 'cards' }, ...cards)), true);
+      h('div', { class: 'cards' }, ...cards),
+      resolved.length > 0 ? h('ul', { class: 'resolved' }, ...resolved.map((note) => h('li', {}, note))) : null), true);
+    this.status = { timer, voted };
+    this.updateOptionsStatus(a);
+  }
+
+  /** Puts a new clock and vote count on the options' status line without rebuilding the cards. Does nothing unless the options are up. */
+  updateOptionsStatus(a: OptionsStatus): void {
+    if (this.status === null) return;
+    for (const [el, value] of [[this.status.timer, a.timerText], [this.status.voted, a.votedText]] as const) {
+      el.textContent = value;
+      el.hidden = value === '';
+    }
   }
 
   /** The call-out banner at the top: "Sarah, defend B: Yes to 60 to 100 MW, tied", or a hand call-out. Null hides it. */
@@ -408,6 +431,7 @@ export class Hud {
   /** Empties the screen and takes down the banner, the flash and every toast. */
   clear(): void {
     this.screen.replaceChildren();
+    this.status = null;
     this.showBanner(null);
     if (this.flashTimer !== null) clearTimeout(this.flashTimer);
     this.flashTimer = null;
@@ -418,6 +442,7 @@ export class Hud {
 
   /** Puts up a screen. Every screen but the options takes the call-out banner down. */
   private show(node: HTMLElement, keepBanner = false): void {
+    this.status = null;   // showOptions() sets it again for its own screen
     this.screen.replaceChildren(node);
     if (!keepBanner) this.showBanner(null);
   }

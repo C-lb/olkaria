@@ -295,3 +295,60 @@ describe('toasts, flash, key map and clear', () => {
     expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
   });
 });
+
+// ---- Task 8: the countdown patched in place, and the judged call-outs under the cards ------------------------
+describe('options status and judged call-outs', () => {
+  const vote = { options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', leadShares: null, supportShares: null, footer: 'Space locks the vote' };
+
+  it('patches the timer and the vote count in place, without rebuilding the cards', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 of 9 voted' });
+    const card = root.querySelector('[data-card=A]');
+    hud.updateOptionsStatus({ timerText: '29 s', votedText: '3 of 9 voted' });
+    expect(text(root, '.status')).toBe('Rogues lead29 s3 of 9 votedSpace locks the vote');
+    expect(root.querySelector('[data-card=A]')).toBe(card);
+    hud.updateOptionsStatus({ timerText: '', votedText: '3 of 9 voted' });
+    expect((root.querySelector('.timer') as HTMLElement).hidden).toBe(true);
+    expect(text(root, '.status')).toBe('Rogues lead3 of 9 votedSpace locks the vote');
+  });
+
+  it('can show a timer the cards were drawn without', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ ...vote, timerText: '', votedText: '' });
+    expect(text(root, '.status')).toBe('Rogues leadSpace locks the vote');
+    hud.updateOptionsStatus({ timerText: '12 s', votedText: '12 voted' });
+    expect((root.querySelector('.timer') as HTMLElement).hidden).toBe(false);
+    expect(text(root, '.status')).toBe('Rogues lead12 s12 votedSpace locks the vote');
+  });
+
+  it('does nothing when the options are not up', () => {
+    const { root, hud } = fresh();
+    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
+    expect(root.querySelector('.hud-screen')!.childElementCount).toBe(0);
+    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 voted' });
+    let timer = root.querySelector('.timer')!;
+    hud.showNarration({ boss: 'Grid Wyrm', title: 't', narration: 'n', footer: '' });
+    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
+    expect(root.textContent).not.toContain('9 s');
+    expect(timer.textContent).toBe('30 s');   // the status line that went with the cards is left alone too
+    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 voted' });
+    timer = root.querySelector('.timer')!;
+    hud.clear();
+    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
+    expect(timer.textContent).toBe('30 s');
+  });
+
+  it('lists the judged call-outs small under the cards, as text, and nothing when there are none', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ ...vote, timerText: '', votedText: '' });
+    expect(root.querySelector('.resolved')).toBeNull();
+    expect(root.querySelector('.options')!.classList.contains('has-resolved')).toBe(false);
+    hud.showOptions({ ...vote, timerText: '', votedText: '', resolved: [] });
+    expect(root.querySelector('.resolved')).toBeNull();
+    hud.showOptions({ ...vote, timerText: '', votedText: '', resolved: ['Sarah: +10 rally', '<b>Ann</b>: no bonus'] });
+    expect([...root.querySelectorAll('.resolved li')].map((li) => li.textContent)).toEqual(['Sarah: +10 rally', '<b>Ann</b>: no bonus']);
+    expect(root.querySelector('.resolved b')).toBeNull();
+    expect(root.querySelector('.options')!.classList.contains('has-resolved')).toBe(true);
+    expect(root.querySelector('.cards + .resolved')).not.toBeNull();   // after the cards, so it sits under them
+  });
+});

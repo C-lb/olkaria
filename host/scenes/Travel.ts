@@ -1,6 +1,6 @@
-// Placeholder until Task 9 builds the Travel scene: it shows that the router started it, for which round, and nothing else.
+// Placeholder until Task 9 builds the Travel scene: it starts the round's Battle at once, as the arena gate will, so the
+// loop can be played before the platformer exists. The router counts that Battle as fitting the `travel` phase.
 import Phaser from 'phaser';
-import type { Hud } from '../hud/Hud';
 import type { SceneData } from '../router';
 
 export class Travel extends Phaser.Scene {
@@ -17,8 +17,7 @@ export class Travel extends Phaser.Scene {
   }
 
   create(): void {
-    const hud = this.registry.get('hud') as Hud;
-    hud.clear();
-    hud.showToast(`Travel scene, round ${this.round} (Task 8 to 10)`, 3000);
+    const battle: SceneData = { round: this.round, resume: false };
+    this.scene.start('Battle', battle);
   }
 }

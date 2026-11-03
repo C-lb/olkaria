@@ -236,6 +236,17 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   column-gap: var(--s2);
 }
 .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+/* The call-outs judged this round: one muted line under the cards, which give up that line and a gap for it. */
+.options.has-resolved .cards { bottom: calc(var(--s2) * 2 + var(--t-body) * var(--lh-body)); }
+.resolved {
+  position: absolute;
+  left: var(--s4); right: var(--s4); bottom: var(--s2);
+  display: flex;
+  column-gap: var(--s5);
+  list-style: none;
+  color: var(--ink-2);
+}
+.resolved li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- Banner and toasts: one column at the top, so a toast never lands on the banner --------------------- */
 
