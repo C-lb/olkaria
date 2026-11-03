@@ -100,7 +100,7 @@ svg { max-width: 100%; }
 /* ---- Type --------------------------------------------------------------------------------------------- */
 
 .title, .subtitle, .hero { font-weight: 600; overflow-wrap: anywhere; }
-.title { font-size: var(--t-h3); line-height: var(--lh-h3); letter-spacing: var(--tr-h3); }
+.title { font-size: var(--t-h3); line-height: var(--lh-h3); letter-spacing: var(--tr-h3); text-wrap: balance; }
 .title.is-lg { font-size: var(--t-h2); line-height: var(--lh-h2); letter-spacing: var(--tr-h2); }
 .subtitle { font-size: var(--t-lead); line-height: var(--lh-lead); letter-spacing: var(--tr-lead); }
 .hero { font-size: var(--t-h1); line-height: var(--lh-display); letter-spacing: var(--tr-display); }
@@ -159,14 +159,15 @@ svg { max-width: 100%; }
 /* ---- Fields ------------------------------------------------------------------------------------------- */
 
 .field { display: flex; flex-direction: column; gap: var(--s2); }
+/* The padding sits on the input, not the control, so the whole 48 px field is the tap target. */
 .field .control {
   display: flex; align-items: center; gap: .5em;
-  padding: 12px 14px; border-radius: var(--r-md);
+  border-radius: var(--r-md);
   background: var(--surface-1); box-shadow: var(--raise);
   transition: box-shadow .18s ease, background .18s ease;
 }
 .field input {
-  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  flex: 1; min-width: 0; padding: 12px 14px; border: 0; background: transparent; color: var(--ink);
   font: 500 var(--t-body)/1.4 var(--font-sans); outline: none;
 }
 .field input::placeholder { color: var(--ink-3); }
@@ -205,6 +206,7 @@ svg { max-width: 100%; }
   font-size: var(--t-h3); font-weight: 600; line-height: var(--lh-h3); letter-spacing: var(--tr-h3);
   font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
 }
+.countdown:empty::before { content: "\00a0"; }   /* with no time to show, the clock still holds the row's height */
 .note { display: flex; align-items: center; gap: .5em; color: var(--ink-2); }
 .votes { display: flex; flex-direction: column; gap: var(--s3); }
 .vote {
@@ -251,7 +253,7 @@ svg { max-width: 100%; }
 
 .status { display: inline-flex; align-items: center; justify-content: center; gap: .6em; color: var(--ink-2); }
 .status-stack { display: flex; flex-direction: column; align-items: center; gap: var(--s3); text-align: center; }
-.status-stack .line { display: block; }
+.line { display: block; }   /* one sentence per line in the unreachable note */
 .wheel {
   flex: none; display: inline-block; vertical-align: middle; width: 1.15em; height: 1.15em; border-radius: 50%;
   background: conic-gradient(from 0deg, transparent 0 12%, currentColor);
@@ -265,15 +267,17 @@ svg { max-width: 100%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
-/* ---- Pointer devices get a hover step; touch screens do not, so a tap never leaves one stuck --------- */
+/* ---- Pointer devices get a hover step; touch screens do not, so a tap never leaves one stuck ---------
+        A mouse is over the control while it is pressed, so every hover is :not(:active). Without that the
+        hover rule (same specificity, later in the file) beats the pressed rule and a press brightens. ---- */
 
 @media (hover: hover) {
-  .btn:hover { background: var(--surface-2); }
-  .btn-accent:hover { background: var(--accent-2); }
+  .btn:hover:not(:active) { background: var(--surface-2); }
+  .btn-accent:hover:not(:active) { background: var(--accent-2); }
   .field .control:hover { background: var(--surface-2); }
-  .role:hover { background: var(--surface-2); }
-  .role[aria-pressed="true"]:hover { background: var(--surface-3); }
-  .vote:hover { filter: brightness(1.08); }
+  .role:hover:not(:active) { background: var(--surface-2); }
+  .role[aria-pressed="true"]:hover:not(:active) { background: var(--surface-3); }
+  .vote:hover:not(:active) { filter: brightness(1.08); }
   .vote:disabled:hover { filter: grayscale(1); }
 }
 

@@ -12,7 +12,7 @@ export type UiState = {
   table: string;
   /** What the room last refused, for example "already voted". Shown under the screen until the next view. */
   error?: string | null;
-  /** The room code, set while the room cannot be reached and this tab has never been in. The offline screen names it. */
+  /** The room code, set while the room cannot be reached and this tab has never been in. The offline screen and the join form name it. */
   unreachable?: string | null;
 };
 
@@ -169,7 +169,10 @@ function roundRow(view: PlayerView, content: CaseContent, clock: boolean): HTMLE
   return h('div', { class: 'round-row' },
     h('span', { class: 'eyebrow' }, roundName(view, content)),
     // Left empty here: render() and updateCountdown() write the time, so the markup never depends on the clock.
-    clock && view.voteDeadline !== null ? h('span', { class: 'countdown', 'data-countdown': '', role: 'timer', 'aria-label': 'Time left' }) : null);
+    // With no clock the span stays, empty and hidden, so the row keeps its height and what sits under it does not move.
+    clock && view.voteDeadline !== null
+      ? h('span', { class: 'countdown', 'data-countdown': '', role: 'timer', 'aria-label': 'Time left' })
+      : h('span', { class: 'countdown', 'aria-hidden': 'true' }));
 }
 
 /** How long the vote buttons stay greyed after a tap before they are handed back, if the room has said nothing. */
@@ -214,13 +217,14 @@ function locked(view: PlayerView, content: CaseContent): HTMLElement {
       h('p', { class: 'cap' }, 'Watch the screen.'))], true);
   }
   const open = view.phase === 'vote';
+  // Top-aligned under the round row in both phases, so the card stays put when voting closes and the clock goes.
   return screen('locked', [
-    open ? roundRow(view, content, true) : null,
+    roundRow(view, content, open),
     h('div', { class: 'card card-lifted' },
       h('span', { class: 'glyph' }, icon('check')),
       h('h1', { class: 'title' }, `Locked: ${view.myVote}. ${phoneLabel(content, view.round, view.myVote)}.`),
       h('p', { class: 'cap' }, open ? 'Waiting for the others.' : 'Voting is closed. Watch the screen.')),
-  ], !open);
+  ]);
 }
 
 function calledOut(view: PlayerView, content: CaseContent): HTMLElement {
@@ -288,11 +292,28 @@ function waitingOn(kind: string, text: string): HTMLElement {
 }
 const connecting = (): HTMLElement => waitingOn('connecting', 'Connecting…');
 
+/** "Can't reach room ABCD. Check the code on the screen." One sentence per line, with the space kept between them so the text still reads as one. */
+function unreachableNote(code: string): HTMLElement {
+  return h('p', { class: 'cap', role: 'status', 'data-unreachable': code },
+    h('span', { class: 'line' }, `Can't reach room ${code}.`), ' ', h('span', { class: 'line' }, 'Check the code on the screen.'));
+}
+
 function offline(unreachable: string | null | undefined): HTMLElement {
   return screen('offline', [h('div', { class: 'status-stack' },
     h('div', { class: 'status', role: 'status' }, h('span', { class: 'wheel' }), 'Reconnecting…'),
-    // One sentence per line, with the space kept between them so the text still reads as one.
-    unreachable ? h('p', { class: 'cap', role: 'status' }, h('span', { class: 'line' }, `Can't reach room ${unreachable}.`), ' ', h('span', { class: 'line' }, 'Check the code on the screen.')) : null)], true);
+    unreachable ? unreachableNote(unreachable) : null)], true);
+}
+
+/**
+ * The join form is the one screen where a player may be half way through typing, so the unreachable note is added to and
+ * removed from the live form instead of being part of its markup. Rebuilding the form would take the typing, and the keyboard, with it.
+ */
+function syncUnreachable(form: Element | null, code: string | null | undefined): void {
+  if (!form) return;
+  const line = [...form.children].find((el) => el.hasAttribute('data-unreachable'));
+  if (line && line.getAttribute('data-unreachable') === code) return;
+  line?.remove();
+  if (code) form.append(unreachableNote(code));
 }
 
 // ---- Render -----------------------------------------------------------------------------------------
@@ -345,4 +366,5 @@ export function render(root: HTMLElement, view: PlayerView | null, content: Case
     slot.kind = kind;
   }
   if (view) updateCountdown(root, view, view.serverNow, view.serverNow);
+  if (kind === 'join') syncUnreachable(root.firstElementChild, ui.unreachable);
 }

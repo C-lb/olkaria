@@ -79,10 +79,11 @@ function start(app: HTMLElement, code: string): void {
 
   const status = (): UiState['status'] => {
     if (kicked) return 'kicked';
+    // The join form stays up whatever the link is doing, so a dropped connection never costs a player what they typed.
+    // A join tapped while the link is down is already in `draft` and goes out on the next open.
+    if (view === null && !restored) return 'joining';
     if (link === 'closed') return 'offline';
-    if (view) return 'joined';
-    if (link === 'connecting') return 'connecting';
-    return restored ? 'connecting' : 'joining';
+    return view ? 'joined' : 'connecting';
   };
 
   const tick = (): void => {

@@ -235,7 +235,7 @@ describe('the other screens', () => {
     expect(el.textContent).toContain('Reconnecting…');
     expect(el.querySelectorAll('button')).toHaveLength(0);
   });
-  it('name the room on the offline screen when it cannot be reached, and nowhere else', () => {
+  it('name the room on the offline screen when it cannot be reached, and on no other screen but the join form', () => {
     const el = mount();
     render(el, null, c, { ...joining, status: 'offline' }, noop);
     expect(el.textContent).toContain('Reconnecting…');
@@ -243,8 +243,39 @@ describe('the other screens', () => {
     render(el, null, c, { ...joining, status: 'offline', unreachable: 'KFBN' }, noop);
     expect(el.textContent).toContain('Reconnecting…');
     expect(el.textContent).toContain("Can't reach room KFBN. Check the code on the screen.");
-    render(el, null, c, { ...joining, status: 'joining', unreachable: 'KFBN' }, noop);
+    render(el, null, c, { ...joining, status: 'connecting', unreachable: 'KFBN' }, noop);
     expect(el.textContent).not.toContain("Can't reach");
+  });
+  it('add and remove the unreachable line under the join form without rebuilding what the player is typing', () => {
+    const el = mount();
+    render(el, null, c, joining, noop);
+    const form = el.querySelector('form')!;
+    const input = nameInput(el);
+    input.value = 'Mo'; input.dispatchEvent(new Event('input'));
+    (el.querySelector('button[data-role=citizen]') as HTMLButtonElement).click();
+    render(el, null, c, { ...joining, unreachable: 'KFBN' }, noop);
+    expect(el.querySelector('form')).toBe(form);
+    expect(nameInput(el)).toBe(input);
+    expect(input.value).toBe('Mo');
+    expect(joinButton(el).disabled).toBe(false);
+    expect(form.textContent).toContain("Can't reach room KFBN. Check the code on the screen.");
+    render(el, null, c, { ...joining, unreachable: 'KFBN' }, noop);
+    expect(form.querySelectorAll('[data-unreachable]')).toHaveLength(1);
+    render(el, null, c, joining, noop);
+    expect(form.textContent).not.toContain("Can't reach");
+    expect(el.querySelector('form')).toBe(form);
+  });
+  it('keep the locked card top-aligned under the round row in both phases, so it does not jump when voting closes', () => {
+    const el = mount();
+    render(el, { ...base, myVote: 'B' }, c, joined, noop);
+    const layout = () => [...el.querySelector('section')!.children].map(n => n.className);
+    const whileOpen = layout();
+    expect(el.querySelector('.is-centered')).toBeNull();
+    expect(el.textContent).toContain('Round 1 of 4');
+    render(el, { ...base, phase: 'locked', myVote: 'B' }, c, joined, noop);
+    expect(el.querySelector('.is-centered')).toBeNull();
+    expect(el.textContent).toContain('Round 1 of 4');
+    expect(layout()).toEqual(whileOpen);
   });
   it('buzz once per call-out and again only after the screen has changed', () => {
     const vibrate = vi.fn();
