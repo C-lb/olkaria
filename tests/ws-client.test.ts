@@ -58,6 +58,17 @@ function stubFetch(answer: (url: string) => Response): void {
 }
 const isProbe = (url: string): boolean => url.includes('/ws/');
 
+/** A fetch that never answers. Like the real one, it fails when the signal it was given aborts. */
+function stubHangingFetch(): void {
+  calls = [];
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted', 'AbortError')));
+    });
+  });
+}
+
 /** Lets the promises that are ready run, without moving the clock. */
 const settle = async (): Promise<void> => {
   await vi.advanceTimersByTimeAsync(0);
@@ -116,6 +127,7 @@ describe('WsRoomClient.connect', () => {
     await connecting;
     expect(result).toEqual({ code: 'WXYZ', joinUrl: created.joinUrl });
     expect(states).toEqual([lobby]);
+    expect(vi.getTimerCount()).toBe(0);   // the request's time limit is not left running
   });
 
   it('uses a secure socket for a secure page and builds the join link itself when the server sends none', async () => {
@@ -145,6 +157,7 @@ describe('WsRoomClient.connect', () => {
     ws().say({ t: 'host', state: lobby });
     await expect(connecting).resolves.toEqual({ code: 'ABCD', joinUrl: `${BASE}/j/ABCD` });
     expect(recallRoom()).toEqual({ code: 'ABCD', hostKey: 'old-key' });
+    expect(vi.getTimerCount()).toBe(0);   // the probe's time limit is not left running
   });
 
   it.each([404, 403])('forgets a remembered room the server answers %i for, and creates a new one', async (status) => {
@@ -163,6 +176,7 @@ describe('WsRoomClient.connect', () => {
     ws().open();
     ws().say({ t: 'host', state: lobby });
     await expect(connecting).resolves.toEqual({ code: 'WXYZ', joinUrl: created.joinUrl });
+    expect(vi.getTimerCount()).toBe(0);   // neither request's time limit is left running
   });
 
   it.each([
@@ -221,7 +235,7 @@ describe('WsRoomClient.connect', () => {
 
   it('rejects when the server cannot be reached or sends back no room', async () => {
     stubFetch(() => { throw new TypeError('Failed to fetch'); });
-    await expect(new WsRoomClient(BASE).connect()).rejects.toThrow('could not reach the server');
+    await expect(new WsRoomClient(BASE).connect()).rejects.toThrow('Could not reach the room server');
     for (const body of [{ nope: true }, undefined, null, 'WXYZ', { code: '', hostKey: 'k' }, { code: 'WXYZ', hostKey: '' }, { code: 7, hostKey: 'k' }, { code: 'WXYZ' }]) {
       stubFetch(() => reply(201, body));
       await expect(new WsRoomClient(BASE).connect(), JSON.stringify(body)).rejects.toThrow('no room');
@@ -263,6 +277,78 @@ describe('WsRoomClient.connect', () => {
 
   it('reports itself as an online client', () => {
     expect(new WsRoomClient(BASE).mode).toBe('online');
+  });
+});
+
+describe('WsRoomClient.connect without an answer', () => {
+  it('gives up on the probe of a remembered room after 8 seconds, keeps the room and opens its socket', async () => {
+    rememberRoom('ABCD', 'old-key');
+    stubHangingFetch();
+    const connecting = new WsRoomClient(BASE).connect();
+    await vi.advanceTimersByTimeAsync(7999);
+    expect(calls).toHaveLength(1);
+    expect(FakeSocket.all).toHaveLength(0);   // still waiting for the probe
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toHaveLength(1);   // no answer is no reason to make another room
+    expect(recallRoom()).toEqual({ code: 'ABCD', hostKey: 'old-key' });
+    expect(ws().url).toBe('ws://localhost:3000/ws/ABCD?role=host&key=old-key');
+    ws().open();
+    ws().say({ t: 'host', state: lobby });
+    await expect(connecting).resolves.toEqual({ code: 'ABCD', joinUrl: `${BASE}/j/ABCD` });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives up on creating a room after 8 seconds, with an error that says the server could not be reached', async () => {
+    stubHangingFetch();
+    const client = new WsRoomClient(BASE);
+    let failure: unknown;
+    const connecting = client.connect().catch((err: unknown) => { failure = err; });
+    await vi.advanceTimersByTimeAsync(7999);
+    expect(failure).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+    await connecting;
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toMatch(/^Could not reach the room server/);
+    expect(recallRoom()).toBeNull();
+    expect(FakeSocket.all).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('can try again after it gave up', async () => {
+    stubHangingFetch();
+    const client = new WsRoomClient(BASE);
+    const first = client.connect().catch(() => {});
+    await vi.advanceTimersByTimeAsync(8000);
+    await first;
+    stubFetch(() => reply(201, created));
+    const again = client.connect();
+    await settle();
+    ws().open();
+    ws().say({ t: 'host', state: lobby });
+    await expect(again).resolves.toEqual({ code: 'WXYZ', joinUrl: created.joinUrl });
+  });
+
+  it('gives each request its own 8 seconds, and takes a slow answer that is still in time', async () => {
+    rememberRoom('ABCD', 'old-key');
+    calls = [];
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      // The probe answers after 5 s, which is in time. The room POST never answers.
+      if (isProbe(url)) return new Promise<Response>((resolve) => { setTimeout(() => resolve(reply(404)), 5000); });
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted', 'AbortError')));
+      });
+    });
+    let failure: unknown;
+    const connecting = new WsRoomClient(BASE).connect().catch((err: unknown) => { failure = err; });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls.map((c) => c.url)).toEqual([`${BASE}/ws/ABCD?role=host&key=old-key`, `${BASE}/api/rooms`]);
+    expect(recallRoom()).toBeNull();   // the slow 404 was believed
+    await vi.advanceTimersByTimeAsync(7999);   // 12.999 s in, 7.999 s into the POST
+    expect(failure).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+    await connecting;
+    expect((failure as Error).message).toMatch(/^Could not reach the room server/);
   });
 });
 

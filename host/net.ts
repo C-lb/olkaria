@@ -22,7 +22,11 @@ export interface RoomClient {
   connect(): Promise<RoomInfo>;
   /** A host command. One that cannot be delivered is dropped and reported through onError. */
   send(cmd: HostCmd): void;
-  /** The first view of the room on connect, then a view after each change. Returns the function that unsubscribes. */
+  /**
+   * The first view of the room on connect, then later ones. Online, the room sends a view after every event it handles,
+   * a refusal or an early alarm tick included; offline, a view comes only when the state changed. Views are read-only:
+   * every listener is handed the same object. Returns the function that unsubscribes.
+   */
   onState(cb: (view: HostView) => void): () => void;
   /** Refusals such as "bad phase", and "not connected". Returns the function that unsubscribes. */
   onError(cb: (msg: string) => void): () => void;
@@ -121,6 +125,9 @@ export class OfflineRoomClient implements RoomClient {
   private readonly views = new Listeners<HostView>();
   private readonly errors = new Listeners<string>();
   private readonly statuses = new Listeners<ConnectionStatus>(true);
+  /** Views made but not yet delivered, oldest first, and whether a delivery is going round right now. */
+  private readonly pending: HostView[] = [];
+  private delivering = false;
 
   constructor(private readonly content: CaseContent, private readonly now: () => number = () => Date.now()) {
     this.state = initialState('OFFLINE', 'offline', now(), content);
@@ -181,9 +188,21 @@ export class OfflineRoomClient implements RoomClient {
     if (JSON.stringify(state) !== before) this.emit();
   }
 
+  /**
+   * Views go out one at a time, in the order they were made. A listener that sends a command while it is being told a
+   * view makes a newer one; that one waits its turn, so no listener is handed an older view after a newer one.
+   */
   private emit(): void {
-    // hostView shares its nested objects with the live state, so every view is a copy the scenes may do what they like with.
-    this.views.emit(structuredClone(hostView(this.state, this.now(), this.content)));
+    // hostView shares its nested objects with the live state, so each view is a copy. A listener that edits it cannot
+    // change the room, but the listeners share the copy, which is why views are read-only (see RoomClient.onState).
+    this.pending.push(structuredClone(hostView(this.state, this.now(), this.content)));
+    if (this.delivering) return;
+    this.delivering = true;
+    try {
+      for (let view = this.pending.shift(); view !== undefined; view = this.pending.shift()) this.views.emit(view);
+    } finally {
+      this.delivering = false;
+    }
   }
 }
 
@@ -191,6 +210,20 @@ export class OfflineRoomClient implements RoomClient {
 
 /** Wait before the next attempt: 1 s, 2 s, 4 s, then 10 s for as long as the room stays out of reach. */
 const BACKOFF_MS = [1000, 2000, 4000, 10000];
+
+/** How long a request to the room server may take before it counts as unanswered. */
+const REQUEST_TIMEOUT_MS = 8000;
+
+/**
+ * A signal that aborts after REQUEST_TIMEOUT_MS, and the call that stops its timer once the request is over. An abort
+ * makes fetch fail like any other network error. (AbortSignal.timeout would do the same, but fake timers do not drive it
+ * and older browsers lack it.)
+ */
+function deadline(): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
 
 interface Room { code: string; hostKey: string; joinUrl: string }
 
@@ -267,32 +300,42 @@ export class WsRoomClient implements RoomClient {
   /**
    * Asks the server whether a remembered room is still there, with a plain GET of the host socket address: 404 is a
    * room the server has wiped, 403 a key it does not know, and 426 (upgrade required) a live room that took the key.
-   * Any other answer, or none, proves nothing, so the room stays remembered and the socket gets to try.
+   * Any other answer, or none within REQUEST_TIMEOUT_MS, proves nothing, so the room stays remembered and the socket
+   * gets to try.
    */
   private async isGone(saved: { code: string; hostKey: string }): Promise<boolean> {
+    const { signal, clear } = deadline();
     try {
-      const res = await fetch(this.base + this.hostPath(saved), { cache: 'no-store' });
+      const res = await fetch(this.base + this.hostPath(saved), { cache: 'no-store', signal });
       return res.status === 404 || res.status === 403;
     } catch {
       return false;
+    } finally {
+      clear();
     }
   }
 
+  /** Asks the server for a room. Rejects if it cannot be reached within REQUEST_TIMEOUT_MS or sends back no room. */
   private async createRoom(): Promise<Room> {
-    let res: Response;
+    const { signal, clear } = deadline();
     try {
-      res = await fetch(`${this.base}/api/rooms`, { method: 'POST' });
-    } catch {
-      throw new Error('could not reach the server');
+      let res: Response;
+      try {
+        res = await fetch(`${this.base}/api/rooms`, { method: 'POST', signal });
+      } catch {
+        throw new Error('Could not reach the room server');
+      }
+      if (!res.ok) throw new Error(`The server could not create a room (HTTP ${res.status})`);
+      const body: unknown = await res.json().catch(() => null);
+      const { code, hostKey, joinUrl } = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
+      if (typeof code !== 'string' || code === '' || typeof hostKey !== 'string' || hostKey === '') {
+        throw new Error('The server sent back no room');
+      }
+      rememberRoom(code, hostKey);
+      return { code, hostKey, joinUrl: typeof joinUrl === 'string' ? joinUrl : `${this.base}/j/${encodeURIComponent(code)}` };
+    } finally {
+      clear();
     }
-    if (!res.ok) throw new Error(`the server could not create a room (HTTP ${res.status})`);
-    const body: unknown = await res.json().catch(() => null);
-    const { code, hostKey, joinUrl } = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
-    if (typeof code !== 'string' || code === '' || typeof hostKey !== 'string' || hostKey === '') {
-      throw new Error('the server sent back no room');
-    }
-    rememberRoom(code, hostKey);
-    return { code, hostKey, joinUrl: typeof joinUrl === 'string' ? joinUrl : `${this.base}/j/${encodeURIComponent(code)}` };
   }
 
   private hostPath(room: { code: string; hostKey: string }): string {

@@ -336,6 +336,77 @@ describe('OfflineRoomClient', () => {
     expect(late).toEqual(['travel']);
   });
 
+  it('delivers views in order to every listener when a listener sends a command while it is being told a view', async () => {
+    const client = new OfflineRoomClient(c, () => 0);
+    const trail = (v: HostView) => `${v.phase}:${total(v.supportTally)}`;
+    const reacting: string[] = [];
+    const scene: HostView[] = [];
+    let added = false;
+    client.onState((v) => {
+      reacting.push(trail(v));
+      if (v.phase === 'vote' && !added) {
+        added = true;
+        client.addBots(10);   // a newer view, made while this one is still going round
+      }
+    });
+    client.onState((v) => scene.push(v));   // registered after the one that reacts
+    await client.connect();
+    client.send({ k: 'start' });
+    client.send({ k: 'openVote' });
+    expect(reacting).toEqual(['lobby:0', 'travel:0', 'vote:0', 'vote:10']);
+    expect(scene.map(trail)).toEqual(['lobby:0', 'travel:0', 'vote:0', 'vote:10']);
+    expect(total(last(scene).supportTally)).toBe(10);   // the last view the scene holds is the newest
+  });
+
+  it('keeps the views a listener makes in one go in the order it made them', async () => {
+    const client = new OfflineRoomClient(c, () => 0);
+    const scene: string[] = [];
+    let reacted = false;
+    client.onState((v) => {
+      if (v.phase !== 'vote' || reacted) return;
+      reacted = true;
+      client.addBots(10);
+      client.send({ k: 'closeVote' });
+    });
+    client.onState((v) => scene.push(`${v.phase}:${total(v.supportTally)}`));
+    await client.connect();
+    client.send({ k: 'start' });
+    client.send({ k: 'openVote' });
+    expect(scene).toEqual(['lobby:0', 'travel:0', 'vote:0', 'vote:10', 'locked:10']);
+  });
+
+  it('keeps delivering in order when the views that were waiting set off commands of their own', async () => {
+    const client = new OfflineRoomClient(c, () => 0);
+    const scene: string[] = [];
+    client.onState((v) => {
+      if (v.phase === 'vote') client.send({ k: 'closeVote' });
+      if (v.phase === 'locked') client.send({ k: 'reveal' });
+    });
+    client.onState((v) => scene.push(v.phase));
+    await client.connect();
+    client.send({ k: 'start' });
+    client.send({ k: 'openVote' });
+    expect(scene).toEqual(['lobby', 'travel', 'vote', 'locked', 'reveal']);
+  });
+
+  it('delivers again after a delivery in which a listener sent a command', async () => {
+    const client = new OfflineRoomClient(c, () => 0);
+    const scene: string[] = [];
+    let once = true;
+    client.onState((v) => {
+      if (v.phase === 'travel' && once) {
+        once = false;
+        client.send({ k: 'openVote' });
+      }
+    });
+    client.onState((v) => scene.push(v.phase));
+    await client.connect();
+    client.send({ k: 'start' });
+    expect(scene).toEqual(['lobby', 'travel', 'vote']);
+    client.send({ k: 'closeVote' });
+    expect(scene).toEqual(['lobby', 'travel', 'vote', 'locked']);
+  });
+
   it('keeps serving the other listeners when one of them throws', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const client = new OfflineRoomClient(c, () => 0);
