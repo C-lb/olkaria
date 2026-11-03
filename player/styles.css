@@ -111,9 +111,10 @@ svg { max-width: 100%; }
 .text-stack { display: flex; flex-direction: column; gap: var(--s2); }
 .text-stack.is-jump { gap: var(--s3); }   /* when the size jump between the two lines is past 1.5x */
 
-/* ---- Icons -------------------------------------------------------------------------------------------- */
+/* ---- Icons and class figures -------------------------------------------------------------------------- */
 
 .ico { display: block; flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.figure { display: block; flex: none; }   /* sized by its own width and height, a whole multiple of its 12 x 16 pixels */
 
 /* ---- Card: one level of padding, children spaced by margin, groups split by a rule ------------------- */
 
@@ -175,7 +176,7 @@ svg { max-width: 100%; }
 .actions { display: flex; flex-direction: column; gap: var(--s3); }
 .hint { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 
-/* ---- Role buttons: a 2 x 2 grid, class icon and names, no colour ---------------------------------------- */
+/* ---- Role buttons: a 2 x 2 grid, class figure and names, no option colour ------------------------------- */
 
 .roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
 .role {
@@ -191,7 +192,7 @@ svg { max-width: 100%; }
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: background .18s ease, transform .12s ease, box-shadow .2s ease, opacity .2s ease;
 }
-.role .ico { width: 1.6em; height: 1.6em; margin-top: var(--s2); }   /* the icon's own air keeps the top inset level with the sides */
+.role .figure { margin-top: var(--s1); }
 .role-name, .role-sub { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .role-sub { font-size: var(--t-sub); font-weight: 500; line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 .role:active { transform: translateY(1px) scale(.985); background: var(--surface-3); box-shadow: none; }

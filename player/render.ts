@@ -2,6 +2,7 @@
 // render() swaps the page only when a screen's markup actually changed: the room sends every phone a view after
 // every vote, and replacing a button in the middle of a press would swallow the tap.
 import type { CaseContent } from '../shared/content';
+import { figureSvg } from '../shared/figures';
 import { synergyHits } from '../shared/scoring';
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../shared/shapes';
 import { OPTION_IDS, type OptionId, type PlayerView, type Role } from '../shared/types';
@@ -43,25 +44,29 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...
 }
 
 // Icons are drawn inline in one family: 24 px grid, 2 px stroke, round caps and joins. No icon font and no request.
-// The four option shapes come from shared/shapes.ts, which the projector's badges draw from too.
+// The four option shapes come from shared/shapes.ts, which the projector's badges draw from too. A class is shown by
+// its pixel figure, not an icon: figure() below draws it from shared/figures.ts, the pixels the projector paints.
 const GLYPHS = {
-  dagger: '<g transform="rotate(45 12 12)"><path d="M12 1.5 14.5 5v9h-5V5z"/><path d="M6.5 14h11M12 14v5"/><circle cx="12" cy="21" r="1.5"/></g>',
-  shield: '<path d="M12 2.5 20 5.5v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10v-6z"/><path d="M12 2.5v19"/>',
-  lute: '<ellipse cx="9" cy="15" rx="5" ry="6.4" transform="rotate(45 9 15)"/><circle cx="9" cy="15" r="1.3"/><path d="M13.5 10.5 20.5 3.5M18.7 1.7l3.6 3.6"/>',
-  staff: '<path d="M4 20 14.4 9.6"/><path d="M17.5 2 19.1 4.9 22 6.5 19.1 8.1 17.5 11 15.9 8.1 13 6.5 15.9 4.9z"/>',
   ...SHAPE_MARKUP,
   check: '<path d="M5 12.5 10 17.5 19 7"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
 } as const;
 type Glyph = keyof typeof GLYPHS;
 
-const ROLE_GLYPH: Record<Role, Glyph> = { citizen: 'dagger', government: 'shield', business: 'lute', microsoft: 'staff' };
 const OPTION_GLYPH: Record<OptionId, Glyph> = OPTION_SHAPE;
 
 function icon(glyph: Glyph): Element {
   const holder = document.createElement('div');
   // The markup is a constant from the table above; nothing from the room or the player goes through innerHTML.
   holder.innerHTML = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${GLYPHS[glyph]}</svg>`;
+  return holder.firstElementChild as Element;
+}
+
+/** The class figure for `role`, drawn `scale` CSS pixels to each of its pixels. */
+function figure(role: Role, scale: number): Element {
+  const holder = document.createElement('div');
+  // The markup is built from the constant figure lists; the role only picks one of the four.
+  holder.innerHTML = figureSvg(role, scale);
   return holder.firstElementChild as Element;
 }
 
@@ -122,7 +127,7 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
 
   const roleButtons = content.roles.map((r) =>
     h('button', { type: 'button', class: 'role', 'data-role': r.id, 'aria-pressed': String(r.id === chosen) },
-      icon(ROLE_GLYPH[r.id]), h('span', { class: 'role-name' }, r.className), h('span', { class: 'role-sub' }, r.stakeholder)));
+      figure(r.id, 3), h('span', { class: 'role-name' }, r.className), h('span', { class: 'role-sub' }, r.stakeholder)));
 
   const refresh = (): void => {
     const ready = nickname.value.trim() !== '' && chosen !== null;
@@ -171,7 +176,7 @@ function waiting(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement 
   }
   return screen('waiting', [
     h('div', { class: 'card card-lifted' },
-      h('span', { class: 'glyph' }, icon(ROLE_GLYPH[view.role])),
+      h('span', { class: 'glyph' }, figure(view.role, 5)),
       h('h1', { class: 'title' }, `You're in as ${view.name}, ${classNameOf(content, view.role)}. Watch the screen.`),
       h('p', { class: 'cap' }, role?.stakeholder ?? ''),
       view.table ? h('p', { class: 'cap' }, `Table: ${view.table}`) : null),
@@ -219,7 +224,7 @@ function voteButtons(view: PlayerView, content: CaseContent, ref: Ref): HTMLElem
   group.append(...buttons);
   return screen('vote', [
     roundRow(view, content, true),
-    view.isLead ? h('p', { class: 'note' }, icon(ROLE_GLYPH[view.role]), 'Your class leads this round') : null,
+    view.isLead ? h('p', { class: 'note' }, figure(view.role, 2), 'Your class leads this round') : null,
     group,
   ]);
 }

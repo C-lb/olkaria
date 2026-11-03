@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import raw from '../content/case.json';
 import { loadContent } from '../shared/content';
 import { render, formatCountdown } from '../player/render';
+import { FIGURES } from '../shared/figures';
 import type { PlayerView } from '../shared/types';
 const c = loadContent(raw);
 const base: PlayerView = { phase: 'vote', round: 0, serverNow: 1000, voteDeadline: 31000, voteWindowMs: 30000, name: 'Ann', role: 'citizen', table: null, lead: 'citizen', isLead: true, myVote: null, lastPoints: 0, score: 0, rank: 1, playerCount: 12, tally: null, leadTally: null, supportTally: null, majorities: [], picks: [], callout: null };
@@ -341,4 +342,22 @@ describe('the other screens', () => {
       expect(el.textContent?.length).toBeGreaterThan(0);
     }
   });
+});
+
+it('draws the class figure on the role buttons, the waiting card and the lead note, from the shared figures', () => {
+  const el = mount();
+  render(el, null, c, { status: 'joining', name: '', role: null, table: '' }, noop);
+  const roles = [...el.querySelectorAll('button[data-role]')];
+  expect(roles.map((r) => r.querySelector('svg.figure')?.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
+  expect(roles[0].querySelector('svg.figure')?.getAttribute('width')).toBe('36');
+  expect(roles[0].querySelectorAll('svg.figure rect')).toHaveLength(FIGURES.citizen.length);
+  expect(el.querySelector('.ico path[d^="M12 1.5"]')).toBeNull();   // the dagger glyph is gone
+  render(el, { ...base, phase: 'lobby' }, c, joined, noop);
+  const hero = el.querySelector('[data-screen=waiting] svg.figure')!;
+  expect(hero.getAttribute('data-role')).toBe('citizen');
+  expect(hero.getAttribute('width')).toBe('60');
+  expect(hero.getAttribute('height')).toBe('80');
+  render(el, base, c, joined, noop);
+  expect(el.querySelector('.note svg.figure')?.getAttribute('width')).toBe('24');
+  expect(el.querySelector('svg.figure rect')?.getAttribute('fill')).toMatch(/^#[0-9a-f]{6}$/);
 });
