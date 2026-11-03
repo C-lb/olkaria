@@ -235,6 +235,17 @@ describe('the other screens', () => {
     expect(el.textContent).toContain('Reconnecting…');
     expect(el.querySelectorAll('button')).toHaveLength(0);
   });
+  it('name the room on the offline screen when it cannot be reached, and nowhere else', () => {
+    const el = mount();
+    render(el, null, c, { ...joining, status: 'offline' }, noop);
+    expect(el.textContent).toContain('Reconnecting…');
+    expect(el.textContent).not.toContain("Can't reach");
+    render(el, null, c, { ...joining, status: 'offline', unreachable: 'KFBN' }, noop);
+    expect(el.textContent).toContain('Reconnecting…');
+    expect(el.textContent).toContain("Can't reach room KFBN. Check the code on the screen.");
+    render(el, null, c, { ...joining, status: 'joining', unreachable: 'KFBN' }, noop);
+    expect(el.textContent).not.toContain("Can't reach");
+  });
   it('buzz once per call-out and again only after the screen has changed', () => {
     const vibrate = vi.fn();
     Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
@@ -253,6 +264,7 @@ describe('the other screens', () => {
     const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
     const screens: Array<[PlayerView | null, Parameters<typeof render>[3]]> = [
       [null, joining], [null, { ...joining, status: 'connecting' }], [null, { ...joining, status: 'kicked' }], [null, { ...joining, status: 'offline' }],
+      [null, { ...joining, status: 'offline', unreachable: 'ABCD' }],
       [{ ...base, phase: 'lobby' }, joined], [base, joined], [{ ...base, myVote: 'C' }, joined], [calledView, joined], [{ ...base, phase: 'locked' }, joined],
       [{ ...calledView, callout: { name: 'Bo', option: 'D', isMe: false } }, joined],
       [{ ...base, phase: 'reveal', myVote: 'A', picks: ['A'] }, joined], [{ ...base, phase: 'reveal', round: 3, myVote: 'D', majorities: ['A', 'B', 'C', 'D'] }, joined],

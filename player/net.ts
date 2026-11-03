@@ -6,6 +6,9 @@ export type SocketStatus = 'open' | 'closed' | 'kicked';
 /** Wait before the next attempt: 1 s, 2 s, 4 s, then 10 s for as long as the room stays out of reach. */
 const BACKOFF_MS = [1000, 2000, 4000, 10000];
 
+/** Attempts in a row that must close without ever opening before the room counts as unreachable. */
+export const UNREACHABLE_AFTER = 3;
+
 /** The room sends this word as an error before it refuses a banned client, and closes a kicked socket with it. */
 const REMOVED = KICKED_CLOSE_REASON;
 
@@ -13,6 +16,7 @@ export class PlayerSocket {
   private ws: WebSocket | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private failures = 0;
+  private neverOpened = 0;
   private stopped = false;
   private viewCb: (view: PlayerView) => void = () => {};
   private statusCb: (status: SocketStatus) => void = () => {};
@@ -27,6 +31,9 @@ export class PlayerSocket {
   onStatus(cb: (status: SocketStatus) => void): void { this.statusCb = cb; }
   /** Refusals from the room, such as "already voted". */
   onError(cb: (msg: string) => void): void { this.errorCb = cb; }
+
+  /** True once UNREACHABLE_AFTER attempts in a row have closed without opening, until one opens. A wrong code looks like this: the room refuses the upgrade. */
+  get unreachable(): boolean { return this.neverOpened >= UNREACHABLE_AFTER; }
 
   /** Sent only while the connection is open. A message for a closed connection is dropped, not queued. */
   send(msg: ClientMsg): void {
@@ -45,14 +52,17 @@ export class PlayerSocket {
     try {
       ws = new WebSocket(this.url());
     } catch {
-      this.lost(null);
+      this.lost(null, false);
       return;
     }
     this.ws = ws;
+    let opened = false;
     // Events from a socket that has been replaced or dropped on purpose belong to nobody.
     ws.addEventListener('open', () => {
       if (this.ws !== ws) return;
+      opened = true;
       this.failures = 0;
+      this.neverOpened = 0;
       this.statusCb('open');
     });
     ws.addEventListener('message', (ev) => {
@@ -61,20 +71,22 @@ export class PlayerSocket {
     ws.addEventListener('close', (ev) => {
       if (this.ws !== ws) return;
       this.ws = null;
-      this.lost(ev.code);
+      this.lost(ev.code, opened);
     });
   }
 
-  private lost(code: number | null): void {
+  private lost(code: number | null, opened: boolean): void {
     if (this.stopped) return;
     if (code === KICKED_CLOSE_CODE) {
       this.kick();
       return;
     }
-    this.statusCb('closed');
+    if (!opened) this.neverOpened += 1;
     const wait = BACKOFF_MS[Math.min(this.failures, BACKOFF_MS.length - 1)];
     this.failures += 1;
     this.timer = setTimeout(() => this.connect(), wait);
+    // Last, so a listener that reads `unreachable` already sees this loss.
+    this.statusCb('closed');
   }
 
   private kick(): void {

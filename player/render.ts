@@ -12,6 +12,8 @@ export type UiState = {
   table: string;
   /** What the room last refused, for example "already voted". Shown under the screen until the next view. */
   error?: string | null;
+  /** The room code, set while the room cannot be reached and this tab has never been in. The offline screen names it. */
+  unreachable?: string | null;
 };
 
 export type Actions = {
@@ -284,14 +286,20 @@ function kicked(): HTMLElement {
 function waitingOn(kind: string, text: string): HTMLElement {
   return screen(kind, [h('div', { class: 'status', role: 'status' }, h('span', { class: 'wheel' }), text)], true);
 }
-const offline = (): HTMLElement => waitingOn('offline', 'Reconnecting…');
 const connecting = (): HTMLElement => waitingOn('connecting', 'Connecting…');
+
+function offline(unreachable: string | null | undefined): HTMLElement {
+  return screen('offline', [h('div', { class: 'status-stack' },
+    h('div', { class: 'status', role: 'status' }, h('span', { class: 'wheel' }), 'Reconnecting…'),
+    // One sentence per line, with the space kept between them so the text still reads as one.
+    unreachable ? h('p', { class: 'cap', role: 'status' }, h('span', { class: 'line' }, `Can't reach room ${unreachable}.`), ' ', h('span', { class: 'line' }, 'Check the code on the screen.')) : null)], true);
+}
 
 // ---- Render -----------------------------------------------------------------------------------------
 
 function choose(view: PlayerView | null, content: CaseContent, ui: UiState, ref: Ref): Built {
   if (ui.status === 'kicked') return { kind: 'kicked', node: kicked() };
-  if (ui.status === 'offline') return { kind: 'offline', node: offline() };
+  if (ui.status === 'offline') return { kind: 'offline', node: offline(ui.unreachable) };
   if (view === null) {
     return ui.status === 'joining' ? { kind: 'join', node: joinForm(content, ui, ref) } : { kind: 'connecting', node: connecting() };
   }

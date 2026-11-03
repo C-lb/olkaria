@@ -134,6 +134,36 @@ describe('player socket', () => {
     expect(views).toEqual([]);
   });
 
+  it('calls the room unreachable after three attempts in a row never open, keeps retrying, and clears on an open', () => {
+    const socket = new PlayerSocket('ABCD', 'client 1');
+    const seen: boolean[] = [];
+    socket.onStatus((s) => { if (s === 'closed') seen.push(socket.unreachable); });
+    const last = () => FakeSocket.all[FakeSocket.all.length - 1];
+    expect(socket.unreachable).toBe(false);
+    for (const wait of [1000, 2000, 4000]) {
+      last().drop();
+      vi.advanceTimersByTime(wait);
+    }
+    expect(seen).toEqual([false, false, true]);
+    expect(FakeSocket.all).toHaveLength(4);
+    last().drop();
+    vi.advanceTimersByTime(10_000);
+    expect(seen).toEqual([false, false, true, true]);
+    expect(FakeSocket.all).toHaveLength(5);
+
+    last().open();
+    expect(socket.unreachable).toBe(false);
+    last().drop();
+    vi.advanceTimersByTime(1000);
+    last().drop();
+    vi.advanceTimersByTime(2000);
+    last().drop();
+    expect(socket.unreachable).toBe(false);
+    vi.advanceTimersByTime(4000);
+    last().drop();
+    expect(socket.unreachable).toBe(true);
+  });
+
   it('treats a removed error as a kick, because the room refuses a banned client that way', () => {
     const { ws, statuses, errors } = connect();
     ws().open();

@@ -90,7 +90,11 @@ function start(app: HTMLElement, code: string): void {
   };
 
   const paint = (): void => {
-    const ui: UiState = { status: status(), name: draft?.name ?? '', role: draft?.role ?? null, table: draft?.table ?? '', error: error?.msg ?? null };
+    const ui: UiState = {
+      status: status(), name: draft?.name ?? '', role: draft?.role ?? null, table: draft?.table ?? '', error: error?.msg ?? null,
+      // Several attempts that never opened, in a tab that has never been in: most likely a wrong code, so say so.
+      unreachable: view === null && socket.unreachable ? code : null,
+    };
     render(app, view, content, ui, actions);
     // The clock only runs while a vote is open and this phone is connected.
     const counting = ui.status === 'joined' && view?.phase === 'vote';
