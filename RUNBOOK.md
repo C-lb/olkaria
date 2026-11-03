@@ -1,0 +1,172 @@
+# Runbook
+
+Live game: https://olkaria.sparkbot-worker.workers.dev
+Projector page: https://olkaria.sparkbot-worker.workers.dev/host/
+Phones join at the address on the lobby screen, which ends in `/j/` and the room code.
+
+Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games, every vote counted.
+
+## Before class
+
+1. Open https://olkaria.sparkbot-worker.workers.dev/host/ to confirm the URL.
+   A QR code and a four-letter room code appear within a few seconds.
+2. In a terminal, run `caffeinate -d` and leave it running.
+   It keeps the display awake. Ctrl+C stops it after class.
+3. Mute notifications: turn on Do Not Disturb.
+4. In Chrome, open https://olkaria.sparkbot-worker.workers.dev/host/?new=1.
+   The room is created when the page loads.
+   `?new=1` makes it a fresh room, so the class does not land in a rehearsal room with its old players.
+   The page drops `?new=1` from the address by itself, so a reload stays in this room.
+5. Open a second tab at https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline and leave it there.
+   Once loaded it needs no network, so offline mode is one tab away.
+6. Use that offline tab for the real fullscreen look on the projector.
+   F, then Space shows the travel backdrop, then N shows the Grid Wyrm and its HP bar.
+   Check the backdrop, the boss, the HP bar and the text sizes.
+   So far the game has only been seen in a laptop browser window, never fullscreen on a 1920 × 1080 projector.
+   At 1920 × 1080 it draws at 6× and fills the screen.
+   For the next boss: Space, B, then Space four times, then N. The same again for each boss after it.
+   Then Shift+R twice takes that tab back to its lobby, and Esc leaves fullscreen.
+7. Go back to the class tab and press F for fullscreen. That is the tab you run the game in.
+   If a key ever does nothing, click once on the game. A click gives the page the keyboard and does nothing else.
+8. Scan the QR from the back row with your phone, and read the lobby text from there too.
+   The QR should open the join form for this room. You do not need to join.
+
+## The 12-minute run of show
+
+| Time | Beat | On the projector | You |
+|---|---|---|---|
+| 0:00 to 1:30 | Lobby | QR, code, address, counts per class, avatars dropping in | "Tables of four. Scan, type your name, pick your role: one of each per table." Space starts. |
+| 1:30 to 2:00 | Travel 1 | The party runs toward Olkaria past three exhibit pickups | Run with the arrows or A. Read each fact as it pops. N skips to the arena. |
+| 2:00 to 4:30 | Round 1, Grid Wyrm | The Rogues' special attack: what Kenyans accept on power | 30 s vote, one call-out, strike, 45 s debrief |
+| 4:30 to 7:00 | Round 2, Debt Golem | The Knights' special attack: what the Government offers | Same shape |
+| 7:00 to 9:30 | Round 3, Fog of Demand | The Bards' special attack: what Kenya's businesses commit | Same shape |
+| 9:30 to 11:30 | Round 4, the core | The Wizards' special attack: Microsoft's decision, then the ending | "What should Microsoft do, and why?" |
+| 11:30 to 12:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hand the split to the discussion |
+
+Travels 2 to 4: press N straight away unless you are running early.
+
+### Every round
+
+1. You arrive at the arena with the narration up. Space opens the vote.
+2. The vote runs 30 s and locks itself at 0 s. Space locks it early.
+   Lock early only while the clock shows 3 s or more.
+   A Space pressed just after 0 s lands on the locked vote and strikes at once, which skips the call-out.
+3. Once locked, each card shows two bars: the lead class and the rest of the party.
+   C calls out a voter, from the lead class while any of them voted.
+   The student defends their choice.
+   Y if convincing: +10 damage and 30 points to them. N if not: no bonus and 10 points.
+   C again for a second one. Two per round at most.
+4. Space: the party strikes. Space during the strike skips to the debrief.
+5. Debrief: read the discuss line and take a comment or two. Space moves on to the next travel.
+
+After round 4's debrief, Space shows the ending. Space again shows the leaderboard.
+On the leaderboard Space does nothing, so a stray press cannot end the closing screen.
+
+### Discuss lines
+
+These are the lines the debriefs show today (`rounds[i].discuss` in `content/case.json`).
+
+- Round 1, Grid Wyrm: "Why did the full 1 GW do so little damage, and what condition made 60 to 100 MW safe?"
+- Round 2, Debt Golem: "Two live offers, one honest refusal, one dead option. Which would you sign, and who carries the risk?"
+- Round 3, Fog of Demand: "What would Kenya's businesses need to see before they sign, and what would Microsoft need to see before it builds?"
+- Round 4, the core: "What should Microsoft do, and why?"
+
+### Exhibit facts
+
+Each pickup on the road adds +5 to the next strike, three at most. N skips them.
+
+- Travel 1: Olkaria generates about 950 MW. Record peak demand 2,444 MW, January 2026. 1 GW = about 31% of installed capacity.
+- Travel 2: Public debt about 68% of GDP, June 2025. 48.5% of ordinary revenue goes to debt service. PPP liabilities need Parliament's approval, September 2026.
+- Travel 3: Kenya's data-centre market is about 20 MW. Market worth US$266 million in 2025, US$805 million by 2031. 97.5% of online Kenyans vs 8.7% of all Kenyans used AI.
+- Travel 4: US$1 billion is 0.6% of Microsoft's FY2027 capex. Nairobi development centre closing, October 2026. Microsoft committed US$329 million more to South Africa, April 2026.
+
+### Keys
+
+| Key | What it does |
+|---|---|
+| Space | Lobby: start. Travel: jump. Arena: open the vote. Vote: lock. Locked: strike. Strike: skip to the debrief. Debrief: next. Ending: leaderboard. Leaderboard: nothing. |
+| Arrows | Run and jump in travel |
+| A | Auto-run in travel. It pauses at each exhibit. An arrow takes control back. |
+| N | Travel: skip to the arena. Call-out up: not convincing. |
+| C | Call a student out, once the vote is locked |
+| Y | Call-out convincing |
+| R | Reopen a locked vote, or extend an open one, with a fresh 30 s |
+| 1 to 4 | Add one vote for A to D |
+| Shift+1 to 4 | Add ten votes for A to D |
+| B | Add 30 bot votes, weighted toward the evidence |
+| H | Hide or show names in the lobby list and on the leaderboard |
+| F | Fullscreen on or off |
+| Esc | Show or hide the key map. In fullscreen, Chrome takes Esc to leave fullscreen. |
+| Shift+R twice | Within 3 s: back to the lobby. Players stay; votes and scores go. |
+| Cmd+R | Reload. Safe: the same room and screen come back. |
+
+Space rests for a second after each press, so a double press never sends twice.
+A key pressed at the wrong moment shows a short note such as "Bad phase" and changes nothing.
+The vote keys (1 to 4, Shift, B) work while a vote is open or locked. They count for the party, never the lead class.
+
+## If something breaks
+
+**The Wi-Fi drops.**
+The projector shows "Reconnecting to the room" and keeps trying, at most 10 s apart. Phones do the same.
+Phones can switch to cellular data. The laptop can tether to your phone.
+If the room does not come back, switch to offline mode: the offline tab from before class.
+With a network you can also open https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline.
+Offline mode starts at its own lobby with no phones. Space starts it.
+To catch up, play each round you already did on bot votes: N, Space, B, then Space four times, about a second apart.
+For your round, take a show of hands per option and type the counts: 1 to 4 add one vote for A to D, Shift+1 to 4 add ten.
+For 23 hands on B: Shift+2, Shift+2, then 2 three times.
+The debrief says no one of the lead class voted, because hand counts count for the party. That is expected.
+Do not reload the offline tab. Offline mode keeps nothing and starts over at the lobby.
+
+**A student cannot join.**
+Read out the address beside the QR, with the `/j/` and the four-letter code at the end. Codes have no I or O.
+The bare address without `/j/` opens the projector page, not the join page.
+A phone that says "Can't reach room" most likely has the wrong code.
+
+**A class has no one in the lead role.**
+The lead strike is skipped, the party carries the whole attack, and the debrief says so ("No Rogues voted this round"). Carry on.
+
+**The projector page reloads.**
+It comes back to the same room and the same screen, in the same tab.
+A strike in progress comes back as its debrief. A travel segment starts again from the beginning.
+Never open the host page in a new tab mid-game. A new tab makes a new room, and the phones stay in the old one.
+If you close the tab by accident, Cmd+Shift+T reopens it.
+If it comes back in the game, carry on. If it comes back at a lobby with a new code, the old room is out of reach: ask the class to scan the new QR.
+
+**A call-out nobody wants.**
+N declines it: no bonus, and the student still gets 10 points.
+C again calls someone else, two per round at most.
+Space with the call-out still up also counts it as declined.
+
+**A vote needs more time.**
+R reopens it with a fresh 30 s, even after it locked. Once the party has struck, the round is final.
+
+**Names should not be on screen.**
+H hides them in the lobby list and on the leaderboard. The call-out banner still shows the called student's name.
+
+**Something is badly wrong.**
+Shift+R, then Shift+R again within 3 s, takes the room back to the lobby. The first press shows "Press Shift+R again to reset".
+Everyone stays joined. Votes and scores go.
+
+## After class
+
+- Shift+R twice resets the room to the lobby, if you want the screen cleared.
+- Rooms close by themselves after 6 hours with no activity. There is nothing to clean up.
+- Ctrl+C in the caffeinate terminal.
+
+## Rehearsal checklist
+
+For 4 November, on the projector if you can.
+
+- [ ] Five phones join with one shared table name and every role covered. There are four roles, so one comes twice.
+- [ ] A full 12-minute run, timed against the run of show.
+- [ ] One call-out per round, judged with Y or N.
+- [ ] Round 2: switch to the offline tab on purpose and play the round with hand counts. Then go back to the online tab and carry on.
+- [ ] Round 3: reload the host page once (Cmd+R). It should come back to the same screen. Do it in the online tab, since offline mode starts over on a reload.
+- [ ] The leaderboard names the shared table as the top table.
+
+### What confused a teammate
+
+-
+-
+-
