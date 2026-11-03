@@ -123,15 +123,18 @@ export class Room extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     if (req.method === 'POST' && url.pathname === '/init') return this.init(req);
-    if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket upgrade', { status: 426 });
 
     const state = await this.load();
     if (!state) return new Response('No such room', { status: 404 });
 
     const role = url.searchParams.get('role');
+    // The host page probes a remembered room with a plain GET of its socket address, so the answers come in this
+    // order: 404 for a room that is gone, 403 for a wrong host key, and 426 for a live room that accepts the key.
+    if (role === 'host' && url.searchParams.get('key') !== state.hostKey) return new Response('Bad host key', { status: 403 });
+    if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket upgrade', { status: 426 });
+
     let attachment: Attachment;
     if (role === 'host') {
-      if (url.searchParams.get('key') !== state.hostKey) return new Response('Bad host key', { status: 403 });
       attachment = { role: 'host', clientId: '' };
     } else if (role === 'player') {
       const clientId = url.searchParams.get('clientId') ?? '';
