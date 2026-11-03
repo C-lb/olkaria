@@ -73,9 +73,9 @@ describe('computeDamage', () => {
     const d = dmg({ roundIndex: 3, lead: T(2, 4, 1, 1), support: T(8, 16, 4, 4), prior: ['B', 'C', 'B'] });
     expect(d.base).toBeCloseTo(78.125, 5); expect(d.alignment).toBe(10); expect(d.total).toBe(88);
   });
-  it('caps exhibits at 3, rallies at 2, and total at 100', () => {
+  it('caps exhibits at 3, rallies at 4, and total at 100', () => {
     const d = dmg({ lead: T(0, 10, 0, 0), support: T(0, 10, 0, 0), exhibits: 7, rallies: 5 });
-    expect(d.exhibit).toBe(15); expect(d.rally).toBe(20); expect(d.total).toBe(100);
+    expect(d.exhibit).toBe(15); expect(d.rally).toBe(40); expect(d.total).toBe(100);
   });
   it('handles an empty round without NaN', () => {
     const d = dmg({ roundIndex: 1, lead: Z, support: Z, prior: ['B'] });

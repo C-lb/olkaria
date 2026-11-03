@@ -18,7 +18,7 @@ const toVote = () => run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', undefin
 describe('lobby and joins', () => {
   it('starts in lobby with full boss hp and round -1', () => {
     const s = mk();
-    expect(s.phase).toBe('lobby'); expect(s.round).toBe(-1); expect(s.bossHp).toBe(400); expect(s.voteWindowMs).toBe(30000);
+    expect(s.phase).toBe('lobby'); expect(s.round).toBe(-1); expect(s.bossHp).toBe(400); expect(s.voteWindowMs).toBe(120000);
   });
   it('joins keep identity on rejoin once the game has started, generate names, clean tables', () => {
     const s = run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', undefined, 'business', t0, '  Table 3 '), { type: 'cmd', key: KEY, cmd: { k: 'start' }, now: t0 }, join('p1', 'Other', 'microsoft')]).state;
@@ -79,8 +79,8 @@ describe('vote window', () => {
   it('openVote sets a deadline and an alarm', () => {
     const r = cmd(cmd(mk(), { k: 'start' }).state, { k: 'openVote' });
     expect(r.state.phase).toBe('vote'); expect(r.state.round).toBe(0);
-    expect(r.state.voteDeadline).toBe(t0 + 30000);
-    expect(r.effects).toContainEqual({ type: 'setAlarm', at: t0 + 30000 });
+    expect(r.state.voteDeadline).toBe(t0 + 120000);
+    expect(r.effects).toContainEqual({ type: 'setAlarm', at: t0 + 120000 });
   });
   it('counts one vote per player, first vote locks, rejoin cannot revote', () => {
     const s = run(toVote(), [vote('p1', 0, 'B'), vote('p1', 0, 'A'), join('p1', 'Ann', 'citizen'), vote('p1', 0, 'C'), vote('p2', 0, 'B')]).state;
@@ -101,10 +101,10 @@ describe('vote window', () => {
   });
   it('tick at the deadline locks the vote and later votes are rejected', () => {
     const s = toVote();
-    const ticked = reduce(s, { type: 'tick', now: t0 + 30000 }, c);
+    const ticked = reduce(s, { type: 'tick', now: t0 + 120000 }, c);
     expect(ticked.state.phase).toBe('locked');
     expect(ticked.effects).toContainEqual({ type: 'clearAlarm' });
-    expect(tallyFor(reduce(ticked.state, vote('p2', 0, 'B', t0 + 30500), c).state, 0).B).toBe(0);
+    expect(tallyFor(reduce(ticked.state, vote('p2', 0, 'B', t0 + 120500), c).state, 0).B).toBe(0);
     expect(reduce(s, { type: 'tick', now: t0 + 1000 }, c).state.phase).toBe('vote');
   });
   it('injectVotes only while accepting votes, and synthetic voters never appear as players', () => {
@@ -117,34 +117,75 @@ describe('vote window', () => {
   it('reopen returns a locked round to vote with a fresh deadline, extends an open one, and is refused elsewhere', () => {
     const locked = cmd(toVote(), { k: 'closeVote' }).state;
     const r = cmd(locked, { k: 'reopen' }, t0 + 40000);
-    expect(r.state.phase).toBe('vote'); expect(r.state.voteDeadline).toBe(t0 + 70000); expect(r.state.voteOpenedAt).toBe(t0);
+    expect(r.state.phase).toBe('vote'); expect(r.state.voteDeadline).toBe(t0 + 160000); expect(r.state.voteOpenedAt).toBe(t0);
     const e = cmd(toVote(), { k: 'reopen' }, t0 + 10000);
-    expect(e.state.voteDeadline).toBe(t0 + 40000); expect(e.effects).toContainEqual({ type: 'setAlarm', at: t0 + 40000 });
+    expect(e.state.voteDeadline).toBe(t0 + 130000); expect(e.effects).toContainEqual({ type: 'setAlarm', at: t0 + 130000 });
     expect(cmd(mk(), { k: 'reopen' }).effects).toContainEqual({ type: 'error', msg: 'bad phase' });
   });
 });
 
-describe('call-outs', () => {
+describe('two-minute votes that lock when everyone has voted', () => {
+  it('the window is two minutes', () => {
+    expect(mk().voteWindowMs).toBe(120_000);
+    const open = cmd(cmd(mk(), { k: 'start' }).state, { k: 'openVote' });
+    expect(open.state.voteDeadline).toBe(t0 + 120_000);
+    expect(open.effects).toContainEqual({ type: 'setAlarm', at: t0 + 120_000 });
+  });
+  it('locks the vote as soon as every player has voted, clears the alarm, and keeps the last vote', () => {
+    const two = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A')]);
+    expect(two.state.phase).toBe('vote');
+    const all = reduce(two.state, vote('p3', 0, 'C', t0 + 7000), c);
+    expect(all.state.phase).toBe('locked');
+    expect(all.effects).toContainEqual({ type: 'clearAlarm' });
+    expect(all.state.players.p3.votes[0]).toMatchObject({ option: 'C', at: t0 + 7000 });
+    expect(tallyFor(all.state, 0)).toEqual({ A: 1, B: 1, C: 1, D: 0 });
+    expect(reduce(all.state, vote('p3', 0, 'D'), c).effects).toContainEqual({ type: 'error', clientId: 'p3', msg: 'not accepting votes' });
+  });
+  it('synthetic votes never lock it, a joiner during the vote holds it open, and an empty room never locks on a key vote', () => {
+    expect(cmd(toVote(), { k: 'injectVotes', counts: { A: 30 } }).state.phase).toBe('vote');
+    const three = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A'), join('p4', 'Dee', 'business', t0 + 6500), vote('p3', 0, 'C', t0 + 7000)]).state;
+    expect(three.phase).toBe('vote');
+    expect(reduce(three, vote('p4', 0, 'D', t0 + 8000), c).state.phase).toBe('locked');
+    const empty = cmd(cmd(mk(), { k: 'start' }).state, { k: 'openVote' }).state;
+    expect(cmd(empty, { k: 'injectVotes', counts: { B: 5 } }).state.phase).toBe('vote');
+  });
+  it('a reopen after an early lock runs the full window again and the standing votes stand', () => {
+    const all = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A'), vote('p3', 0, 'C')]).state;
+    const again = cmd(all, { k: 'reopen' }, t0 + 9000);
+    expect(again.state.phase).toBe('vote');
+    expect(again.state.voteDeadline).toBe(t0 + 9000 + 120_000);
+    expect(tallyFor(again.state, 0)).toEqual({ A: 1, B: 1, C: 1, D: 0 });
+    expect(reduce(again.state, vote('p1', 0, 'D', t0 + 9500), c).effects).toContainEqual({ type: 'error', clientId: 'p1', msg: 'already voted' });
+  });
+});
+
+describe('call-outs: one voice per option, four a round', () => {
   const locked = () => cmd(run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A')]).state, { k: 'closeVote' }).state;
-  it('prefers voters of the lead class, only in locked', () => {
-    const s = locked();
+  it('picks across every voter, with no preference for the lead class, and only once locked', () => {
     expect(cmd(toVote(), { k: 'callout', pick: 0.1 }).effects).toContainEqual({ type: 'error', msg: 'bad phase' });
-    for (const pick of [0.1, 0.9]) {
-      const co = cmd(s, { k: 'callout', pick }).state.callouts[0][0];
-      expect(co).toMatchObject({ playerId: 'p1', option: 'B', status: 'pending' });
-    }
+    expect(cmd(locked(), { k: 'callout', pick: 0.1 }).state.callouts[0][0]).toMatchObject({ playerId: 'p1', option: 'B', status: 'pending' });
+    expect(cmd(locked(), { k: 'callout', pick: 0.9 }).state.callouts[0][0]).toMatchObject({ playerId: 'p2', option: 'A', status: 'pending' });
   });
-  it('falls back to other voters once the lead class is used up, never a non-voter or a repeat', () => {
-    const s = cmd(cmd(locked(), { k: 'callout', pick: 0.5 }).state, { k: 'judge', awarded: true }).state;
-    expect(cmd(s, { k: 'callout', pick: 0.5 }).state.callouts[0][1].playerId).toBe('p2');   // p3 did not vote, p1 already called
+  it('each call-out goes to an option the round has not heard; then any uncalled voter; then a hand call-out; then the limit', () => {
+    const open = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A'), join('p4', 'Dee', 'business', t0 + 6500), vote('p4', 0, 'B', t0 + 7000)]).state;
+    const s = cmd(open, { k: 'closeVote' }).state;   // p1 B, p2 A, p4 B; p3 did not vote
+    const first = cmd(s, { k: 'callout', pick: 0.1 }).state;   // pool by join: p1, p2, p4; 0.1 is p1
+    expect(first.callouts[0][0]).toMatchObject({ playerId: 'p1', option: 'B' });
+    const second = cmd(cmd(first, { k: 'judge', awarded: true }).state, { k: 'callout', pick: 0.9 }).state;   // B is heard: p2 alone is preferred, whatever the pick
+    expect(second.callouts[0][1]).toMatchObject({ playerId: 'p2', option: 'A' });
+    const third = cmd(cmd(second, { k: 'judge', awarded: false }).state, { k: 'callout', pick: 0.5 }).state;   // every voted option heard: any uncalled voter
+    expect(third.callouts[0][2]).toMatchObject({ playerId: 'p4', option: 'B' });
+    const fourth = cmd(cmd(third, { k: 'judge', awarded: false }).state, { k: 'callout', pick: 0.5 }).state;   // nobody left: by hand
+    expect(fourth.callouts[0][3]).toMatchObject({ playerId: null, option: null, status: 'pending' });
+    const fifth = cmd(cmd(fourth, { k: 'judge', awarded: false }).state, { k: 'callout', pick: 0.5 });
+    expect(fifth.effects).toContainEqual({ type: 'error', msg: 'call-out limit' });
+    expect(fifth.state.callouts[0]).toHaveLength(4);
   });
-  it('allows an explicit pick, refuses a second pending call-out and a third call-out', () => {
+  it('allows an explicit pick and refuses a second pending call-out', () => {
     const s = cmd(locked(), { k: 'callout', playerId: 'p2' }).state;
     expect(s.callouts[0][0].playerId).toBe('p2');
     expect(cmd(s, { k: 'callout', pick: 0.2 }).effects).toContainEqual({ type: 'error', msg: 'call-out pending' });
-    let t = cmd(s, { k: 'judge', awarded: false }).state;
-    t = cmd(cmd(t, { k: 'callout', pick: 0.2 }).state, { k: 'judge', awarded: true }).state;
-    expect(cmd(t, { k: 'callout', pick: 0.2 }).effects).toContainEqual({ type: 'error', msg: 'call-out limit' });
+    const t = cmd(s, { k: 'judge', awarded: false }).state;
     expect(cmd(t, { k: 'judge', awarded: true }).effects).toContainEqual({ type: 'error', msg: 'no pending call-out' });
   });
   it('falls back to a nameless hand call-out when nobody is eligible', () => {
@@ -159,14 +200,15 @@ describe('call-outs', () => {
     // lead B only, support A only: blended A 0.5 B 0.5, base = 20 + 40 = 60, tie so no focus, majorities differ so no alignment, rally 10 -> 70
     expect(r.damageLog[0].rally).toBe(10); expect(r.damageLog[0].total).toBe(70);
     expect(r.callouts[0][1]).toMatchObject({ status: 'declined', points: 10 });
-    expect(r.players.p1.lastPoints).toBe(80 + 16 + 10 + 30);   // score, speed, caster, call-out awarded
-    expect(r.players.p2.lastPoints).toBe(40 + 16 + 10);        // score, speed, call-out spoke
+    expect(r.players.p1.lastPoints).toBe(80 + 19 + 10 + 30);   // score, speed, caster, call-out awarded
+    expect(r.players.p2.lastPoints).toBe(40 + 19 + 10);        // score, speed, call-out spoke
   });
 });
 
 describe('reveal and scoring', () => {
   const revealed = () => {
-    const s = run(toVote(), [vote('p1', 0, 'B', t0 + 6000), vote('p2', 0, 'B', t0 + 6000), vote('p3', 0, 'A', t0 + 15000)]).state;
+    // p4 joins and never votes, so the vote stays open until the closeVote
+    const s = run(toVote(), [join('p4', 'Dee', 'business'), vote('p1', 0, 'B', t0 + 6000), vote('p2', 0, 'B', t0 + 6000), vote('p3', 0, 'A', t0 + 15000)]).state;
     const withExhibit = { ...s, exhibits: { 0: ['t1a', 't1b'] } };
     return cmd(cmd(withExhibit, { k: 'closeVote' }).state, { k: 'reveal' }).state;
   };
@@ -177,9 +219,9 @@ describe('reveal and scoring', () => {
     expect(d.total).toBe(95); expect(d.alignment).toBe(0); expect(d.supportTied).toBe(true); expect(d.leadTied).toBe(false);
     expect(s.bossHp).toBe(305);
     expect(s.majorities[0]).toBe('B');
-    expect(s.players.p1.lastPoints).toBe(80 + 16 + 10); expect(s.players.p1.score).toBe(106);
-    expect(s.players.p2.lastPoints).toBe(80 + 16);
-    expect(s.players.p3.lastPoints).toBe(40 + 10);
+    expect(s.players.p1.lastPoints).toBe(80 + 19 + 10); expect(s.players.p1.score).toBe(109);
+    expect(s.players.p2.lastPoints).toBe(80 + 19);
+    expect(s.players.p3.lastPoints).toBe(40 + 18);
   });
   it('reveals an empty round without NaN and without damage', () => {
     const s = cmd(cmd(toVote(), { k: 'closeVote' }).state, { k: 'reveal' }).state;
@@ -214,7 +256,7 @@ describe('reveal and scoring', () => {
     const banned = cmd(revealed(), { k: 'kick', playerId: 'p3' }).state;
     const s = cmd(banned, { k: 'reset' }).state;
     expect(s.phase).toBe('lobby'); expect(s.round).toBe(-1); expect(s.bossHp).toBe(400);
-    expect(Object.keys(s.players)).toHaveLength(2); expect(s.players.p1.score).toBe(0); expect(s.damageLog).toEqual([]); expect(s.callouts).toEqual({});
+    expect(Object.keys(s.players)).toHaveLength(3); expect(s.players.p1.score).toBe(0); expect(s.damageLog).toEqual([]); expect(s.callouts).toEqual({});
     expect(s.banned).toEqual(['p3']);
   });
 });
@@ -271,8 +313,9 @@ describe('purity', () => {
     return x;
   };
   // One scripted class night through every phase: a change of details in the lobby, a bad role, a rejoin after the
-  // start, exhibits, injected votes, a tick that changes nothing and one that locks, a reopen with a late voter, two
-  // call-outs (one judged, one left pending), the ending, the leaderboard, a kick, a banned rejoin, hideNames and a reset.
+  // start, exhibits, injected votes, a tick that changes nothing and one that locks, a reopen with a late voter whose
+  // vote, the last in the room, locks it again, two call-outs (one judged, one left pending), the ending, the
+  // leaderboard, a kick, a banned rejoin, hideNames and a reset.
   const night = (): RoomEvent[] => {
     const evs: RoomEvent[] = [
       join('p1', 'Ann', 'citizen'), join('p2', undefined, 'government'), join('p3', 'Cy', 'microsoft'),
@@ -280,19 +323,19 @@ describe('purity', () => {
       K({ k: 'start' }), join('p1', 'Ann', 'citizen'), K({ k: 'exhibit', exhibitId: 'x1' }), K({ k: 'exhibit', exhibitId: 'x2' }),
     ];
     for (let r = 0; r < 4; r++) {
-      const at = t0 + r * 100_000;
+      const at = t0 + r * 200_000;
       evs.push(
         K({ k: 'openVote' }, at),
         vote('p1', r, 'B', at + 4000), vote('p2', r, 'A', at + 8000), vote('p3', r, 'B', at + 9000),
         vote('p1', r, 'C', at + 9500), vote('ghost', r, 'B', at + 9600),
         K({ k: 'injectVotes', counts: { D: 2 } }, at + 10000),
-        { type: 'tick', now: at + 5000 }, { type: 'tick', now: at + 30000 },
-        K({ k: 'reopen' }, at + 31000), vote('p4', r, 'D', at + 31500), K({ k: 'closeVote' }, at + 32000),
-        K({ k: 'callout', pick: 0.4 }, at + 33000), K({ k: 'judge', awarded: true }, at + 34000),
-        K({ k: 'callout', pick: 0.9 }, at + 35000), K({ k: 'reveal' }, at + 36000), K({ k: 'next' }, at + 37000),
+        { type: 'tick', now: at + 5000 }, { type: 'tick', now: at + 120000 },
+        K({ k: 'reopen' }, at + 121000), vote('p4', r, 'D', at + 121500),
+        K({ k: 'callout', pick: 0.4 }, at + 123000), K({ k: 'judge', awarded: true }, at + 124000),
+        K({ k: 'callout', pick: 0.9 }, at + 125000), K({ k: 'reveal' }, at + 126000), K({ k: 'next' }, at + 127000),
       );
     }
-    evs.push(K({ k: 'next' }, t0 + 500_000), K({ k: 'kick', playerId: 'p2' }), join('p2', 'Bee', 'government'), K({ k: 'hideNames', hide: true }), K({ k: 'reset' }));
+    evs.push(K({ k: 'next' }, t0 + 900_000), K({ k: 'kick', playerId: 'p2' }), join('p2', 'Bee', 'government'), K({ k: 'hideNames', hide: true }), K({ k: 'reset' }));
     return evs;
   };
   const play = (frozen: boolean) => {
@@ -329,14 +372,15 @@ describe('vote window details', () => {
   });
   it('treats a seconds value that is not a finite number above 0 as absent', () => {
     for (const bad of [undefined, 0, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(opened(bad)).toMatchObject({ voteWindowMs: 30000, voteDeadline: t0 + 30000 });
+      expect(opened(bad)).toMatchObject({ voteWindowMs: 120000, voteDeadline: t0 + 120000 });
     }
   });
   it('keeps the window above zero even for a sliver of a second', () => {
     expect(opened(0.0001).voteWindowMs).toBe(1);
   });
   it('pays the speed bonus against the window the host chose', () => {
-    const s = run(mk(), [join('p1', 'Ann', 'citizen'), K({ k: 'start' }), K({ k: 'openVote', seconds: 10 }), vote('p1', 0, 'B', t0 + 5000)]).state;
+    // p2 never votes, so the vote stays open until the closeVote
+    const s = run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', 'Bo', 'government'), K({ k: 'start' }), K({ k: 'openVote', seconds: 10 }), vote('p1', 0, 'B', t0 + 5000)]).state;
     expect(closeAndReveal(s).players.p1.lastPoints).toBe(80 + 10 + 10);   // score, half the speed bonus, caster
   });
   it('reopen reuses the window the host opened the vote with, from locked and from an open vote', () => {
@@ -348,26 +392,26 @@ describe('vote window details', () => {
   });
   it('an early tick leaves the vote open and arms the alarm again for the real deadline', () => {
     const s = toVote();
-    const early = reduce(s, { type: 'tick', now: t0 + 30000 - 1 }, c);
+    const early = reduce(s, { type: 'tick', now: t0 + 120000 - 1 }, c);
     expect(early.state).toEqual(s);
-    expect(early.effects).toEqual([{ type: 'setAlarm', at: t0 + 30000 }]);
-    expect(reduce(s, { type: 'tick', now: t0 + 1000 }, c).effects).toEqual([{ type: 'setAlarm', at: t0 + 30000 }]);
+    expect(early.effects).toEqual([{ type: 'setAlarm', at: t0 + 120000 }]);
+    expect(reduce(s, { type: 'tick', now: t0 + 1000 }, c).effects).toEqual([{ type: 'setAlarm', at: t0 + 120000 }]);
   });
   it('a stale tick from before a reopen re-arms at the new deadline, and the real one locks', () => {
-    const reopened = cmd(toVote(), { k: 'reopen' }, t0 + 10000).state;   // the deadline moves from t0 + 30000 to t0 + 40000
-    const stale = reduce(reopened, { type: 'tick', now: t0 + 30000 }, c);
+    const reopened = cmd(toVote(), { k: 'reopen' }, t0 + 10000).state;   // the deadline moves from t0 + 120000 to t0 + 130000
+    const stale = reduce(reopened, { type: 'tick', now: t0 + 120000 }, c);
     expect(stale.state).toEqual(reopened);
-    expect(stale.effects).toEqual([{ type: 'setAlarm', at: t0 + 40000 }]);
-    const real = reduce(reopened, { type: 'tick', now: t0 + 40000 }, c);
+    expect(stale.effects).toEqual([{ type: 'setAlarm', at: t0 + 130000 }]);
+    const real = reduce(reopened, { type: 'tick', now: t0 + 130000 }, c);
     expect(real.state.phase).toBe('locked');
     expect(real.effects).toEqual([{ type: 'clearAlarm' }]);
   });
   it('a tick outside an open vote changes nothing and arms nothing, even in locked where the old deadline is still stored', () => {
     const lockedState = cmd(toVote(), { k: 'closeVote' }).state;
-    expect(lockedState.voteDeadline).toBe(t0 + 30000);
+    expect(lockedState.voteDeadline).toBe(t0 + 120000);
     const { ending, leaderboard } = finished();
     for (const s of [mk(), cmd(mk(), { k: 'start' }).state, lockedState, closeAndReveal(toVote()), ending, leaderboard]) {
-      for (const now of [t0, t0 + 29999, t0 + 30000, t0 + 99999]) {
+      for (const now of [t0, t0 + 119999, t0 + 120000, t0 + 399999]) {
         const out = reduce(s, { type: 'tick', now }, c);
         expect(out.effects).toEqual([]);
         expect(out.state).toEqual(s);
@@ -483,7 +527,7 @@ describe('guard rails and bookkeeping', () => {
     expect(s.synthetic).toEqual({});
     expect(s.exhibits).toEqual({});
     expect(s.majorities).toEqual([]);
-    expect(s).toMatchObject({ voteOpenedAt: null, voteDeadline: null, voteWindowMs: 30000 });
+    expect(s).toMatchObject({ voteOpenedAt: null, voteDeadline: null, voteWindowMs: 120000 });
     const again = run(s, [K({ k: 'start' }), K({ k: 'openVote' }), vote('p1', 0, 'C')]).state;
     expect(tallyFor(again, 0)).toEqual({ A: 0, B: 0, C: 1, D: 0 });
   });
@@ -511,14 +555,14 @@ describe('guard rails and bookkeeping', () => {
     expect(reduce(voted, join('p1', 'Ann', 'citizen', t0 + 7000), c).state.updatedAt).toBe(t0 + 6000);   // rejoin
     expect(reduce(voted, vote('p1', 0, 'C', t0 + 8000), c).state.updatedAt).toBe(t0 + 6000);             // refused
     expect(reduce(voted, { type: 'tick', now: t0 + 9000 }, c).state.updatedAt).toBe(t0 + 6000);          // nothing due
-    expect(reduce(voted, { type: 'tick', now: t0 + 30000 }, c).state.updatedAt).toBe(t0 + 30000);        // locks
+    expect(reduce(voted, { type: 'tick', now: t0 + 120000 }, c).state.updatedAt).toBe(t0 + 120000);      // locks
   });
   // The converse of the test above, and the guard for the Durable Object, which stores and broadcasts a state only when
   // its updatedAt has moved: an accepted event that left it alone would never reach a screen. All at one clock reading,
   // because two changes inside one millisecond are ordinary when sixty phones vote at once.
   it('moves updatedAt forward on every accepted event of a whole game, even within one millisecond, and on no refusal', () => {
     const at = t0;
-    const end = t0 + 30000;   // the reopened vote's deadline: the tick that locks it, and everything after it, come then
+    const end = t0 + 120000;   // the reopened vote's deadline: the tick that locks it, and everything after it, come then
     const steps: [string, RoomEvent, boolean][] = [
       ['join', join('p1', 'Ann', 'citizen', at), true],
       ['second join', join('p2', 'Bo', 'government', at), true],
@@ -585,16 +629,18 @@ describe('guard rails and bookkeeping', () => {
 describe('call-out details', () => {
   const locked = () => cmd(run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A')]).state, { k: 'closeVote' }).state;
   it('ignores an explicit player who did not vote and draws instead', () => {
-    expect(cmd(locked(), { k: 'callout', playerId: 'p3', pick: 0.5 }).state.callouts[0][0].playerId).toBe('p1');
+    expect(cmd(locked(), { k: 'callout', playerId: 'p3', pick: 0.5 }).state.callouts[0][0].playerId).toBe('p2');   // p3 did not vote, so 0.5 draws from p1 and p2
   });
   it('ignores an explicit player who was already called', () => {
     const s = cmd(cmd(locked(), { k: 'callout', playerId: 'p2' }).state, { k: 'judge', awarded: false }).state;
     expect(cmd(s, { k: 'callout', playerId: 'p2', pick: 0.5 }).state.callouts[0][1].playerId).toBe('p1');
   });
   it('draws over voters sorted by join time then id, and a pick of 1 still lands on the last', () => {
-    // inserted z, m, a; sorted by joinedAt then id they are z (t0), a (t0 + 1), m (t0 + 1); nobody holds the lead role
+    // inserted z, m, a; sorted by joinedAt then id they are z (t0), a (t0 + 1), m (t0 + 1). n joins last and never votes:
+    // it keeps the vote open until the closeVote, and as it would sort last, a pick near 1 shows non-voters are never drawn
     const s = run(mk(), [
       join('z', 'Zed', 'government', t0), join('m', 'Max', 'business', t0 + 1), join('a', 'Amy', 'microsoft', t0 + 1),
+      join('n', 'Nia', 'citizen', t0 + 2),
       K({ k: 'start' }), K({ k: 'openVote' }), vote('z', 0, 'A'), vote('m', 0, 'A'), vote('a', 0, 'A'), K({ k: 'closeVote' }),
     ]).state;
     const drawn = [0, 0.34, 0.67, 0.999, 1].map((pick) => cmd(s, { k: 'callout', pick }).state.callouts[0][0].playerId);
@@ -607,14 +653,15 @@ describe('call-out details', () => {
     expect(playerView(cmd(hand, { k: 'judge', awarded: true }).state, 'p1', t0, c)!.callout).toBeNull();
   });
   it('a nameless call-out judged awarded still counts as a rally and pays nobody', () => {
-    const s = run(mk(), [join('p1', 'Ann', 'citizen'), K({ k: 'start' }), K({ k: 'openVote' }), vote('p1', 0, 'B'), K({ k: 'closeVote' })]).state;
-    // p1 is the only voter: the first call-out takes them (declined), the second has nobody left and is nameless
+    const s = run(mk(), [join('p1', 'Ann', 'citizen'), join('p2', 'Bo', 'government'), K({ k: 'start' }), K({ k: 'openVote' }), vote('p1', 0, 'B'), K({ k: 'closeVote' })]).state;
+    // p1 is the only voter (p2 never votes, so the vote stays open until the closeVote): the first call-out takes them
+    // (declined), the second has nobody left and is nameless
     const first = cmd(cmd(s, { k: 'callout', pick: 0 }).state, { k: 'judge', awarded: false }).state;
     const second = cmd(cmd(first, { k: 'callout', pick: 0 }).state, { k: 'judge', awarded: true }).state;
     expect(second.callouts[0][1]).toMatchObject({ playerId: null, status: 'awarded', points: 30 });
     const r = cmd(second, { k: 'reveal' }).state;
     expect(r.damageLog[0].rally).toBe(10);
-    expect(r.players.p1.lastPoints).toBe(80 + 16 + 10 + 10);   // score, speed, caster, their own declined call-out; the 30 went to nobody
+    expect(r.players.p1.lastPoints).toBe(80 + 19 + 10 + 10);   // score, speed, caster, their own declined call-out; the 30 went to nobody
   });
   it('a pending call-out survives a reopen: phones keep seeing it, judge works in vote, and the next lock allows a second call-out', () => {
     const called = cmd(locked(), { k: 'callout', playerId: 'p1' }).state;
@@ -679,8 +726,8 @@ describe('reveal details', () => {
     expect(s.damageLog[0]).toMatchObject({ total: 66, focus: 0, alignment: 0, majority: 'B', leadMajority: 'B', supportMajority: 'D' });
     expect(s.damageLog[0].base).toBeCloseTo(65.625, 10);
     expect(s.majorities).toEqual(['B']);
-    expect(s.players.p1.lastPoints).toBe(80 + 16 + 10);   // score, speed, caster
-    expect(s.players.p2.lastPoints).toBe(40 + 16);        // score, speed
+    expect(s.players.p1.lastPoints).toBe(80 + 19 + 10);   // score, speed, caster
+    expect(s.players.p2.lastPoints).toBe(40 + 19);        // score, speed
   });
   it('never takes the boss below zero', () => {
     const s = closeAndReveal(run({ ...toVote(), bossHp: 20 }, [vote('p1', 0, 'B')]).state);

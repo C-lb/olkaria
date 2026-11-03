@@ -33,7 +33,7 @@ describe('content/case.json', () => {
     expect(c.synergy.C).toEqual([['A'], ['B'], ['C', 'D']]);
   });
   it('has scoring constants, endings, exhibits and quotes', () => {
-    expect(c.scoring).toMatchObject({ roundHp: 100, focusThreshold: 0.6, focusBonus: 15, alignmentBonus: 10, casterBonus: 10, exhibitBonus: 5, maxExhibits: 3, calloutBonus: 10, maxCallouts: 2, calloutPointsSpoke: 10, calloutPointsAwarded: 30, decisionBase: 50, synergyBonus: 15, speedBonusMax: 20, voteSeconds: 30 });
+    expect(c.scoring).toMatchObject({ roundHp: 100, focusThreshold: 0.6, focusBonus: 15, alignmentBonus: 10, casterBonus: 10, exhibitBonus: 5, maxExhibits: 3, calloutBonus: 10, maxCallouts: 4, calloutPointsSpoke: 10, calloutPointsAwarded: 30, decisionBase: 50, synergyBonus: 15, speedBonusMax: 20, voteSeconds: 120 });
     expect(c.scoring.tiers).toEqual({ decisive: 260, fragile: 180 });
     expect(Object.keys(c.endings).sort()).toEqual(['A', 'B', 'C', 'D', 'holds']);
     expect(c.exhibits).toHaveLength(4);

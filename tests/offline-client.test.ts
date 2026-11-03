@@ -12,7 +12,7 @@ it('runs the state machine locally and reports views', async () => {
   client.send({ k: 'start' }); client.send({ k: 'openVote' });
   client.send({ k: 'injectVotes', counts: { B: 3 } });
   expect(views.at(-1).phase).toBe('vote'); expect(views.at(-1).supportTally.B).toBe(3); expect(views.at(-1).lead).toBe('citizen');
-  t = 31000; client.tick();
+  t = 121000; client.tick();
   expect(views.at(-1).phase).toBe('locked');
   client.send({ k: 'callout' }); client.send({ k: 'judge', awarded: true });
   client.send({ k: 'reveal' });

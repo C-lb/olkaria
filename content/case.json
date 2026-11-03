@@ -267,13 +267,13 @@
     "exhibitBonus": 5,
     "maxExhibits": 3,
     "calloutBonus": 10,
-    "maxCallouts": 2,
+    "maxCallouts": 4,
     "calloutPointsSpoke": 10,
     "calloutPointsAwarded": 30,
     "decisionBase": 50,
     "synergyBonus": 15,
     "speedBonusMax": 20,
-    "voteSeconds": 30,
+    "voteSeconds": 120,
     "tiers": { "decisive": 260, "fragile": 180 }
   }
 }

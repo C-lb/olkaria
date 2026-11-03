@@ -135,6 +135,11 @@ function join(state: RoomState, ev: JoinEvent): Result {
   return update(state, ev.now, { players: { ...state.players, [id]: player } });
 }
 
+/**
+ * A player's vote for the open round, one each. The last player's vote locks the round in the same event, as closeVote
+ * does (spec 2.2). Synthetic votes are not players and never lock it, and a player still without a vote (one who joined
+ * during the vote, or whose phone went dark) holds it open until they vote, unless the clock or a closeVote locks it first.
+ */
 function castVote(state: RoomState, ev: VoteEvent): Result {
   const id = ev.clientId;
   if (state.phase !== 'vote') return refuse(state, 'not accepting votes', id);
@@ -144,7 +149,12 @@ function castVote(state: RoomState, ev: VoteEvent): Result {
   if (player.votes[ev.round]) return refuse(state, 'already voted', id);
   if (!OPTION_IDS.includes(ev.option)) return nothing(state);   // no phone button sends this, so it gets no error string
   const voted: Player = { ...player, votes: { ...player.votes, [ev.round]: { option: ev.option, at: ev.now } } };
-  return update(state, ev.now, { players: { ...state.players, [id]: voted } });
+  const players = { ...state.players, [id]: voted };
+  const everyone = Object.values(players);
+  if (everyone.length > 0 && everyone.every((p) => p.votes[ev.round])) {
+    return update(state, ev.now, { players, phase: 'locked' }, [{ type: 'clearAlarm' }]);
+  }
+  return update(state, ev.now, { players });
 }
 
 const lock = (state: RoomState, now: number): Result => update(state, now, { phase: 'locked' }, [{ type: 'clearAlarm' }]);
@@ -340,31 +350,37 @@ function injectVotes(state: RoomState, now: number, counts: Partial<Tally> | und
 const byJoinThenId = (a: Player, b: Player): number => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /**
- * Who a call-out lands on: an explicitly named voter who is still eligible, else the draw over the
- * eligible voters (this round's voters not yet called), lead-class voters only while any remain.
+ * Who a call-out lands on (spec 2.6). The eligible voters are this round's voters not yet called, by join time then id.
+ * An explicitly named one wins; otherwise the pick draws from those whose option no call-out of the round has covered
+ * yet (a hand call-out covers none), or from all of them once every voted option has been heard. With nobody eligible
+ * it is undefined, which callOut records as a hand call-out.
  */
-function chooseVoter(state: RoomState, called: readonly Callout[], cmd: CalloutCmd, lead: Role | undefined): Player | undefined {
+function chooseVoter(state: RoomState, called: readonly Callout[], cmd: CalloutCmd): Player | undefined {
   const done = new Set(called.map((co) => co.playerId));
+  const heard = new Set(called.flatMap((co) => (co.option === null ? [] : [co.option])));
   const eligible = Object.values(state.players)
     .filter((p) => p.votes[state.round] && !done.has(p.id))
     .sort(byJoinThenId);
   const named = eligible.find((p) => p.id === cmd.playerId);
   if (named) return named;
-  const leaders = eligible.filter((p) => p.role === lead);
-  const pool = leaders.length > 0 ? leaders : eligible;
+  const fresh = eligible.filter((p) => !heard.has(p.votes[state.round].option));
+  const pool = fresh.length > 0 ? fresh : eligible;
   if (pool.length === 0) return undefined;
   const pick = typeof cmd.pick === 'number' && Number.isFinite(cmd.pick) ? cmd.pick : 0;
   return pool[Math.min(pool.length - 1, Math.max(0, Math.floor(pick * pool.length)))];
 }
 
-/** With nobody to call, the call-out has no player so the facilitator can cold-call by hand. */
+/**
+ * A call-out in a locked round (spec 2.6): one at a time and at most maxCallouts a round, both checked before anyone
+ * is drawn. With nobody to call, the call-out has no player so the facilitator can cold-call by hand.
+ */
 function callOut(state: RoomState, now: number, cmd: CalloutCmd, content: CaseContent): Result {
   if (state.phase !== 'locked') return badPhase(state);
   const { round } = state;
   const made = state.callouts[round] ?? [];
   if (made.some((co) => co.status === 'pending')) return refuse(state, 'call-out pending');
   if (made.length >= content.scoring.maxCallouts) return refuse(state, 'call-out limit');
-  const voter = chooseVoter(state, made, cmd, leadOf(content, round));
+  const voter = chooseVoter(state, made, cmd);
   const entry: Callout = { playerId: voter?.id ?? null, option: voter?.votes[round].option ?? null, status: 'pending', points: 0 };
   return update(state, now, { callouts: { ...state.callouts, [round]: [...made, entry] } });
 }

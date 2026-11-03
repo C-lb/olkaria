@@ -267,19 +267,20 @@ describe('the words around the vote', () => {
     expect(optionsFooter(c, 'locked', [called('p1', 'B', 'pending')])).toBe('Y convincing, N not');
     expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined')])).toBe(strikes);
     expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'pending')])).toBe('Y convincing, N not');
-    expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'awarded')])).toBe('Space: the party strikes');
+    const four = [called('p1', 'B', 'declined'), called('p2', 'A', 'awarded'), called('p3', 'C', 'declined'), called(null, null, 'awarded')];
+    expect(optionsFooter(c, 'locked', four)).toBe('Space: the party strikes');
     expect(optionsFooter(c, 'reveal', [])).toBe('');
     const k = structuredClone(c);
-    k.scoring.maxCallouts = 3;
-    expect(optionsFooter(k, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'awarded')])).toBe(strikes);
+    k.scoring.maxCallouts = 5;
+    expect(optionsFooter(k, 'locked', four)).toBe(strikes);
   });
 });
 
 describe('the reveal takes 6 s at most', () => {
   it('fits the heaviest plan, the drain with its shake, and a frame per beat into 6 s', () => {
     const d = damage(0, T(0, 4, 0, 0), T(0, 8, 0, 0), { exhibits: c.scoring.maxExhibits, rallies: c.scoring.maxCallouts });
-    const plan = strikePlan(d, c, 0, [called(null, null, 'awarded'), called(null, null, 'awarded')], {});
-    expect(plan.map((s) => s.kind)).toEqual(['lead', 'support', 'focus', 'alignment', 'exhibit', 'exhibit', 'exhibit', 'rally', 'rally']);
+    const plan = strikePlan(d, c, 0, Array.from({ length: c.scoring.maxCallouts }, () => called(null, null, 'awarded')), {});
+    expect(plan.map((s) => s.kind)).toEqual(['lead', 'support', 'focus', 'alignment', 'exhibit', 'exhibit', 'exhibit', 'rally', 'rally', 'rally', 'rally']);
     const beats = beatsFor(plan);
     expect(beats).toHaveLength(plan.length);
     expect(beats.reduce((sum, ms) => sum + ms, 0) + DRAIN_MS + FRAME_MS * (beats.length + 1)).toBeLessThanOrEqual(REVEAL_MS);
