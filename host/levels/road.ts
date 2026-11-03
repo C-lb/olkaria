@@ -1,6 +1,6 @@
-// The four roads the party travels between battles (spec 4.5), one per round, how the auto-runner (A) reads a road's
-// baked path, and what the followers stand on. Pure data and arithmetic, no Phaser, so tests/road.test.ts can run every
-// path.
+// The four roads the party travels between battles (spec 4.5), one per round, with the gate's trigger, how the
+// auto-runner (A) reads a road's baked path, and what the followers stand on. Pure data and arithmetic, no Phaser, so
+// tests/road.test.ts can run every path.
 //
 // Every surface the party can stand on is a platform one tile deep: the road itself is the platforms whose top is at
 // GROUND_Y, and a break between two of them is a pit; every other platform is a ledge above the road. A pit drops to
@@ -33,9 +33,12 @@ export const START_X = 48;
 export const RUN_SPEED = 90;
 /** How fast a jump leaves the ground, in px/s (upward). */
 export const JUMP_SPEED = 260;
+/** How long auto-run rests where it picks up an exhibit, so the room can read the figure before the party moves on. */
+export const PICKUP_PAUSE_MS = 2000;
 
-/** The gate's centre stands this far from the end of its segment. */
+/** The gate's centre stands this far from the end of its segment, and the gate is this wide, as the art draws it. */
 const GATE_INSET = 32;
+const GATE_W = 32;
 
 const road = (x: number, w: number): Segment['platforms'][number] => ({ x, y: GROUND_Y, w });
 const ledge = (x: number, y: number, w: number): Segment['platforms'][number] => ({ x, y, w });
@@ -69,6 +72,17 @@ export const SEGMENTS: Segment[] = [
     [{ x: 144, y: 128 }, { x: 224, y: 96 }, { x: 248, y: 96 }],
     [jump(64), jump(152), drop(256)]),
 ];
+
+/** A rectangle in the world, by its top-left corner. */
+export interface Rect { x: number; y: number; w: number; h: number }
+
+/**
+ * What starts the battle: the gate's whole column, from the top of the canvas down to the road, so no jump can carry
+ * the lead over the gate (the world ends 16 px past it).
+ */
+export function gateColumn({ gateX }: Segment): Rect {
+  return { x: gateX - GATE_W / 2, y: 0, w: GATE_W, h: GROUND_Y };
+}
 
 /** How far below a surface's top a height may sit and still count as on it (rounding). */
 const LEVEL_PX = 0.5;

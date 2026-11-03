@@ -1,8 +1,12 @@
 // The four travel segments (Task 9): the shape the brief lays down, then a run of each segment's auto path under the
 // numbers the Travel scene uses, stepped the way arcade physics steps it, from the start of the segment. A from the
-// start must reach the gate without dropping into a pit and pick up all three exhibits on the way.
+// start must reach the gate without dropping into a pit and pick up all three exhibits on the way, and no jump near the
+// gate may carry the lead over its trigger.
 import { describe, expect, it } from 'vitest';
-import { autoStep, groundUnder, GROUND_Y, JUMP_SPEED, RUN_SPEED, SEGMENTS, START_X, stopAhead, TILE, type Segment } from '../host/levels/road';
+import {
+  autoStep, gateColumn, groundUnder, GROUND_Y, JUMP_SPEED, RUN_SPEED, SEGMENTS, START_X, stopAhead, TILE,
+  type AutoStop, type Segment,
+} from '../host/levels/road';
 
 /** The brief's widest gap: a jump at RUN_SPEED clears about 76 px of ground. */
 const MAX_GAP = 48;
@@ -35,36 +39,46 @@ const roadUnder = (seg: Segment, from: number, to: number): Platform | undefined
 interface Run {
   /** Where the lead dropped below the road into a pit, or null. */
   fellAt: number | null;
+  /** Whether its body touched the gate's trigger, which starts the battle. */
   arrived: boolean;
+  /** Where it was once it had got past the gate's trigger without touching it, or null. */
+  passedAt: number | null;
   /** The exhibit spots it touched, by index. */
   picked: number[];
   /** Every surface it landed on, in order. */
   stood: Platform[];
 }
 
+/** Where a run starts: the lead's feet, standing on whatever is there. */
+interface From { x: number; bottom: number }
+
 /**
- * Auto-run from the start, a fixed step at a time: the scene's update decides (run right, jump at the path's jumps or
- * against a wall), then arcade physics moves the body, stops it at the world's bounds, and separates it from the road
- * (solid) and the ledges (from above only), in the order the scene adds its colliders.
+ * A run to the right along `path` from `from`, a fixed step at a time, the way the scene's auto-run goes: the scene's
+ * update decides (run right, jump at the path's jumps, or hop when the far wall of a pit stops it), then arcade physics
+ * moves the body, stops it at the world's bounds, and separates it from the road (solid) and the ledges (from above
+ * only), in the order the scene adds its colliders. It ends when the body touches the gate's trigger or gets past it
+ * without touching it. The scene's rest at each pickup (PICKUP_PAUSE_MS) is left out on purpose: it holds the lead still
+ * where it stands, so it changes when the lead gets somewhere, never where it goes.
  */
-function autoRun(seg: Segment): Run {
-  const run: Run = { fellAt: null, arrived: false, picked: [], stood: [] };
-  let x = START_X;
-  let bottom = GROUND_Y;
+function simulate(seg: Segment, from: From, path: readonly AutoStop[]): Run {
+  const run: Run = { fellAt: null, arrived: false, passedAt: null, picked: [], stood: [] };
+  const gate = gateColumn(seg);
+  let x = from.x;
+  let bottom = from.bottom;
   let vy = 0;
   let onGround = true;
   let blockedRight = false;
-  let next = stopAhead(seg.autoPath, x);
+  let next = stopAhead(path, x);
   const land = (p: Platform): void => {
     bottom = p.y;
     vy = 0;
     onGround = true;
     if (run.stood.at(-1) !== p) run.stood.push(p);
   };
-  for (let step = 0; step < LIMIT_S / DT && !run.arrived; step++) {
-    const decision = autoStep(seg.autoPath, next, x);
+  for (let step = 0; step < LIMIT_S / DT && !run.arrived && run.passedAt === null; step++) {
+    const decision = autoStep(path, next, x);
     next = decision.next;
-    if ((decision.jump || blockedRight) && onGround) vy = -JUMP_SPEED;
+    if ((decision.jump || (blockedRight && bottom > GROUND_Y)) && onGround) vy = -JUMP_SPEED;
 
     const before = bottom;
     vy += GRAVITY * DT;
@@ -98,10 +112,18 @@ function autoRun(seg: Segment): Run {
       const touching = Math.abs(x - spot.x) < (LEAD_W + EXHIBIT) / 2 && bottom > spot.y - EXHIBIT && bottom - LEAD_H < spot.y;
       if (touching && !run.picked.includes(i)) run.picked.push(i);
     });
-    if (x >= seg.gateX) run.arrived = true;
+    const atGate = x + LEAD_W / 2 > gate.x && x - LEAD_W / 2 < gate.x + gate.w && bottom > gate.y && bottom - LEAD_H < gate.y + gate.h;
+    if (atGate) run.arrived = true;
+    else if (x - LEAD_W / 2 >= gate.x + gate.w) run.passedAt = Math.round(x);
   }
   return run;
 }
+
+/** A from the start of a segment, along its baked path. */
+const autoRun = (seg: Segment): Run => simulate(seg, { x: START_X, bottom: GROUND_Y }, seg.autoPath);
+
+/** A run right that jumps once, when the lead's feet reach `jumpAt`. */
+const jumpingAt = (seg: Segment, from: From, jumpAt: number): Run => simulate(seg, from, [{ x: jumpAt, jump: true }]);
 
 describe('SEGMENTS: the roads between the battles', () => {
   it('lays four segments, 640 to 960 px long, the fourth 320', () => {
@@ -222,4 +244,29 @@ describe('auto-run', () => {
       });
     },
   );
+});
+
+describe('the gate: no jump carries the lead over it', () => {
+  it.each(SEGMENTS.map((seg, i) => [i + 1, seg] as const))(
+    'segment %i: a jump taken anywhere in the 80 px before the gate, 40 px before it included, still enters it',
+    (_n, seg) => {
+      for (let jumpAt = seg.gateX - 80; jumpAt <= seg.gateX - 16; jumpAt += 2) {
+        const run = jumpingAt(seg, { x: seg.gateX - 100, bottom: GROUND_Y }, jumpAt);
+        expect(run.passedAt, `jump at ${jumpAt}`).toBeNull();
+        expect(run.arrived, `jump at ${jumpAt}`).toBe(true);
+        expect(run.fellAt, `jump at ${jumpAt}`).toBeNull();
+      }
+    },
+  );
+
+  it('segment 4: a jump taken anywhere on the upper ledge still enters the gate', () => {
+    const seg = SEGMENTS[3];
+    const upper = seg.platforms.reduce((high, p) => (p.y < high.y ? p : high));
+    const from = { x: upper.x + LEAD_W / 2, bottom: upper.y };
+    for (let jumpAt = from.x; jumpAt < upper.x + upper.w + LEAD_W / 2; jumpAt += 2) {
+      const run = jumpingAt(seg, from, jumpAt);
+      expect(run.passedAt, `jump at ${jumpAt}`).toBeNull();
+      expect(run.arrived, `jump at ${jumpAt}`).toBe(true);
+    }
+  });
 });

@@ -14,7 +14,7 @@ import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
 import {
   bannerFor, beatsFor, classFor, debriefFor, DRAIN_MS, judgedNotes, judgeFlash, labelFor, lungeReach, narrationFor, optionsFooter,
-  SKIP_LOCK_MS, spaceAction, strikePlan, timerText, votedText,
+  SKIP_LOCK_MS, SPACE_LOCK_KEY, spaceAction, strikePlan, timerText, votedText,
   type Stand, type StrikePlan,
 } from '../strikers';
 import { HpBar } from '../ui/HpBar';
@@ -60,8 +60,6 @@ const HOP_PX = 6;
 const SHAKE_MS = 200;
 /** How often the vote clock is redrawn. */
 const TICK_MS = 250;
-/** The registry key of Space's lockout (see lockedUntil). */
-const LOCK_KEY = 'spaceLockedUntil';
 
 /** Live draws the round from each view; strike plays the special attack; debrief holds the debrief until the router moves on. */
 type Stage = 'live' | 'strike' | 'debrief';
@@ -116,12 +114,12 @@ export class Battle extends Phaser.Scene {
    * reaches the next round's Battle, which must not open that round's vote with it.
    */
   private get lockedUntil(): number {
-    const until: unknown = this.registry.get(LOCK_KEY);
+    const until: unknown = this.registry.get(SPACE_LOCK_KEY);
     return typeof until === 'number' ? until : 0;
   }
 
   private set lockedUntil(until: number) {
-    this.registry.set(LOCK_KEY, until);
+    this.registry.set(SPACE_LOCK_KEY, until);
   }
 
   create(): void {

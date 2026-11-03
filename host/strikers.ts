@@ -147,6 +147,8 @@ export function beatsFor(plan: StrikePlan): number[] {
   return plan.map((step) => Math.floor(BEAT_MS[step.kind] * squeeze));
 }
 
+/** The registry key of Space's lockout: the game time until which the Battle ignores Space. The Lobby and Travel set it too. */
+export const SPACE_LOCK_KEY = 'spaceLockedUntil';
 /** After Space sends a command it rests this long, so a double press cannot send twice while the room answers. */
 export const SEND_LOCK_MS = 1000;
 /** After the strike is skipped or ends it rests this long, so the press that skipped it cannot also skip the debrief. */
