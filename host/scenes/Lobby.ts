@@ -8,6 +8,7 @@ import type { HostView, Role } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
 import type { Hud, LobbyArgs } from '../hud/Hud';
 import type { RoomClient, RoomInfo } from '../net';
+import { SEND_LOCK_MS } from '../strikers';
 
 /** Where the avatars stand: the top of the road along the bottom of the canvas. */
 const ROAD_Y = 172;
@@ -84,7 +85,9 @@ export class Lobby extends Phaser.Scene {
       this.registry.events.off('changedata-view', this.onView, this);
     });
     this.input.keyboard?.on('keydown-SPACE', (event: KeyboardEvent) => {
-      if (!event.repeat) this.client.send({ k: 'start' });
+      if (event.repeat) return;
+      this.client.send({ k: 'start' });
+      this.registry.set('spaceLockedUntil', this.time.now + SEND_LOCK_MS);   // the Battle's lockout: a double press never reaches it
     });
 
     this.onView(null, (this.registry.get('view') as HostView | null | undefined) ?? null);
