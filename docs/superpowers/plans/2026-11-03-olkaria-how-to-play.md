@@ -252,9 +252,9 @@ git commit -m "feat: how-to-play slides drawn by the HUD from the case content"
 // host/howto.ts
 /**
  * Puts the how-to on `?` with one capture-phase keydown listener on window, registered before the menu's (main.ts),
- * so that while it is open it stops every key before the menu, the hotkeys and Phaser, except browser chords, which
- * pass, and M, which closes it and passes on to the menu. Closed: `?` opens it at the first slide unless the key is
- * held, typed into a field, or the menu is up. Open: Space, Enter, ArrowRight, ArrowDown and PageDown go on (the last
+ * so that while it is open it stops every key before the menu, the hotkeys and Phaser; browser chords are stopped too
+ * but never prevented (Cmd+R still reloads), and M closes it and passes on to the menu. Closed: chords pass untouched,
+ * and `?` opens it at the first slide unless the key is held, typed into a field, or the menu is up. Open: Space, Enter, ArrowRight, ArrowDown and PageDown go on (the last
  * slide closes); ArrowLeft, ArrowUp and PageUp go back; Escape and `?` close; held keys do nothing. Each slide is
  * drawn afresh as it is shown. Returns open, close and dispose; installing again removes the earlier install first.
  */
@@ -295,7 +295,7 @@ it('the first slide stays on back, a held key does nothing, and a click on the s
   (root.querySelector('.howto-slide') as HTMLElement).click();
   expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[1]);
 });
-it('while open it stops every key before a bubble listener, except chords, and M closes it and passes on', () => {
+it('while open it stops every key before a bubble listener, chords included but never prevented, and M closes it and passes on', () => {
   const heard = vi.fn();
   window.addEventListener('keydown', heard);
   press(' ');
@@ -305,13 +305,20 @@ it('while open it stops every key before a bubble listener, except chords, and M
   press(' ');
   press('x');
   expect(heard).toHaveBeenCalledTimes(1);
-  const chord = new KeyboardEvent('keydown', { key: 'r', metaKey: true, bubbles: true, cancelable: true });
-  window.dispatchEvent(chord);
-  expect(heard).toHaveBeenCalledTimes(2);
-  expect(chord.defaultPrevented).toBe(false);
+  for (const flag of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+    const chord = new KeyboardEvent('keydown', { key: ' ', [flag]: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(chord);
+    expect(heard).toHaveBeenCalledTimes(1);   // a chord is stopped on its way to the scenes
+    expect(chord.defaultPrevented).toBe(false);   // but never prevented: Cmd+R still reloads
+  }
+  expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[1]);   // chorded Space did not advance
   press('m');
   expect(root.querySelector('.hud-howto')).toBeNull();
-  expect(heard).toHaveBeenCalledTimes(3);   // M went on to the next listener
+  expect(heard).toHaveBeenCalledTimes(2);   // M went on to the next listener
+  const closedChord = new KeyboardEvent('keydown', { key: '?', shiftKey: true, metaKey: true, bubbles: true, cancelable: true });
+  window.dispatchEvent(closedChord);
+  expect(root.querySelector('.hud-howto')).toBeNull();   // closed, a chord never opens it
+  expect(heard).toHaveBeenCalledTimes(3);   // and passes untouched
   window.removeEventListener('keydown', heard);
 });
 it('? does nothing while typing, while the menu is up, or when held; dispose takes it all down', () => {
@@ -345,7 +352,7 @@ Expected: `installHowTo` is not exported; the keycap and key-map counts fail.
 
 - [ ] **Step 3: Keys**
 
-`host/howto.ts`: `installHowTo` per the Interfaces, with a module-level `uninstall` as `menu.ts` has. State: `index: number | null` (null is closed). `draw()` calls `hud.showHowTo({ slide: slides[index], index, count: slides.length, onNext: next, onClose: close })`; `next()` closes on the last slide; `back()` stays at 0; `close()` blurs a focused element and calls `hud.showHowTo(null)`. The listener: chords return first (open or closed); closed, only `?` without `repeat`, `typing()` or `hud.menuOpen()` opens, with `stopPropagation`; open, M or m without `repeat` closes and returns without stopping; every other keydown gets `stopImmediatePropagation()` (so the menu's listener on the same target never runs) and, for the keys named, `preventDefault()` and the action, ignoring `repeat`. `dispose` closes, removes the listener and clears `uninstall`.
+`host/howto.ts`: `installHowTo` per the Interfaces, with a module-level `uninstall` as `menu.ts` has. State: `index: number | null` (null is closed). `draw()` calls `hud.showHowTo({ slide: slides[index], index, count: slides.length, onNext: next, onClose: close })`; `next()` closes on the last slide; `back()` stays at 0; `close()` blurs a focused element and calls `hud.showHowTo(null)`. The listener: closed, a chord returns untouched, and only `?` without `repeat`, `typing()` or `hud.menuOpen()` opens, with `stopPropagation`; open, M or m without a chord or `repeat` closes and returns without stopping; every other keydown, chords included, gets `stopImmediatePropagation()` (so the menu's listener on the same target never runs and Phaser never sees Ctrl+Space), after which a chord returns with no `preventDefault` (Cmd+R still reloads) and the keys named get `preventDefault()` and their action, ignoring `repeat`. `dispose` closes, removes the listener and clears `uninstall`.
 
 `host/main.ts`: `const howto = installHowTo(hud, content);` between `installHotkeys` and `installMenu`, with a comment saying the order is what lets the how-to swallow keys before the menu; update the header comment to name the how-to.
 
