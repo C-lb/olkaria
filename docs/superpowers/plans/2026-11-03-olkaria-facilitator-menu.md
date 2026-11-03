@@ -316,8 +316,8 @@ git commit -m "feat: the party walks to the arena by itself; A pauses, arrows ta
 **Files:**
 - Create: `host/menu.ts`
 - Create: `tests/menu.test.ts`
-- Modify: `host/hud/Hud.ts` (`showMenu` replaces `showKeymap`; `MenuArgs`, `MenuButton`; `KEYS` row `['M or Esc', 'This menu']` replaces the Esc row; the lobby hint reads "Space starts the game. M opens the menu.")
-- Modify: `host/hud/hud.css` (`.hud-menu`, `.menu`, `.menu-group`, `.menu-row`, `.menu-btn`, `.menu-label`, `.menu-hint`, `.menu-note`; the key map rules move under the menu)
+- Modify: `host/hud/Hud.ts` (`showMenu` replaces `showKeymap`; `MenuArgs`, `MenuButton`; `KEYS` row `['M or Esc', 'This menu']` replaces the Esc row; the lobby hint becomes two keycaps: `ul.lobby-keys` replaces `p.hint.lobby-hint`)
+- Modify: `host/hud/hud.css` (`.hud-menu`, `.menu`, `.menu-group`, `.menu-row`, `.menu-btn`, `.menu-label`, `.menu-hint`, `.menu-note`; the key map rules move under the menu; `.lobby-keys`, `.lobby-key` and `.lobby-key .key` replace `.lobby-hint` in the lobby block)
 - Modify: `host/hotkeys.ts` (drop the Esc case and `keymap`; export `typing()`)
 - Modify: `host/main.ts` (call `installMenu`)
 - Test: `tests/hud.test.ts`, `tests/hotkeys.test.ts`
@@ -449,7 +449,18 @@ it('reload fires at once while the link is up, asks twice once it drops, and a c
 });
 ```
 
-`tests/hud.test.ts`: `showMenu` draws `button[data-menu-item]` for every id, `disabled` on disabled ones, an armed button with `data-armed` whose text is "Sure?" and `aria-label` "Sure? Back to the lobby", the stages hint, the `.keys` rows, and nothing after `showMenu(null)`; `moveMenuFocus` skips disabled buttons and wraps; a redraw keeps the focused id. Any test quoting the lobby hint or the old Esc row gets the new text.
+`tests/hud.test.ts`: `showMenu` draws `button[data-menu-item]` for every id, `disabled` on disabled ones, an armed button with `data-armed` whose text is "Sure?" and `aria-label` "Sure? Back to the lobby", the stages hint, the `.keys` rows, and nothing after `showMenu(null)`; `moveMenuFocus` skips disabled buttons and wraps; a redraw keeps the focused id. Any test quoting the old Esc row gets the new text. The lobby hint (spec 7, amended 3 November evening):
+
+```ts
+it('the lobby hint is two keycaps: Space to start, Esc for the hotkeys', () => {
+  const { root, hud } = fresh();
+  hud.showLobby(lobby());
+  expect([...root.querySelectorAll('.lobby-key')].map((li) => [li.querySelector('kbd.key')!.textContent, li.querySelector('span')!.textContent]))
+    .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys']]);
+  expect(root.querySelector('.lobby-hint')).toBeNull();
+  expect(root.textContent).not.toContain('every key');
+});
+```
 
 `tests/hotkeys.test.ts`: remove `showKeymap` from the Hud fake; the Escape test becomes "leaves Escape alone": pressing it sends nothing and calls no HUD method.
 
@@ -460,11 +471,11 @@ Expected: the menu tests fail (module missing), the HUD tests fail on `showMenu`
 
 - [ ] **Step 3: Hud**
 
-Build `showMenu` in `Hud.ts` from the `MenuArgs` above. Markup: `div.hud-menu[role=dialog][aria-label=Menu]` holding `section.menu` with `h2.title` "Menu"; `section.menu-group` with `p.eyebrow` "Actions" and `div.menu-row` of `button.menu-btn[type=button][data-menu-item]` each with `span.menu-label` and, when a hint is given, `span.menu-hint`; a second group with the eyebrow "Go to", its row, and `p.hint.menu-note` for `stagesHint`; `div.sep`; the `ul.keys` rows from `KEYS`. A disabled button gets `disabled`; an armed one gets `data-armed`, label text "Sure?" and `aria-label` "Sure? <label>". Clicks on a button call `onPick(id)`; a click whose target is the `.hud-menu` scrim itself calls `onClose()`. Replace the node on each call; before replacing, remember the focused `data-menu-item` and focus the same id after. Remove `showKeymap` and `keymap()`.
+Build `showMenu` in `Hud.ts` from the `MenuArgs` above. Markup: `div.hud-menu[role=dialog][aria-label=Menu]` holding `section.menu` with `h2.title` "Menu"; `section.menu-group` with `p.eyebrow` "Actions" and `div.menu-row` of `button.menu-btn[type=button][data-menu-item]` each with `span.menu-label` and, when a hint is given, `span.menu-hint`; a second group with the eyebrow "Go to", its row, and `p.hint.menu-note` for `stagesHint`; `div.sep`; the `ul.keys` rows from `KEYS`. A disabled button gets `disabled`; an armed one gets `data-armed`, label text "Sure?" and `aria-label` "Sure? <label>". Clicks on a button call `onPick(id)`; a click whose target is the `.hud-menu` scrim itself calls `onClose()`. Replace the node on each call; before replacing, remember the focused `data-menu-item` and focus the same id after. Remove `showKeymap` and `keymap()`. In `showLobby`, replace `p.hint.lobby-hint` with `ul.lobby-keys` holding two `li.lobby-key`, each a `kbd.key` then a `span`: Space "Start", Esc "Shows hotkeys".
 
 - [ ] **Step 4: CSS**
 
-In `hud.css`, replace the key map block with the menu: `.hud-menu` as `.hud-keymap` was plus `pointer-events: auto`; `.menu` as `.keymap` was; `.menu-group { display: flex; flex-direction: column; gap: var(--s2); }`; `.menu-row { display: flex; gap: var(--s2); }`; `.menu-btn { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: 600 var(--t-body)/var(--lh-flat) var(--font-body); text-align: left; cursor: pointer; }`; `.menu-btn:disabled { opacity: .4; cursor: default; }`; `.menu-btn:focus-visible { outline: var(--s1) solid var(--ink-2); outline-offset: var(--s1); }`; `.menu-btn[data-armed] { background: var(--ink); color: var(--bg); }`; `.menu-label, .menu-hint { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`; `.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); color: var(--ink-2); }`; `.menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }`; `.menu-note { margin-top: calc(var(--s1) * -1); }`. Keep `.keys`, `.key-row`, `.key` as they are. Update the file's layer comment.
+In `hud.css`, replace the key map block with the menu: `.hud-menu` as `.hud-keymap` was plus `pointer-events: auto`; `.menu` as `.keymap` was; `.menu-group { display: flex; flex-direction: column; gap: var(--s2); }`; `.menu-row { display: flex; gap: var(--s2); }`; `.menu-btn { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s1); padding: var(--s2) var(--s3); border: 0; border-radius: var(--r-md); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: 600 var(--t-body)/var(--lh-flat) var(--font-body); text-align: left; cursor: pointer; }`; `.menu-btn:disabled { opacity: .4; cursor: default; }`; `.menu-btn:focus-visible { outline: var(--s1) solid var(--ink-2); outline-offset: var(--s1); }`; `.menu-btn[data-armed] { background: var(--ink); color: var(--bg); }`; `.menu-label, .menu-hint { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`; `.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); color: var(--ink-2); }`; `.menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }`; `.menu-note { margin-top: calc(var(--s1) * -1); }`. Keep `.keys`, `.key-row`, `.key` as they are. In the lobby block, replace `.lobby-hint` with `.lobby-keys { flex: 0 0 auto; list-style: none; display: flex; gap: var(--s4); }`, `.lobby-key { display: flex; align-items: center; gap: var(--s2); white-space: nowrap; color: var(--ink-2); }`, `.lobby-key .key { font: 600 var(--t-body)/var(--lh-flat) var(--font-body); padding: var(--s1) var(--s2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line), 0 var(--s1) 0 var(--bg); }` (a flat cap with a dim stroke and a hard one-pixel bottom edge; `kbd` would otherwise fall back to the browser's monospace face). Update the file's layer comment.
 
 - [ ] **Step 5: menu.ts, hotkeys.ts, main.ts**
 
@@ -704,18 +715,18 @@ git commit -m "feat: lean onboarding copy on the phone; the unreachable note poi
 ### Task 7: The lobby screen
 
 **Files:**
-- Modify: `host/hud/Hud.ts` (`LobbyArgs` drops `code`; `showLobby` rebuilt)
+- Modify: `host/hud/Hud.ts` (`LobbyArgs` drops `code`, `smith` and `tanui`; `showLobby` rebuilt; `quote()` and the `SPEAKERS` import go)
 - Modify: `host/hud/hud.css` (the lobby block)
-- Modify: `host/scenes/Lobby.ts` (no `code` in the args)
+- Modify: `host/scenes/Lobby.ts` (no `code`, `smith` or `tanui` in the args)
 - Test: `tests/hud.test.ts`
 
 **Interfaces:**
 - Consumes: `figureSvg` from Task 5, `ROLES`, `LobbyArgs.classNames` and `roleCounts`.
-- Produces: `LobbyArgs` without `code`; "connecting" is now `!offline && joinUrl === ''`. Markup of `showLobby`: `section.panel.lobby` holding `header.lobby-head` (a `div.stack` with `h1.title.lobby-title` TITLE and the Smith quote; `p.hint.lobby-hint` "Space starts the game. M opens the menu."), `div.lobby-body` (the square: `img.qr`, or `div.join` with the offline notice or "Connecting to the room" as today; `div.stack.lobby-info`: when `joinUrl` is given, `p.eyebrow` "Scan, or go to" and `p.join-url` with `span.join-host` (the host, scheme stripped) and `span.join-path` (the path, "/j/ABCD"); always `p.joined` with `b.joined-n` the count and `span.joined-word` " joined", then `ul.counts` of four `li.count` in `ROLES` order, each the figure through a holder (`figureSvg(role, 1)`), `span.count-name` (the plural class name) and `b` (the count); then the `div.stack` of recent names as today), then the Tanui quote.
+- Produces: `LobbyArgs` without `code`, `smith` and `tanui`; "connecting" is now `!offline && joinUrl === ''`. Markup of `showLobby`: `section.panel.lobby` holding `header.lobby-head` (`h1.title.lobby-title` with `aria-label` TITLE, holding `span.lobby-name` "Olkaria" and `span.lobby-sub` "the Deadlock"; then Task 4's `ul.lobby-keys`, unchanged), `div.lobby-body` (the square: `img.qr`, or `div.join` with the offline notice or "Connecting to the room" as today; `div.stack.lobby-info`: when `joinUrl` is given, `p.eyebrow` "Scan, or go to" and `p.join-url` with `span.join-host` (the host, scheme stripped) and `span.join-path` (the path, "/j/ABCD"); always `p.joined` with `b.joined-n` the count and `span.joined-word` " joined", then `ul.counts` of four `li.count` in `ROLES` order, each the figure through a holder (`figureSvg(role, 1)`), `span.count-name` (the plural class name) and `b` (the count); then the `div.stack` of recent names as today). No quote anywhere in the lobby.
 
 - [ ] **Step 1: Write the failing tests**
 
-In `tests/hud.test.ts`, drop `code` from the `lobby()` fixture and from every `showLobby` call, then add:
+In `tests/hud.test.ts`, drop `code`, `smith` and `tanui` from the `lobby()` fixture and from every `showLobby` call, delete the test "frames the lobby quotes with the speakers and citations from host/quotes.ts" (and the `SPEAKERS` import, if nothing else in the file uses it), then add:
 
 ```ts
 it('the lobby shows the address in two lines, the count as a hero and the four class tiles, and no room code', () => {
@@ -729,7 +740,10 @@ it('the lobby shows the address in two lines, the count as a hero and the four c
     .toEqual([['Rogues', '3'], ['Knights', '4'], ['Bards', '2'], ['Wizards', '3']]);
   expect(root.textContent).not.toContain('Room');
   expect(root.querySelector('.code')).toBeNull();
-  expect(root.textContent).toContain('M opens the menu');
+  expect(root.querySelector('.lobby-title .lobby-name')!.textContent).toBe('Olkaria');
+  expect(root.querySelector('.lobby-title .lobby-sub')!.textContent).toBe('the Deadlock');
+  expect(root.querySelector('.quote')).toBeNull();
+  expect(root.querySelectorAll('.lobby-key')).toHaveLength(2);
 });
 it('offline and connecting lobbies keep the tiles but show no address', () => {
   const root = document.createElement('div'); const hud = new Hud(root);
@@ -751,11 +765,11 @@ Expected: type errors on `code`, then the new tests fail.
 
 - [ ] **Step 3: Hud and Lobby**
 
-Rebuild `showLobby` to the markup above and remove `code` from `LobbyArgs`; `Lobby.ts` stops passing it. Draw the tile figure as the option shapes are drawn (a holder's `innerHTML` set to `figureSvg(role, 1)`, first element appended).
+Rebuild `showLobby` to the markup above and remove `code`, `smith` and `tanui` from `LobbyArgs`; `Lobby.ts` stops passing them. Remove the `quote()` helper and the `SPEAKERS` import from `Hud.ts` (the narration's quote arrives already framed; the `.quote` rule stays for it). Draw the tile figure as the option shapes are drawn (a holder's `innerHTML` set to `figureSvg(role, 1)`, first element appended).
 
 - [ ] **Step 4: CSS**
 
-In the lobby block of `hud.css`: add `.lobby-title { font-size: var(--t-code); }` after `.title`'s rule; replace `.join-url` and `.code` with `.join-url { display: flex; flex-direction: column; line-height: var(--lh-title); }`, `.join-host { color: var(--ink-2); font-weight: 600; overflow-wrap: anywhere; }`, `.join-path { font-size: var(--t-narr); font-weight: 700; }`; replace `.joined` with `.joined { display: flex; align-items: baseline; gap: var(--s2); }`, `.joined-n { font: 600 var(--t-code)/var(--lh-title) var(--font-title); font-variant-numeric: tabular-nums; }`, `.joined-word { color: var(--ink-2); }`; replace `.counts` and `.counts b` with `.counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); }`, `.count { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--s2); }`, `.count .figure { display: block; width: calc(var(--zoom) * 12px); height: calc(var(--zoom) * 16px); }`, `.count-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`, `.count b { font-weight: 600; font-variant-numeric: tabular-nums; }`. Update the block's comment.
+In the lobby block of `hud.css`: add, after `.title`'s rule, `.lobby-title { display: flex; flex-direction: column; }`, `.lobby-name { font-size: calc(var(--zoom) * 16px); line-height: var(--lh-title); text-shadow: var(--s2) var(--s2) 0 var(--bg); }`, `.lobby-sub { font-size: var(--t-title); line-height: var(--lh-title); color: var(--ink-2); text-shadow: var(--s1) var(--s1) 0 var(--bg); }`; replace `.join-url` and `.code` with `.join-url { display: flex; flex-direction: column; line-height: var(--lh-title); }`, `.join-host { color: var(--ink-2); font-weight: 600; overflow-wrap: anywhere; }`, `.join-path { font-size: var(--t-narr); font-weight: 700; }`; replace `.joined` with `.joined { display: flex; align-items: baseline; gap: var(--s2); }`, `.joined-n { font: 600 var(--t-code)/var(--lh-title) var(--font-title); font-variant-numeric: tabular-nums; }`, `.joined-word { color: var(--ink-2); }`; replace `.counts` and `.counts b` with `.counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); }`, `.count { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--s2); }`, `.count .figure { display: block; width: calc(var(--zoom) * 12px); height: calc(var(--zoom) * 16px); }`, `.count-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }`, `.count b { font-weight: 600; font-variant-numeric: tabular-nums; }`. Update the block's comment.
 
 - [ ] **Step 5: Run everything**
 
@@ -764,13 +778,13 @@ Expected: green.
 
 - [ ] **Step 6: Look at it**
 
-`npm run dev`, open `http://localhost:5173/host/?mode=offline` and, in a second tab, the online dev host `http://localhost:5173/host/` (the room server is not running locally, so it shows the connecting lobby). Check at the window's zoom: the title reads at its new size, nothing in the panel wraps badly, the four tiles show their figures beside the names and counts, the panel's bottom edge stays above the road at the foot of the canvas, no room code anywhere. Screenshot both for the report.
+`npm run dev`, open `http://localhost:5173/host/?mode=offline` and, in a second tab, the online dev host `http://localhost:5173/host/` (the room server is not running locally, so it shows the connecting lobby). Check at the window's zoom: the title reads on two lines at its new size with its hard shadow, the two keycaps sit top right, no quote anywhere, nothing in the panel wraps badly, the four tiles show their figures beside the names and counts, the panel's bottom edge stays above the road at the foot of the canvas, no room code anywhere. Screenshot both for the report.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add host/hud/Hud.ts host/hud/hud.css host/scenes/Lobby.ts tests/hud.test.ts
-git commit -m "feat: lobby screen with the address, a hero count and class tiles; the room code goes"
+git commit -m "feat: lobby screen with a two-line title, keycaps, the address, a hero count and class tiles; the code and quotes go"
 ```
 
 ---
@@ -810,7 +824,7 @@ Under "## More" add: `- M on the host opens the menu: restart the round, back to
 
 - [ ] **Step 3: Original spec**
 
-In `2026-11-02-olkaria-deadlock-design.md`: 3.2 drops the room code from what the lobby shows and adds the class tiles beside the counts; 4.1 adds one sentence that the phone shows the player's class figure on the role buttons, the waiting card and the lead note (3 November amendment, section 6); 4.5 says the party walks by itself from one second after the segment starts, A pauses and resumes, arrows take over, N skips; 6.2 adds `trips` to the state, `points` to a vote, and the transition "Any phase to `travel` (round s) or `ending` on host `goto` with stage 0 to 4"; 6.5 replaces "A: auto-run." with "A: pause or resume the walk." and "Esc: key map." with "M or Esc: the menu (actions and the key map)."
+In `2026-11-02-olkaria-deadlock-design.md`: 3.2 drops the room code and both quotes from what the lobby shows, names the two-line title and the Space and Esc keycaps, and adds the class tiles beside the counts; 5.6 says Tanui's quote opens round 2 only and Smith's is shown nowhere (it stays in the content); 4.1 adds one sentence that the phone shows the player's class figure on the role buttons, the waiting card and the lead note (3 November amendment, section 6); 4.5 says the party walks by itself from one second after the segment starts, A pauses and resumes, arrows take over, N skips; 6.2 adds `trips` to the state, `points` to a vote, and the transition "Any phase to `travel` (round s) or `ending` on host `goto` with stage 0 to 4"; 6.5 replaces "A: auto-run." with "A: pause or resume the walk." and "Esc: key map." with "M or Esc: the menu (actions and the key map)."
 
 - [ ] **Step 4: Check the copy**
 
