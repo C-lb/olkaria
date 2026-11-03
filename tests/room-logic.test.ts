@@ -458,11 +458,13 @@ describe('guard rails and bookkeeping', () => {
     const allowedIn: Record<string, string[]> = {
       start: ['lobby'], openVote: ['travel'], closeVote: ['vote'], reveal: ['locked'],
       next: ['reveal', 'ending'], reopen: ['locked', 'vote'], callout: ['locked'],
+      goto: ['lobby', 'travel', 'vote', 'locked', 'reveal', 'ending', 'leaderboard'],
     };
     const wrong: string[] = [];
     for (const [k, phases] of Object.entries(allowedIn)) {
       for (const [phase, s] of Object.entries(states)) {
-        const badPhase = cmd(s, { k, pick: 0 } as unknown as HostCmd).effects.some((e) => e.type === 'error' && e.msg === 'bad phase');
+        // stage 0 makes goto a valid jump, so only a phase gate could refuse it here
+        const badPhase = cmd(s, { k, pick: 0, stage: 0 } as unknown as HostCmd).effects.some((e) => e.type === 'error' && e.msg === 'bad phase');
         if (badPhase === phases.includes(phase)) wrong.push(`${k} in ${phase}`);
       }
     }
@@ -711,5 +713,128 @@ describe('view details', () => {
   });
   it('gives a kicked player no view', () => {
     expect(playerView(cmd(toVote(), { k: 'kick', playerId: 'p1' }).state, 'p1', t0, c)).toBeNull();
+  });
+});
+
+describe('goto', () => {
+  // Round 0 paid, with votes from p1 and p2. Round 1 under way, with an exhibit, votes from p1 and p3 and two synthetic
+  // votes, so a jump has points, HP and entries of every kind to give back, and p2 and p3 each lack a round the other has.
+  const roundOneVoted = () => run(closeAndReveal(run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A')]).state), [
+    K({ k: 'next' }), K({ k: 'exhibit', exhibitId: 'x1' }), K({ k: 'openVote' }),
+    vote('p1', 1, 'C'), vote('p3', 1, 'B'), K({ k: 'injectVotes', counts: { D: 2 } }),
+  ]).state;
+  const twoRounds = () => closeAndReveal(roundOneVoted());   // round 1 revealed, round 0 before it
+
+  it('restarts the round it goes to, keeps the rounds before it, and gives back the points and HP of the rest', () => {
+    const s = twoRounds();
+    const r = cmd(s, { k: 'goto', stage: 1 }, t0 + 90000);
+    expect(r.state).toMatchObject({ phase: 'travel', round: 1, voteOpenedAt: null, voteDeadline: null, trips: s.trips + 1 });
+    for (const p of Object.values(r.state.players)) {
+      expect(Object.keys(p.votes)).toEqual(p.votes[0] ? ['0'] : []);
+      expect(p.score).toBe(p.votes[0]?.points ?? 0);
+      expect(p.lastPoints).toBe(p.votes[0]?.points ?? 0);
+    }
+    expect(r.state.damageLog).toEqual([s.damageLog[0]]);
+    expect(r.state.majorities).toEqual([s.majorities[0]]);
+    expect(r.state.bossHp).toBe(400 - s.damageLog[0].total);
+    const keys = [...Object.keys(r.state.synthetic), ...Object.keys(r.state.exhibits), ...Object.keys(r.state.callouts)];
+    expect(keys.every((k) => Number(k) < 1)).toBe(true);
+    expect(r.state.players).toMatchObject(Object.fromEntries(Object.keys(s.players).map((id) => [id, { id }])));   // nobody leaves
+    expect(r.effects).toEqual([]);
+  });
+
+  it('a restart of the revealed round takes back exactly that round\'s points', () => {
+    const before = roundOneVoted();   // round 1 under way, round 0 paid
+    const after = closeAndReveal(before);
+    const r = cmd(after, { k: 'goto', stage: 1 }).state;
+    for (const id of Object.keys(before.players)) {
+      expect(r.players[id].score).toBe(before.players[id].score);
+      expect(r.players[id].lastPoints).toBe(before.players[id].lastPoints);
+    }
+    expect(r.bossHp).toBe(before.bossHp);
+  });
+
+  it('pads the rounds it skips, so a later reveal lands at its own index', () => {
+    const lobby = run(mk(), [join('p1', 'Ann', 'citizen')]).state;
+    const r = cmd(lobby, { k: 'goto', stage: 2 }).state;
+    expect(r).toMatchObject({ phase: 'travel', round: 2, trips: 1, bossHp: 400 });
+    expect(r.majorities).toEqual([null, null]);
+    expect(r.damageLog.map((d) => d.total)).toEqual([0, 0]);
+    const revealed = closeAndReveal(cmd(r, { k: 'openVote' }).state);
+    expect(revealed.damageLog).toHaveLength(3);
+    expect(revealed.damageLog[2].round).toBe(2);
+    expect(revealed.majorities).toHaveLength(3);
+    // padding after a settled round numbers each zero round by its own index too
+    expect(cmd(closeAndReveal(toVote()), { k: 'goto', stage: 3 }).state.damageLog.map((d) => d.round)).toEqual([0, 1, 2]);
+  });
+
+  it('clears the alarm only when a vote was open', () => {
+    expect(cmd(toVote(), { k: 'goto', stage: 0 }).effects).toEqual([{ type: 'clearAlarm' }]);
+    expect(cmd(toVote(), { k: 'goto', stage: 4 }).effects).toEqual([{ type: 'clearAlarm' }]);
+    expect(cmd(cmd(toVote(), { k: 'closeVote' }).state, { k: 'goto', stage: 0 }).effects).toEqual([]);
+  });
+
+  it('goes to the ending for what has been played, clearing nothing, and next still shows the leaderboard', () => {
+    const s = twoRounds();
+    const r = cmd(s, { k: 'goto', stage: 4 }).state;
+    expect(r).toMatchObject({ phase: 'ending', round: 3, voteOpenedAt: null, voteDeadline: null, trips: s.trips });
+    expect(r.players).toEqual(s.players);
+    expect(r.damageLog).toEqual(s.damageLog);
+    expect(r.bossHp).toBe(s.bossHp);
+    // and nothing else moves: the majorities, synthetic votes, exhibits and call-outs of the settled rounds stay
+    expect({ ...r, phase: s.phase, round: s.round, voteOpenedAt: s.voteOpenedAt, voteDeadline: s.voteDeadline, updatedAt: s.updatedAt }).toEqual(s);
+    expect(cmd(r, { k: 'next' }).state.phase).toBe('leaderboard');
+    const lobby = run(mk(), [join('p1', 'Ann', 'citizen')]).state;
+    expect(cmd(lobby, { k: 'goto', stage: 4 }).state).toMatchObject({ phase: 'ending', round: 3 });
+  });
+
+  it('refuses a stage that is not 0 to 4 and changes nothing', () => {
+    const s = twoRounds();
+    for (const stage of [-1, 5, 1.5, Number.NaN]) {
+      const r = cmd(s, { k: 'goto', stage });
+      expect(r.state).toEqual(s);
+      expect(r.effects).toEqual([{ type: 'error', msg: 'bad stage' }]);
+    }
+  });
+
+  it('counts trips: start, each next into a travel and each goto to a road; reset keeps the count', () => {
+    const lobby = run(mk(), [join('p1', 'Ann', 'citizen')]).state;
+    expect(lobby.trips).toBe(0);
+    const started = cmd(lobby, { k: 'start' }).state;
+    expect(started.trips).toBe(1);
+    const second = nextRound(closeAndReveal(cmd(started, { k: 'openVote' }).state));
+    expect(second.trips).toBe(2);
+    expect(cmd(second, { k: 'goto', stage: 1 }).state.trips).toBe(3);
+    const back = cmd(second, { k: 'reset' }).state;
+    expect(back.trips).toBe(2);
+    expect(cmd(back, { k: 'start' }).state.trips).toBe(3);
+    expect(hostView(second, t0, c).trips).toBe(2);
+    expect(finished().leaderboard.trips).toBe(4);   // a next into the ending or the leaderboard sets off on no road
+  });
+
+  it('writes each voter\'s points on their vote at the reveal', () => {
+    // p1 is called out and awarded, so their points carry the call-out's too; p3 does not vote
+    const s = run(toVote(), [
+      vote('p1', 0, 'B'), vote('p2', 0, 'A'),
+      K({ k: 'closeVote' }), K({ k: 'callout', playerId: 'p1' }), K({ k: 'judge', awarded: true }), K({ k: 'reveal' }),
+    ]).state;
+    for (const p of Object.values(s.players)) {
+      if (p.votes[0]) expect(p.votes[0].points).toBe(p.lastPoints);
+      else expect(p.lastPoints).toBe(0);
+    }
+  });
+
+  it('a round voted on but never revealed does not survive a jump past it, forward or to the ending', () => {
+    const voting = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'C')]).state;   // round 0 open, two votes in, no reveal
+    const forward = cmd(voting, { k: 'goto', stage: 2 }).state;
+    expect(Object.values(forward.players).every((p) => Object.keys(p.votes).length === 0)).toBe(true);
+    expect(forward.majorities).toEqual([null, null]);
+    expect(forward.damageLog.map((d) => d.total)).toEqual([0, 0]);
+    expect(forward.bossHp).toBe(400);
+    const ending = cmd(voting, { k: 'goto', stage: 4 }).state;
+    expect(ending.phase).toBe('ending');
+    expect(Object.values(ending.players).every((p) => Object.keys(p.votes).length === 0)).toBe(true);
+    expect(tallyFor(ending, 0)).toEqual({ A: 0, B: 0, C: 0, D: 0 });
+    expect(ending.damageLog).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@
 // the Durable Object and the offline client replay the same events to the same result. Inputs are never
 // mutated and every result state is a new object: a change copies what it touches and shares the rest,
 // a refusal or a no-op returns a copy of the state it was given.
+// `goto` jumps to a stage, undoing the points and damage of the rounds it clears; `trips` counts roads set off on.
 import type { CaseContent } from './content';
 import { sanitizeName, sanitizeTable } from './names';
 import { computeDamage, pointsFor } from './scoring';
@@ -68,7 +69,7 @@ export function initialState(code: string, hostKey: string, now: number, content
     code, hostKey, createdAt: now, updatedAt: now,
     phase: 'lobby', round: -1, voteOpenedAt: null, voteDeadline: null, voteWindowMs: windowMsFor(undefined, content),
     players: {}, banned: [], synthetic: {}, exhibits: {}, callouts: {},
-    bossHp: content.rounds.length * content.scoring.roundHp, damageLog: [], majorities: [], hideNames: false,
+    bossHp: content.rounds.length * content.scoring.roundHp, damageLog: [], majorities: [], hideNames: false, trips: 0,
   };
 }
 
@@ -175,13 +176,14 @@ function runCmd(state: RoomState, cmd: HostCmd, now: number, content: CaseConten
     case 'hideNames': return update(state, now, { hideNames: Boolean(cmd.hide) });
     case 'callout': return callOut(state, now, cmd, content);
     case 'judge': return judge(state, now, cmd.awarded, content);
+    case 'goto': return goto(state, now, cmd.stage, content);
     default: return nothing(state);
   }
 }
 
 function start(state: RoomState, now: number): Result {
   if (state.phase !== 'lobby') return badPhase(state);
-  return update(state, now, { phase: 'travel', round: 0 });
+  return update(state, now, { phase: 'travel', round: 0, trips: state.trips + 1 });
 }
 
 function openVote(state: RoomState, now: number, seconds: number | undefined, content: CaseContent): Result {
@@ -201,6 +203,7 @@ function reopen(state: RoomState, now: number): Result {
 /**
  * Settles a locked round: pending call-outs count as declined, the lead and support tallies become
  * damage, points are paid and the majority is recorded. Final, because reopen refuses a revealed round.
+ * Each voter's points are written on their vote as well, so a goto that clears the round can take them back.
  */
 function reveal(state: RoomState, now: number, content: CaseContent): Result {
   if (state.phase !== 'locked') return badPhase(state);
@@ -227,7 +230,8 @@ function reveal(state: RoomState, now: number, content: CaseContent): Result {
       content, roundIndex: round, option: vote.option, responseMs: vote.at - (state.voteOpenedAt ?? vote.at),
       windowMs: state.voteWindowMs, prior, isLead: p.role === lead,
     }) + calloutPoints;
-    return [id, { ...p, lastPoints, score: p.score + lastPoints }];
+    const votes = vote === undefined ? p.votes : { ...p.votes, [round]: { ...vote, points: lastPoints } };
+    return [id, { ...p, votes, lastPoints, score: p.score + lastPoints }];
   }));
 
   // A round nobody voted in has no majority: recording the empty-tally fallback (A) would hand out phantom synergy later.
@@ -246,18 +250,63 @@ function next(state: RoomState, now: number, content: CaseContent): Result {
   if (state.phase === 'ending') return update(state, now, { phase: 'leaderboard' });
   if (state.phase !== 'reveal') return badPhase(state);
   if (state.round >= content.rounds.length - 1) return update(state, now, { phase: 'ending' });
-  return update(state, now, { phase: 'travel', round: state.round + 1, voteOpenedAt: null, voteDeadline: null });
+  return update(state, now, { phase: 'travel', round: state.round + 1, voteOpenedAt: null, voteDeadline: null, trips: state.trips + 1 });
 }
 
-/** Back to the lobby from any phase: players and bans stay, everything they earned goes. */
+/**
+ * Back to the lobby from any phase: players, bans and the trip count stay, everything they earned goes. Trips only
+ * ever go up, so no road after a reset shares its trip with one before it.
+ */
 function reset(state: RoomState, now: number, content: CaseContent): Result {
   const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] =>
     [id, { ...p, score: 0, lastPoints: 0, votes: {} }]));
   const fresh = initialState(state.code, state.hostKey, state.createdAt, content);
   return {
-    state: { ...fresh, updatedAt: stamp(state, now), players, banned: state.banned, hideNames: state.hideNames },
+    state: { ...fresh, updatedAt: stamp(state, now), players, banned: state.banned, hideNames: state.hideNames, trips: state.trips },
     effects: state.phase === 'vote' ? [{ type: 'clearAlarm' }] : [],
   };
+}
+
+/** A copy of the list grown to n entries, each new entry made by fill from its index. A list of n or more is copied as it is. */
+const pad = <T>(list: readonly T[], n: number, fill: (i: number) => T): T[] =>
+  [...list, ...Array.from({ length: Math.max(0, n - list.length) }, (_, i) => fill(list.length + i))];
+
+/**
+ * Jumps the room to a stage (spec 4.1): 0 to 3 is the road of that round and 4, the number of rounds, is the ending.
+ * A round is settled once it is revealed, so the settled rounds are the first damageLog.length. A jump to a road keeps
+ * the settled rounds before it whole and clears every round from there on: their votes, synthetic votes, exhibits and
+ * call-outs go, each score falls back to the points on the votes kept, and the boss gets their damage back. Rounds
+ * jumped over without being settled get no majority and a round of zero damage, so the next reveal lands at its own
+ * index. A jump to the ending clears only an unsettled current round and leaves every settled one as it was.
+ */
+function goto(state: RoomState, now: number, stage: number, content: CaseContent): Result {
+  const rounds = content.rounds.length;
+  if (!(Number.isInteger(stage) && stage >= 0 && stage <= rounds)) return refuse(state, 'bad stage');
+  const effects: Effect[] = state.phase === 'vote' ? [{ type: 'clearAlarm' }] : [];
+  // damageLog holds one entry per revealed or padded round, so only the current round can lie past the settled ones,
+  // and only in travel, vote or locked.
+  const settled = state.damageLog.length;
+  const cut = stage === rounds ? settled : Math.min(stage, settled);
+  const keep = <T>(entries: Record<number, T>): Record<number, T> =>
+    Object.fromEntries(Object.entries(entries).filter(([r]) => Number(r) < cut));
+  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => {
+    const votes = keep(p.votes);
+    const score = Object.values(votes).reduce((sum, v) => sum + (v.points ?? 0), 0);
+    return [id, { ...p, votes, score, lastPoints: votes[cut - 1]?.points ?? 0 }];
+  }));
+  const kept = { players, synthetic: keep(state.synthetic), exhibits: keep(state.exhibits), callouts: keep(state.callouts) };
+  if (stage === rounds) {
+    return update(state, now, { phase: 'ending', round: rounds - 1, voteOpenedAt: null, voteDeadline: null, ...kept }, effects);
+  }
+  const damageLog = pad(state.damageLog.slice(0, cut), stage, (r) => computeDamage({
+    content, roundIndex: r, lead: zeroTally(), support: zeroTally(), prior: [], exhibits: 0, rallies: 0,
+  }));
+  return update(state, now, {
+    phase: 'travel', round: stage, voteOpenedAt: null, voteDeadline: null, trips: state.trips + 1, ...kept,
+    damageLog,
+    majorities: pad(state.majorities.slice(0, cut), stage, () => null),
+    bossHp: rounds * content.scoring.roundHp - damageLog.reduce((sum, d) => sum + d.total, 0),
+  }, effects);
 }
 
 /** Removes the player with their votes and bans the client id, so a later join from it is refused. */

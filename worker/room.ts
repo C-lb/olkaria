@@ -51,6 +51,7 @@ const hostCmd = z.discriminatedUnion('k', [
   z.object({ k: z.literal('hideNames'), hide: z.boolean() }),
   z.object({ k: z.literal('callout'), pick: z.number().optional(), playerId: z.string().optional() }),
   z.object({ k: z.literal('judge'), awarded: z.boolean() }),
+  z.object({ k: z.literal('goto'), stage: z.number() }),
 ]);
 
 /** The shape every client message must have. */
