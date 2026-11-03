@@ -24,7 +24,7 @@ npx wrangler dev
 ```
 
 Then open http://localhost:8787/host/. `npm run dev:worker` is the same as `npx wrangler dev`.
-`wrangler dev` serves the pages built into `dist/`, so build again after changing the host or phone code.
+`wrangler dev` serves the pages built into `dist/`, so build again after changing the host or phone code or `content/case.json`, which both pages bundle.
 A class of 60 fake phones: `npm run simulate -- --base http://localhost:8787 --code CODE --n 60`.
 
 ## Test and check
@@ -48,6 +48,7 @@ The case lives in `content/case.json`: roles, rounds and options, evidence score
 It is the team's file to edit, and scores never go in code.
 Two bits of case wording do live in code: the quote speakers with their citations (`host/quotes.ts`) and the leaderboard's closing question (`host/finale.ts`).
 `npm test` checks the content file's shape and rules (`tests/content.test.ts`).
+A change reaches the live site only after `npm run deploy`.
 
 ## More
 
@@ -61,3 +62,4 @@ Two bits of case wording do live in code: the quote speakers with their citation
 - The host key travels in the query string of the host socket's address. `wrangler tail` masks it as `key=REDACTED`; other logs that keep full URLs may not.
 - The phone page bundles the whole of `content/case.json`, evidence scores included, so a curious student can read them.
 - Nothing rate-limits room creation (`POST /api/rooms`).
+- The class figures, tiles, exhibit and gate are placeholders drawn in code. Real sprites need both the files in `host/art/assets/` and a loader line in `host/scenes/Boot.ts` for each texture key (`class-citizen` and the rest); Boot loads only the backdrop today.
