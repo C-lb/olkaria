@@ -33,8 +33,9 @@ export function outcomeOf(content: CaseContent, view: HostView): Outcome {
 
 /**
  * The ending screen, over round 4's split. An option's ending: its title and tier, what must be true and the risk
- * accepted. The Deadlock holding: its sentence, then for each earlier round what its lead class chose beside the
- * letters the final majority needed there. With no votes in the final round there is nothing to compare, so no rows.
+ * accepted. The Deadlock holding: no tier (its title says it), its sentence, then for each earlier round what its
+ * lead class chose beside the letters the final majority needed there. With no votes in the final round there is
+ * nothing to compare, so no rows.
  */
 export function endingArgs(content: CaseContent, view: HostView): EndingArgs {
   const { ending, tier, majority } = outcomeOf(content, view);
@@ -44,11 +45,11 @@ export function endingArgs(content: CaseContent, view: HostView): EndingArgs {
     return { title, tier, split, mustBeTrue, risk, holds: null };
   }
   const { title, text } = content.endings.holds;
-  if (majority === null) return { title, tier, text: NO_FINAL_VOTES, split, mustBeTrue: [], risk: [], holds: [] };
+  if (majority === null) return { title, tier: '', text: NO_FINAL_VOTES, split, mustBeTrue: [], risk: [], holds: [] };
   const holds = content.synergy[majority].map((coherent, i) => ({
     round: `Round ${i + 1}`, chose: chose(content, i, view.majorities[i] ?? null), needed: coherent.join(' or '),
   }));
-  return { title, tier, text, split, mustBeTrue: [], risk: [], holds };
+  return { title, tier: '', text, split, mustBeTrue: [], risk: [], holds };
 }
 
 /** "Rogues chose C: Full 1 GW for the hub", the lead class of round `i` with the majority's phone label, or "Knights chose nothing". */

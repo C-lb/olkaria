@@ -57,11 +57,11 @@ describe('endingArgs: the brief\'s three offline plays', () => {
     expect(endingArgs(c, view)).toMatchObject({ title: 'The Seed Plant', tier: 'fragile', split: T(0, 2, 0, 0), holds: null });
   });
 
-  it('C, A, D, B twice each strikes 30, 25, 50, 65: 170 and the Deadlock holds, each round beside what B needed', () => {
+  it('C, A, D, B twice each strikes 30, 25, 50, 65: 170 and the Deadlock holds, no tier over its title, each round beside what B needed', () => {
     const view = play([{ C: 2 }, { A: 2 }, { D: 2 }, { B: 2 }]);
     expect(damage(view)).toEqual([30, 25, 50, 65]);
     expect(endingArgs(c, view)).toEqual({
-      title: 'The Deadlock holds', tier: 'holds', text: 'Your board sends the party back to Nairobi.',
+      title: 'The Deadlock holds', tier: '', text: 'Your board sends the party back to Nairobi.',
       split: T(0, 2, 0, 0), mustBeTrue: [], risk: [],
       holds: [
         { round: 'Round 1', chose: 'Rogues chose C: Full 1 GW for the hub', needed: 'B or D' },
@@ -100,13 +100,19 @@ describe('endingArgs: whose majority, and the rounds with no votes', () => {
     ]);
   });
 
-  it('holds with no rows when no one voted in the final round, though 250 damage would be a fragile A', () => {
+  it('holds with no tier and no rows when no one voted in the final round, though 250 damage would be a fragile A', () => {
     const view = play([{ B: 10 }, { B: 10 }, { B: 10 }, {}]);
     expect(damage(view)).toEqual([95, 60, 95, 0]);
     expect(endingArgs(c, view)).toEqual({
-      title: 'The Deadlock holds', tier: 'holds', text: 'No one voted in the final round.',
+      title: 'The Deadlock holds', tier: '', text: 'No one voted in the final round.',
       split: T(0, 0, 0, 0), mustBeTrue: [], risk: [], holds: [],
     });
+  });
+
+  it('names the letter alone when the round has no option with that letter, so no phone label to show', () => {
+    const view = play([{ C: 2 }, { A: 2 }, { D: 2 }, { B: 2 }]);
+    const noC = { ...c, rounds: c.rounds.map((r, i) => (i === 0 ? { ...r, options: r.options.filter((o) => o.id !== 'C') } : r)) };
+    expect(endingArgs(noC, view).holds?.[0]).toEqual({ round: 'Round 1', chose: 'Rogues chose C', needed: 'B or D' });
   });
 });
 
@@ -119,17 +125,19 @@ describe('outcomeOf: whether the core cracks', () => {
 });
 
 describe('leaderboardArgs', () => {
-  const board = play([{ B: 10 }, { B: 10 }, { B: 10 }, { B: 7, D: 3 }], 'leaderboard');
+  let built: HostView | null = null;
+  /** Round 4 ends B 7, D 3. Built on first use inside a test, so a refused command fails that test by name, not the collection. */
+  const board = (): HostView => (built ??= play([{ B: 10 }, { B: 10 }, { B: 10 }, { B: 7, D: 3 }], 'leaderboard'));
   const player = (id: string, name: string, role: Role, score: number, joinedAt: number, more: Partial<Player> = {}): Player =>
     ({ id, name, role, table: null, joinedAt, score, lastPoints: 0, votes: {}, ...more });
   const seated = (players: Player[], hideNames = false): HostView =>
-    ({ ...board, hideNames, players: Object.fromEntries(players.map((p) => [p.id, p])) });
+    ({ ...board(), hideNames, players: Object.fromEntries(players.map((p) => [p.id, p])) });
   /** A player's votes in rounds 1 to 4; null for a round they missed. */
   const picks = (...options: (OptionId | null)[]): Record<number, Vote> =>
     Object.fromEntries(options.flatMap((option, i) => (option === null ? [] : [[i, { option, at: T0 }]])));
 
   it('closes offline on the question over round 4\'s split: no players, so no rows, no strategist and no table', () => {
-    expect(leaderboardArgs(c, board)).toEqual({
+    expect(leaderboardArgs(c, board())).toEqual({
       rows: [], consistent: 'No one voted in all four rounds', table: null,
       split: T(0, 7, 0, 3), question: 'What should Microsoft do, and why?',
     });

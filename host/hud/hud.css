@@ -323,12 +323,20 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .ending-text { gap: var(--s3); }
 .bullets { padding-left: 1.1em; display: grid; gap: var(--s1); }
 .bullets li::marker { color: var(--ink-3); }
-.holds { list-style: none; display: grid; gap: var(--s2); }
+/* One grid for every row, each row a subgrid of it, so the round, the choice and what was needed stand in columns:
+   "Needed" follows the longest choice after one gap, beside its own row and well clear of the split. */
+.holds {
+  list-style: none;
+  display: grid;
+  grid-template-columns: calc(var(--zoom) * 16px) minmax(0, max-content) max-content;
+  justify-content: start;
+  gap: var(--s2) var(--s4);
+}
 .holds-row {
   display: grid;
-  grid-template-columns: calc(var(--zoom) * 16px) minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  column-gap: var(--s3);
 }
 .holds-round { color: var(--ink-2); }
 .holds-needed { color: var(--ink-2); white-space: nowrap; }

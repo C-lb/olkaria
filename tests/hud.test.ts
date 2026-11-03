@@ -188,13 +188,14 @@ describe('narration, debrief, ending and leaderboard', () => {
     expect([...root.querySelectorAll('.split .bar-value')].map((v) => v.textContent)).toEqual(['0%', '0%', '0%', '0%']);
   });
 
-  it('puts the sentence of the Deadlock holding under the title and above the rows, and none when there is no text', () => {
+  it('opens the Deadlock holding on its title with no tier over it, then its sentence above the rows, and no sentence without text', () => {
     const { root, hud } = fresh();
     const split = { A: 0, B: 2, C: 0, D: 0 };
-    hud.showEnding({ title: 'The Deadlock holds', tier: 'holds', text: 'Your board sends the party back to Nairobi.', split, mustBeTrue: [], risk: [], holds: [{ round: 'Round 1', chose: 'Rogues chose C: Full 1 GW for the hub', needed: 'B or D' }] });
+    hud.showEnding({ title: 'The Deadlock holds', tier: '', text: 'Your board sends the party back to Nairobi.', split, mustBeTrue: [], risk: [], holds: [{ round: 'Round 1', chose: 'Rogues chose C: Full 1 GW for the hub', needed: 'B or D' }] });
     const parts = [...root.querySelector('.ending')!.children];
-    expect(parts.slice(0, 3).map((el) => [el.tagName, el.textContent])).toEqual([['P', 'Holds'], ['H1', 'The Deadlock holds'], ['P', 'Your board sends the party back to Nairobi.']]);
-    expect(parts[3].querySelector('.holds-row')?.textContent).toBe('Round 1Rogues chose C: Full 1 GW for the hubNeeded: B or D');
+    expect(parts.map((el) => el.tagName)).toEqual(['H1', 'P', 'DIV']);
+    expect(parts.slice(0, 2).map((el) => el.textContent)).toEqual(['The Deadlock holds', 'Your board sends the party back to Nairobi.']);
+    expect(parts[2].querySelector('.holds-row')?.textContent).toBe('Round 1Rogues chose C: Full 1 GW for the hubNeeded: B or D');
     hud.showEnding({ title: 'The Seed Plant', tier: 'decisive', split, mustBeTrue: ['the expansion option stays open'], risk: ['weak early returns'], holds: null });
     expect([...root.querySelector('.ending')!.children].map((el) => el.tagName)).toEqual(['P', 'H1', 'DIV']);
   });
