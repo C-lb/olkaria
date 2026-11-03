@@ -14,9 +14,11 @@ import { describe } from 'vitest';
 import { computeDamage } from '../shared/scoring';
 import type { Callout, DamageResult, OptionId, Player, Role, Tally } from '../shared/types';
 import {
-  alignmentText, bannerFor, debriefFor, judgedNotes, judgeFlash, narrationFor, strikePlan, timerText, votedText,
-  type Strike, type StrikePlan,
+  alignmentText, bannerFor, BEAT_MS, beatsFor, debriefFor, DRAIN_MS, FRAME_MS, judgedNotes, judgeFlash, lungeReach, narrationFor,
+  optionsFooter, REVEAL_MS, spaceAction, strikePlan, timerText, votedText,
+  type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
+import { SPEAKERS } from '../host/quotes';
 
 const T = (A: number, B: number, C: number, D: number): Tally => ({ A, B, C, D });
 const Z = T(0, 0, 0, 0);
@@ -27,7 +29,11 @@ const called = (playerId: string | null, option: OptionId | null, status: Callou
   ({ playerId, option, status, points: status === 'awarded' ? 30 : status === 'declined' ? 10 : 0 });
 const strikes = (plan: StrikePlan): Strike[] => plan.flatMap((step) => (step.kind === 'skip' ? [] : [step]));
 const shown = (plan: StrikePlan): number => strikes(plan).reduce((sum, s) => sum + s.amount, 0);
+/** What the canvas prints, added up: "36.7" and "+15" read as numbers. */
+const printed = (plan: StrikePlan): number => strikes(plan).reduce((sum, s) => sum + Number(s.figure), 0);
 const preCap = (d: DamageResult): number => d.base + d.focus + d.alignment + d.exhibit + d.rally;
+/** The base as the debrief's breakdown prints it, to a tenth. */
+const printedBase = (d: DamageResult): number => Math.round(d.base * 10) / 10;
 const PARTY: Role[] = ['citizen', 'government', 'business', 'microsoft'];
 
 describe('strikePlan: what the special attack shows adds up to what it drains', () => {
@@ -89,11 +95,30 @@ describe('strikePlan: what the special attack shows adds up to what it drains', 
     expect(strikes(plan)[0].by).toEqual(['government']);
   });
 
-  it('labels the rally of a student no longer in the room "Rally +10", performed by the lead class', () => {
+  it('labels the rally of a student no longer in the room "Removed student +10", struck by the lead class, as the list and the debrief name them', () => {
     const d = damage(0, T(0, 1, 0, 0), T(0, 3, 0, 0), { rallies: 1 });
-    const plan = strikePlan(d, c, 0, [called('gone', 'B', 'awarded')], {});
+    const callouts = [called('gone', 'B', 'awarded')];
+    const plan = strikePlan(d, c, 0, callouts, {});
     expect(shown(plan)).toBeCloseTo(preCap(d), 9);
-    expect(strikes(plan).at(-1)).toMatchObject({ kind: 'rally', label: 'Rally +10', by: ['citizen'], colour: 'B' });
+    expect(strikes(plan).at(-1)).toMatchObject({ kind: 'rally', label: 'Removed student +10', by: ['citizen'], colour: 'B' });
+    expect(debriefFor(d, c, 0, callouts, {}).rally).toBe('Rally: Removed student +10');
+    expect(judgedNotes(c, callouts, {})).toEqual(['Removed student: +10 rally']);
+  });
+
+  it('prints figures that add up to the base as the debrief prints it, plus every bonus', () => {
+    const players = { p1: player('p1', 'Sarah', 'business') };
+    const rounds: [DamageResult, Callout[]][] = [
+      [damage(0, T(1, 6, 1, 2), T(6, 15, 3, 6), { exhibits: 2 }), []],                                       // both groups
+      [damage(0, T(0, 4, 0, 0), Z), []],                                                                       // the lead class alone
+      [damage(0, Z, T(2, 10, 0, 0), { rallies: 1 }), [called(null, null, 'awarded')]],                         // the party alone
+      [damage(1, T(0, 1, 3, 0), T(1, 2, 6, 3), { rallies: 2 }), [called('p1', 'C', 'awarded'), called(null, null, 'awarded')]],
+      [damage(0, T(1, 5, 0, 0), T(2, 10, 0, 0)), []],                                                          // halves of 36.67
+      [damage(2, T(1, 1, 1, 0), T(0, 2, 1, 4), { exhibits: 3 }), []],
+    ];
+    for (const [d, callouts] of rounds) {
+      const plan = strikePlan(d, c, d.round, callouts, players);
+      expect(printed(plan)).toBeCloseTo(printedBase(d) + d.focus + d.alignment + d.exhibit + d.rally, 9);
+    }
   });
 
   it('rounds the two halves so their figures add up to the base as the debrief prints it', () => {
@@ -182,10 +207,12 @@ describe('the debrief', () => {
 });
 
 describe('the words around the vote', () => {
-  it('counts the votes against the room online, and the votes alone offline', () => {
-    expect(votedText(T(1, 2, 0, 0), 5, false)).toBe('3 of 5 voted');
-    expect(votedText(T(2, 10, 0, 0), 0, true)).toBe('12 voted');
-    expect(votedText(Z, 0, false)).toBe('0 of 0 voted');
+  it('counts the votes against the room online, each bot vote counted as a voter, and the votes alone offline', () => {
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, false)).toBe('3 of 5 voted');
+    // Two phones voted, one did not, and three bot votes came in: 5 of the 6 who could vote.
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false)).toBe('5 of 6 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true)).toBe('12 voted');
+    expect(votedText(Z, 0, undefined, false)).toBe('0 of 0 voted');
   });
 
   it('counts the clock down in whole seconds, rounding up, never below zero', () => {
@@ -218,14 +245,98 @@ describe('the words around the vote', () => {
     expect(judgeFlash(k, true)).toBe('+12 rally');
   });
 
-  it('narrates each round, with Ruto before the first and Tanui before the second', () => {
+  it('narrates each round, with Ruto before the first and Tanui before the second, attributed from host/quotes.ts', () => {
     expect(narrationFor(c, 0)).toEqual({
       boss: 'Grid Wyrm', title: c.rounds[0].title, narration: c.rounds[0].narration,
       quote: `“${c.quotes.ruto}” President William Ruto (Semafor, 2026)`, footer: 'Space opens the vote',
     });
     expect(narrationFor(c, 1).quote).toBe(`“${c.quotes.tanui}” PS John Tanui (James, 2026; Vimal, 2026)`);
+    expect(narrationFor(c, 0).quote).toBe(`“${c.quotes.ruto}” ${SPEAKERS.ruto}`);
+    expect(narrationFor(c, 1).quote).toBe(`“${c.quotes.tanui}” ${SPEAKERS.tanui}`);
     expect(narrationFor(c, 2).quote).toBeUndefined();
     expect(narrationFor(c, 3)).toMatchObject({ boss: 'The core', title: c.rounds[3].title, footer: 'Space opens the vote' });
     expect(narrationFor(c, 3).quote).toBeUndefined();
+  });
+
+  it('tells the facilitator what C, Y, N and Space do now', () => {
+    const strikes = 'C calls a student out. Space: the party strikes';
+    expect(optionsFooter(c, 'vote', [])).toBe('Space locks the vote');
+    expect(optionsFooter(c, 'vote', [called(null, null, 'pending')])).toBe('Space locks the vote');   // Y and N judge only once it is locked
+    expect(optionsFooter(c, 'locked', [])).toBe(strikes);
+    expect(optionsFooter(c, 'locked', [called('p1', 'B', 'pending')])).toBe('Y convincing, N not');
+    expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined')])).toBe(strikes);
+    expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'pending')])).toBe('Y convincing, N not');
+    expect(optionsFooter(c, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'awarded')])).toBe('Space: the party strikes');
+    expect(optionsFooter(c, 'reveal', [])).toBe('');
+    const k = structuredClone(c);
+    k.scoring.maxCallouts = 3;
+    expect(optionsFooter(k, 'locked', [called('p1', 'B', 'declined'), called(null, null, 'awarded')])).toBe(strikes);
+  });
+});
+
+describe('the reveal takes 6 s at most', () => {
+  it('fits the heaviest plan, the drain with its shake, and a frame per beat into 6 s', () => {
+    const d = damage(0, T(0, 4, 0, 0), T(0, 8, 0, 0), { exhibits: c.scoring.maxExhibits, rallies: c.scoring.maxCallouts });
+    const plan = strikePlan(d, c, 0, [called(null, null, 'awarded'), called(null, null, 'awarded')], {});
+    expect(plan.map((s) => s.kind)).toEqual(['lead', 'support', 'focus', 'alignment', 'exhibit', 'exhibit', 'exhibit', 'rally', 'rally']);
+    const beats = beatsFor(plan);
+    expect(beats).toHaveLength(plan.length);
+    expect(beats.reduce((sum, ms) => sum + ms, 0) + DRAIN_MS + FRAME_MS * (beats.length + 1)).toBeLessThanOrEqual(REVEAL_MS);
+    expect([REVEAL_MS, DRAIN_MS]).toEqual([6000, 1500]);
+  });
+
+  it('keeps a common plan at its natural pace', () => {
+    const plan = strikePlan(damage(0, Z, T(2, 10, 0, 0), { rallies: 1 }), c, 0, [called(null, null, 'awarded')], {});
+    expect(beatsFor(plan)).toEqual(plan.map((s) => BEAT_MS[s.kind]));
+  });
+});
+
+describe('Space', () => {
+  const press = (over: Partial<SpaceState> = {}) =>
+    spaceAction({ phase: 'locked', busy: false, onDebrief: false, lockedUntil: 0, time: 5000, ...over });
+
+  it('sends each phase its command, then rests a second', () => {
+    expect(press({ phase: 'travel' })).toEqual({ kind: 'send', cmd: { k: 'openVote' }, lockedUntil: 6000 });
+    expect(press({ phase: 'vote' })).toEqual({ kind: 'send', cmd: { k: 'closeVote' }, lockedUntil: 6000 });
+    expect(press({ phase: 'locked' })).toEqual({ kind: 'send', cmd: { k: 'reveal' }, lockedUntil: 6000 });
+    for (const phase of ['lobby', 'reveal', 'ending', 'leaderboard'] as const) expect(press({ phase })).toEqual({ kind: 'ignore' });
+  });
+
+  it('ignores every Space inside a lockout, during the strike and on the debrief too', () => {
+    const states: Partial<SpaceState>[] = [{}, { phase: 'travel' }, { phase: 'reveal', busy: true }, { phase: 'reveal', onDebrief: true }];
+    for (const s of states) expect(press({ ...s, lockedUntil: 5001 })).toEqual({ kind: 'ignore' });
+  });
+
+  it('ignores a second Space inside a second of a send', () => {
+    expect(press({ phase: 'vote', time: 1000 })).toEqual({ kind: 'send', cmd: { k: 'closeVote' }, lockedUntil: 2000 });
+    expect(press({ phase: 'vote', time: 1999, lockedUntil: 2000 })).toEqual({ kind: 'ignore' });
+    expect(press({ phase: 'reveal', onDebrief: true, time: 1500, lockedUntil: 2000 })).toEqual({ kind: 'ignore' });   // no second next
+    expect(press({ phase: 'vote', time: 2000, lockedUntil: 2000 })).toMatchObject({ kind: 'send' });
+  });
+
+  it('skips the strike while it plays, then rests 600 ms before next', () => {
+    expect(press({ phase: 'reveal', busy: true, time: 3000, lockedUntil: 2000 })).toEqual({ kind: 'skip', lockedUntil: 3600 });
+    expect(press({ phase: 'reveal', onDebrief: true, time: 3599, lockedUntil: 3600 })).toEqual({ kind: 'ignore' });
+    expect(press({ phase: 'reveal', onDebrief: true, time: 3600, lockedUntil: 3600 })).toEqual({ kind: 'send', cmd: { k: 'next' }, lockedUntil: 4600 });
+  });
+
+  it('sends next only from the debrief', () => {
+    expect(press({ phase: 'reveal' })).toEqual({ kind: 'ignore' });
+    expect(press({ phase: 'reveal', onDebrief: true })).toEqual({ kind: 'send', cmd: { k: 'next' }, lockedUntil: 6000 });
+  });
+});
+
+describe('lunges', () => {
+  // Round 1's line-up: the three support classes at 30, 52 and 74, the Rogue in front at 104, all 12 px wide.
+  const stands = [
+    { role: 'government', x: 30, w: 12 }, { role: 'business', x: 52, w: 12 }, { role: 'microsoft', x: 74, w: 12 }, { role: 'citizen', x: 104, w: 12 },
+  ] as const;
+
+  it('stop 2 px short of the sprite standing in front, so no sprite covers another', () => {
+    expect(lungeReach(stands, ['government', 'business', 'microsoft'], 20, 2)).toBe(16);   // the Wizard stops 2 px short of the Rogue
+    expect(lungeReach(stands, ['microsoft'], 28, 2)).toBe(16);
+    expect(lungeReach(stands, ['business'], 28, 2)).toBe(8);
+    expect(lungeReach(stands, ['business'], 4, 2)).toBe(4);
+    expect(lungeReach(stands, ['citizen'], 28, 2)).toBe(28);                               // nobody stands in front of the lead
   });
 });

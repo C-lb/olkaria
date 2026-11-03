@@ -13,8 +13,9 @@ import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../h
 import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
 import {
-  bannerFor, classFor, debriefFor, judgedNotes, judgeFlash, labelFor, narrationFor, strikePlan, timerText, votedText,
-  type StrikePlan,
+  bannerFor, beatsFor, classFor, debriefFor, DRAIN_MS, judgedNotes, judgeFlash, labelFor, lungeReach, narrationFor, optionsFooter,
+  SKIP_LOCK_MS, spaceAction, strikePlan, timerText, votedText,
+  type Stand, type StrikePlan,
 } from '../strikers';
 import { HpBar } from '../ui/HpBar';
 
@@ -37,34 +38,30 @@ const SUPPORT_X = [30, 52, 74] as const;
 const HP_X = BOSS_X - 20;
 const HP_Y = 18;
 const HP_W = 52;
-/** Where the damage numbers rise from, at the boss's near side; successive numbers step across so they do not stack. */
-const NUMBER_Y = 80;
-const NUMBER_DX = [-28, -12, 4] as const;
+/**
+ * The damage numbers rise in the open space between the party and the boss, above the sprites: x from about 112 to 219
+ * (the lead's rest box ends at 110, the boss's box starts at 248), bottoms from y 48 up to 38, while no sprite reaches
+ * above y 52 (the lead at its dash peak is 32 px tall on the floor at 84). So a number never covers the boss or a sprite.
+ */
+const NUMBER_X = 172;
+const NUMBER_DX = [-22, 0, 22] as const;
+const NUMBER_Y = 48;
+const NUMBER_RISE = 10;
 
 /** How far the called student's class steps forward while their call-out is pending (ms for the step). */
 const STEP_PX = 8;
 const STEP_MS = 150;
-/** How far each kind of strike lunges toward the boss. */
+/** How far each kind of strike would lunge toward the boss; support and rally lunges stop CLEAR_PX short of the sprite in front. */
 const LUNGE_LEAD = 112;
 const LUNGE_SUPPORT = 20;
 const LUNGE_RALLY = 28;
+const CLEAR_PX = 2;
 const HOP_PX = 6;
-
-/** The natural length of each beat of the special attack in ms. A plan longer than STRIKES_MS is squeezed to fit. */
-const BEAT_MS: Record<StrikePlan[number]['kind'], number> = { skip: 700, lead: 1100, support: 900, focus: 700, alignment: 700, exhibit: 700, rally: 800 };
-/** The strikes take at most this long, then the HP drains: 7.5 s in all, under the 8 s limit (spec 2), and Space skips it. */
-const STRIKES_MS = 6000;
-/** A chained tween starts counting on the frame after the one before it ends, so each beat can run a frame long. */
-const FRAME_MS = 17;
-const DRAIN_MS = 1500;
 const SHAKE_MS = 200;
-/** Once the strike is skipped or over, Space waits this long before it moves on, so a double press cannot skip the debrief. */
-const LOCK_MS = 600;
 /** How often the vote clock is redrawn. */
 const TICK_MS = 250;
-
-const FOOTER_VOTE = 'Space locks the vote';
-const FOOTER_LOCKED = 'C calls a student out. Space: the party strikes';
+/** The registry key of Space's lockout (see lockedUntil). */
+const LOCK_KEY = 'spaceLockedUntil';
 
 /** Live draws the round from each view; strike plays the special attack; debrief holds the debrief until the router moves on. */
 type Stage = 'live' | 'strike' | 'debrief';
@@ -88,8 +85,6 @@ export class Battle extends Phaser.Scene {
   private stage: Stage = 'live';
   /** True while the special attack plays: Space then skips to the debrief. */
   private busy = false;
-  /** Space does nothing until the scene clock passes this. */
-  private lockedUntil = 0;
   /** The reveal being struck, for a skip. */
   private striking: { view: HostView; d: DamageResult } | null = null;
   /** The latest view of this round, and the room's clock minus this machine's when it came. */
@@ -115,6 +110,20 @@ export class Battle extends Phaser.Scene {
     this.resume = data.resume ?? false;
   }
 
+  /**
+   * Space does nothing until the game clock (which every scene's clock reads) passes this. It lives in the registry, not
+   * on the scene, so it holds across the switch a `next` causes: a second press that lands after the room has answered
+   * reaches the next round's Battle, which must not open that round's vote with it.
+   */
+  private get lockedUntil(): number {
+    const until: unknown = this.registry.get(LOCK_KEY);
+    return typeof until === 'number' ? until : 0;
+  }
+
+  private set lockedUntil(until: number) {
+    this.registry.set(LOCK_KEY, until);
+  }
+
   create(): void {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
@@ -122,7 +131,6 @@ export class Battle extends Phaser.Scene {
     this.hud.clear();
     this.stage = 'live';
     this.busy = false;
-    this.lockedUntil = 0;
     this.striking = null;
     this.view = null;
     this.offset = 0;
@@ -227,7 +235,7 @@ export class Battle extends Phaser.Scene {
       this.screen(JSON.stringify(['narration', args]), () => this.hud.showNarration(args));
       return;
     }
-    this.showCards(view, view.phase === 'vote' ? FOOTER_VOTE : FOOTER_LOCKED);
+    this.showCards(view);
     this.banner(bannerFor(this.content, this.round, callouts, view.players));   // still up in a vote reopened over it
   }
 
@@ -263,9 +271,13 @@ export class Battle extends Phaser.Scene {
     this.hud.showBanner(args);
   }
 
-  /** The cards: bare while the vote is open, with both groups' bars once it is locked. The clock and the count are patched in place. */
-  private showCards(view: HostView, footer: string): void {
+  /**
+   * The cards: bare while the vote is open, with both groups' bars once it is locked (and through the strike), under a
+   * hint that says what the keys do now. The clock and the count are patched in place.
+   */
+  private showCards(view: HostView): void {
     const locked = view.phase !== 'vote';
+    const callouts = view.callouts[this.round] ?? [];
     const args: OptionsArgs = {
       options: this.content.rounds[this.round].options.map((o) => ({ letter: o.id, screen: o.screen })),
       leadLabel: labelFor(this.content, classFor(this.content, this.round).lead, true),
@@ -273,8 +285,8 @@ export class Battle extends Phaser.Scene {
       votedText: this.voted(view),
       leadShares: locked ? shares(view.leadTally) : null,
       supportShares: locked ? shares(view.supportTally) : null,
-      footer,
-      resolved: judgedNotes(this.content, view.callouts[this.round] ?? [], view.players),
+      footer: optionsFooter(this.content, view.phase, callouts),
+      resolved: judgedNotes(this.content, callouts, view.players),
     };
     const { timerText: clock, votedText: count, ...cards } = args;
     const status = JSON.stringify([clock, count]);
@@ -292,7 +304,7 @@ export class Battle extends Phaser.Scene {
   }
 
   private voted(view: HostView): string {
-    return votedText(view.tally, Object.keys(view.players).length, this.client.mode === 'offline');
+    return votedText(view.tally, Object.keys(view.players).length, view.synthetic[this.round], this.client.mode === 'offline');
   }
 
   /** Counts the clock down between views, which offline come only when something changes. */
@@ -309,63 +321,50 @@ export class Battle extends Phaser.Scene {
 
   // ---- Space ----------------------------------------------------------------------------------------------
 
+  /** spaceAction decides; the lockout is set before a send, because offline the answer arrives inside send(). */
   private onSpace(): void {
-    const now = this.time.now;
-    if (this.busy) {
-      this.skip(now);
-      return;
-    }
-    if (now < this.lockedUntil || this.view === null) return;
-    if (this.stage === 'debrief') {
-      this.client.send({ k: 'next' });
-      return;
-    }
-    if (this.stage !== 'live') return;
-    switch (this.view.phase) {
-      case 'travel': this.client.send({ k: 'openVote' }); break;
-      case 'vote': this.client.send({ k: 'closeVote' }); break;
-      case 'locked': this.client.send({ k: 'reveal' }); break;   // a call-out still pending counts as declined (spec 6.2)
-      case 'reveal': this.client.send({ k: 'next' }); break;     // a reveal with no damage logged has no debrief to wait for
-      default: break;
-    }
+    if (this.view === null) return;
+    const action = spaceAction({
+      phase: this.view.phase, busy: this.busy, onDebrief: this.stage === 'debrief', lockedUntil: this.lockedUntil, time: this.time.now,
+    });
+    if (action.kind === 'ignore') return;
+    this.lockedUntil = action.lockedUntil;
+    if (action.kind === 'skip') this.skip();
+    else this.client.send(action.cmd);
   }
 
-  /** Space during the strike: every tween stops, everyone is back in place, the debrief shows, and Space rests a moment. */
-  private skip(now: number): void {
+  /** Space during the strike: every tween stops, everyone is back in place, the strike's toast goes, the debrief shows. */
+  private skip(): void {
     const striking = this.striking;
     this.tweens.killAll();
     this.rest();
     this.idle();
+    this.hud.clearTimedToast();
     if (striking !== null) this.debrief(striking.view, striking.d, true);
-    this.busy = false;
-    this.lockedUntil = now + LOCK_MS;
   }
 
   // ---- The special attack ---------------------------------------------------------------------------------
 
   /**
    * Plays the round's strikes in order as one tween chain, a beat each, then drains the HP by the round's damage with a
-   * shake, then the debrief. The strikes run 6 s at most and the drain 1.5 s.
+   * shake, then the debrief: 6 s at most in all, the 1.5 s drain included (beatsFor).
    */
   private strike(view: HostView, d: DamageResult): void {
     this.stage = 'strike';
     this.busy = true;
     this.striking = { view, d };
     this.banner(null);
-    this.showCards(view, '');
+    this.showCards(view);
     this.rest();
     this.hp.set(this.content.scoring.roundHp, view.bossHp + d.total);   // the bar as it stood before the strike
     const plan = strikePlan(d, this.content, this.round, view.callouts[this.round] ?? [], view.players);
-    const natural = plan.reduce((ms, step) => ms + BEAT_MS[step.kind], 0);
-    const budget = STRIKES_MS - FRAME_MS * plan.length;
-    const squeeze = natural > budget ? budget / natural : 1;
+    const beats = beatsFor(plan);
+    // A toast for a strike that does not happen stays until the strikes are over, never over the debrief.
+    const untilStrikesEnd = beats.map((_, i) => beats.slice(i).reduce((sum, ms) => sum + ms, 0));
     this.tweens.chain({
       targets: this.beat,
       tweens: [
-        ...plan.map((step, i) => {
-          const ms = Math.floor(BEAT_MS[step.kind] * squeeze);
-          return { t: { from: 0, to: 1 }, duration: ms, onStart: () => this.play(step, ms, i) };
-        }),
+        ...plan.map((step, i) => ({ t: { from: 0, to: 1 }, duration: beats[i], onStart: () => this.play(step, beats[i], i, untilStrikesEnd[i]) })),
         { t: { from: 0, to: 1 }, duration: DRAIN_MS, onStart: () => this.drain(view, d) },
       ],
       onComplete: () => this.debrief(view, d, true),
@@ -373,9 +372,9 @@ export class Battle extends Phaser.Scene {
   }
 
   /** One beat: a toast for a strike that does not happen, else its strikers move, the boss is hit and its number rises. */
-  private play(step: StrikePlan[number], ms: number, i: number): void {
+  private play(step: StrikePlan[number], ms: number, i: number, toastMs: number): void {
     if (step.kind === 'skip') {
-      this.hud.showToast(step.toast);
+      this.hud.showToast(step.toast, toastMs);
       return;
     }
     if (step.label !== null) this.hud.flashRally(step.label, ms);
@@ -387,11 +386,17 @@ export class Battle extends Phaser.Scene {
       this.pop(step.figure, colour ?? hex(PALETTE.amber), i, step.kind === 'lead' ? 3 : 2);
     };
     switch (step.kind) {
-      case 'lead': this.lunge(strikers, LUNGE_LEAD, 2, ms, impact); break;   // the special attack: a long dash, twice the size
-      case 'support': this.lunge(strikers, LUNGE_SUPPORT, 1, ms, impact); break;
-      case 'rally': this.lunge(strikers, LUNGE_RALLY, 1, ms, impact); break;
+      case 'lead': this.lunge(strikers, this.reach(step.by, LUNGE_LEAD), 2, ms, impact); break;   // the special attack: a long dash, twice the size
+      case 'support': this.lunge(strikers, this.reach(step.by, LUNGE_SUPPORT), 1, ms, impact); break;
+      case 'rally': this.lunge(strikers, this.reach(step.by, LUNGE_RALLY), 1, ms, impact); break;
       default: this.hop(strikers, ms, impact); break;   // a flourish: the whole party jumps
     }
+  }
+
+  /** How far these classes can lunge, up to `want`, and stop CLEAR_PX short of any sprite standing in front of them. */
+  private reach(roles: readonly Role[], want: number): number {
+    const stands: Stand[] = [...this.homes].map(([role, x]) => ({ role, x, w: this.sprites.get(role)?.width ?? 0 }));
+    return lungeReach(stands, roles, want, CLEAR_PX);
   }
 
   /** Out to the boss, the impact, a hold, and back. */
@@ -431,18 +436,21 @@ export class Battle extends Phaser.Scene {
     });
   }
 
-  /** A damage number in the digits font, outlined a pixel all round so it reads over any boss, rising and fading. */
+  /**
+   * A damage number in the digits font: light ink inside a 1 px outline in the strike's colour, rising in the open space
+   * between the party and the boss, then fading.
+   */
   private pop(figure: string, colour: number, i: number, scale: number): void {
-    const x = BOSS_X + NUMBER_DX[i % NUMBER_DX.length];
+    const x = NUMBER_X + NUMBER_DX[i % NUMBER_DX.length];
     const make = (dx: number, dy: number, tint: number, depth: number): Phaser.GameObjects.BitmapText =>
       this.add.bitmapText(x + dx, NUMBER_Y + dy, 'digits', figure).setOrigin(0.5, 1).setScale(scale).setTint(tint).setDepth(depth);
-    const outline = hex(PALETTE.outline);
-    const all = [make(-1, 0, outline, 40), make(1, 0, outline, 40), make(0, -1, outline, 40), make(0, 1, outline, 40), make(0, 0, colour, 41)];
+    const ring: readonly (readonly [number, number])[] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+    const all = [...ring.map(([dx, dy]) => make(dx, dy, colour, 40)), make(0, 0, hex(PALETTE.bone), 41)];
     for (const n of all) this.numbers.add(n);
     this.tweens.chain({
       targets: all,
       tweens: [
-        { y: '-=16', duration: 500, ease: 'Quad.easeOut' },
+        { y: `-=${NUMBER_RISE}`, duration: 500, ease: 'Quad.easeOut' },
         {
           alpha: 0, duration: 400, delay: 300,
           onComplete: () => { for (const n of all) { this.numbers.delete(n); n.destroy(); } },
@@ -461,7 +469,7 @@ export class Battle extends Phaser.Scene {
     this.stage = 'debrief';
     this.busy = false;
     this.striking = null;
-    if (struck) this.lockedUntil = this.time.now + LOCK_MS;
+    if (struck) this.lockedUntil = Math.max(this.lockedUntil, this.time.now + SKIP_LOCK_MS);
     this.hp.set(this.content.scoring.roundHp - d.total, view.bossHp);
     const args = debriefFor(d, this.content, this.round, view.callouts[this.round] ?? [], view.players);
     this.screen(JSON.stringify(['debrief', args]), () => this.hud.showDebrief(args));

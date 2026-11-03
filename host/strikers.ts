@@ -1,9 +1,13 @@
-// The pure side of the Battle scene: who strikes in a round, what each strike carries, and the words around the vote
-// and the debrief. Every number comes from the round's DamageResult and every bonus amount from content.scoring, so
-// what the special attack shows adds up to what it drains (spec 3.2). No Phaser and no DOM, so all of it is tested.
+// The pure side of the Battle scene: who strikes in a round, what each strike carries, how long the reveal takes,
+// what Space does, and the words around the vote and the debrief. Every number comes from the round's DamageResult
+// and every bonus amount from content.scoring, so what the special attack shows adds up to what it drains (spec 3.2).
+// No Phaser and no DOM, so all of it is tested.
 import type { CaseContent } from '../shared/content';
-import { OPTION_IDS, ROLES, type Callout, type DamageResult, type OptionId, type Player, type Role, type Tally } from '../shared/types';
+import {
+  OPTION_IDS, ROLES, type Callout, type DamageResult, type HostCmd, type OptionId, type Phase, type Player, type Role, type Tally,
+} from '../shared/types';
 import type { BannerArgs, DebriefArgs, NarrationArgs } from './hud/Hud';
+import { SPEAKERS } from './quotes';
 
 // ---- Classes ------------------------------------------------------------------------------------------
 
@@ -35,6 +39,10 @@ const num = (n: number): string => String(tenth(n));
 const playerIn = (players: Record<string, Player>, id: string | null): Player | undefined =>
   id !== null && Object.hasOwn(players, id) ? players[id] : undefined;
 
+/** Who a call-out names: the student, "Hand call-out" when it named nobody, "Removed student" once they have left the room. */
+const calledWho = (co: Callout, players: Record<string, Player>): string =>
+  playerIn(players, co.playerId)?.name ?? (co.playerId === null ? 'Hand call-out' : 'Removed student');
+
 // ---- The special attack ---------------------------------------------------------------------------------
 
 export type StrikeKind = 'lead' | 'support' | 'focus' | 'alignment' | 'exhibit' | 'rally';
@@ -65,8 +73,8 @@ export type StrikePlan = (Strike | Skip)[];
  * its shares times the effective scores and the other three half of theirs; a group that voted alone carries all of the
  * base, and the strike of the one that did not becomes a toast. Then "Focus +15", "Party stands together +10", one
  * "Exhibit +5" per exhibit, and one rally per call-out judged convincing: the student's own class strikes with their
- * name, and a hand call-out ("Hand call-out +10") or a student no longer in the room ("Rally +10") is struck by the
- * lead class. The two halves' figures are rounded so they add up to the base as the debrief prints it.
+ * name, and a hand call-out ("Hand call-out +10") or a student no longer in the room ("Removed student +10") is struck
+ * by the lead class. The two halves' figures are rounded so they add up to the base as the debrief prints it.
  */
 export function strikePlan(
   d: DamageResult, content: CaseContent, roundIndex: number, callouts: readonly Callout[], players: Record<string, Player>,
@@ -105,16 +113,87 @@ export function strikePlan(
   for (let i = 0; i < exhibits; i++) plan.push(flourish('exhibit', 'Exhibit', k.exhibitBonus));
 
   // The rally count comes from the damage; the names from the call-outs judged convincing, in the order they were made.
+  // ("Rally" only if the damage counts more rallies than there are such call-outs, which the room never produces.)
   const won = callouts.filter((co) => co.status === 'awarded');
   const rallies = k.calloutBonus > 0 ? Math.round(d.rally / k.calloutBonus) : 0;
   for (let i = 0; i < rallies; i++) {
     const co = won[i];
     const student = playerIn(players, co?.playerId ?? null);
     const figure = `+${num(k.calloutBonus)}`;
-    const who = student !== undefined ? student.name : co !== undefined && co.playerId === null ? 'Hand call-out' : 'Rally';
+    const who = co === undefined ? 'Rally' : calledWho(co, players);
     plan.push({ kind: 'rally', amount: k.calloutBonus, figure, label: `${who} ${figure}`, by: [student?.role ?? lead], colour: co?.option ?? null });
   }
   return plan;
+}
+
+// ---- Timing, Space and lunges -----------------------------------------------------------------------------
+
+/** The natural length of each kind of beat of the special attack, in ms. */
+export const BEAT_MS: Record<StrikePlan[number]['kind'], number> = { skip: 600, lead: 1000, support: 800, focus: 600, alignment: 600, exhibit: 600, rally: 700 };
+/** The whole reveal takes at most this long (the brief's 6 s): the strikes, then the HP drain with its shake. */
+export const REVEAL_MS = 6000;
+export const DRAIN_MS = 1500;
+/** A chained tween starts counting on the frame after the one before it ends, so each beat, and the drain, can run a frame long. */
+export const FRAME_MS = 17;
+
+/**
+ * How long each beat of `plan` lasts, in ms: its natural length, squeezed in proportion when the strikes would not fit
+ * in what the reveal leaves them once the drain and a frame per beat are counted.
+ */
+export function beatsFor(plan: StrikePlan): number[] {
+  const budget = REVEAL_MS - DRAIN_MS - FRAME_MS * (plan.length + 1);
+  const natural = plan.reduce((ms, step) => ms + BEAT_MS[step.kind], 0);
+  const squeeze = natural > budget ? budget / natural : 1;
+  return plan.map((step) => Math.floor(BEAT_MS[step.kind] * squeeze));
+}
+
+/** After Space sends a command it rests this long, so a double press cannot send twice while the room answers. */
+export const SEND_LOCK_MS = 1000;
+/** After the strike is skipped or ends it rests this long, so the press that skipped it cannot also skip the debrief. */
+export const SKIP_LOCK_MS = 600;
+
+/** What Space sees: the room's phase, whether the strike is playing or the debrief is up, and its lockout. */
+export interface SpaceState { phase: Phase; busy: boolean; onDebrief: boolean; lockedUntil: number; time: number }
+
+export type SpaceAction =
+  | { kind: 'ignore' }
+  | { kind: 'skip'; lockedUntil: number }
+  | { kind: 'send'; cmd: HostCmd; lockedUntil: number };
+
+/**
+ * What a press of Space does in the Battle. Nothing while `time` is inside the lockout. During the strike it skips to the
+ * debrief; on the debrief it sends `next`; otherwise it opens the vote (travel), locks it (vote) or reveals (locked).
+ * A send rests Space for a second and a skip for 600 ms.
+ */
+export function spaceAction(s: SpaceState): SpaceAction {
+  if (s.time < s.lockedUntil) return { kind: 'ignore' };
+  if (s.busy) return { kind: 'skip', lockedUntil: s.time + SKIP_LOCK_MS };
+  const send = (cmd: HostCmd): SpaceAction => ({ kind: 'send', cmd, lockedUntil: s.time + SEND_LOCK_MS });
+  if (s.onDebrief) return send({ k: 'next' });
+  switch (s.phase) {
+    case 'travel': return send({ k: 'openVote' });
+    case 'vote': return send({ k: 'closeVote' });
+    case 'locked': return send({ k: 'reveal' });   // a call-out still pending counts as declined (spec 6.2)
+    default: return { kind: 'ignore' };
+  }
+}
+
+/** Where a class sprite stands: the centre of its feet, and its width. */
+export interface Stand { role: Role; x: number; w: number }
+
+/**
+ * How far `movers` can lunge toward the boss together, up to `want` px, and stay `clear` px short of every sprite that
+ * stands in front of one of them and is not moving with it: no sprite ever covers another.
+ */
+export function lungeReach(stands: readonly Stand[], movers: readonly Role[], want: number, clear: number): number {
+  let reach = want;
+  for (const mover of stands.filter((s) => movers.includes(s.role))) {
+    for (const other of stands) {
+      if (movers.includes(other.role) || other.x <= mover.x) continue;
+      reach = Math.min(reach, other.x - other.w / 2 - clear - (mover.x + mover.w / 2));
+    }
+  }
+  return Math.max(0, reach);
 }
 
 // ---- The debrief ----------------------------------------------------------------------------------------
@@ -166,11 +245,8 @@ export function debriefFor(
 
 // ---- The words around the vote -------------------------------------------------------------------------
 
-/** The quotes before a round, with their speakers and citations (spec 5.6): Ruto before round 1, Tanui before round 2. */
-const QUOTES: readonly (readonly [key: 'ruto' | 'tanui', who: string])[] = [
-  ['ruto', 'President William Ruto (Semafor, 2026)'],
-  ['tanui', 'PS John Tanui (James, 2026; Vimal, 2026)'],
-];
+/** The quote before each of the first two rounds (spec 5.6): Ruto's before round 1, Tanui's before round 2. */
+const QUOTES: readonly ('ruto' | 'tanui')[] = ['ruto', 'tanui'];
 
 /** Before the vote: the boss, the question, the situation ending in the lead class's call to strike, and a quote. */
 export function narrationFor(content: CaseContent, roundIndex: number): NarrationArgs {
@@ -178,15 +254,27 @@ export function narrationFor(content: CaseContent, roundIndex: number): Narratio
   const quote = QUOTES[roundIndex];
   return {
     boss: round.boss, title: round.title, narration: round.narration,
-    quote: quote === undefined ? undefined : `“${content.quotes[quote[0]]}” ${quote[1]}`,
+    quote: quote === undefined ? undefined : `“${content.quotes[quote]}” ${SPEAKERS[quote]}`,
     footer: 'Space opens the vote',
   };
 }
 
-/** "12 of 40 voted": every vote of the round against the players in the room. Offline there is no room: "12 voted". */
-export function votedText(tally: Tally, playerCount: number, offline: boolean): string {
-  const votes = OPTION_IDS.reduce((sum, o) => sum + tally[o], 0);
-  return offline ? `${votes} voted` : `${votes} of ${playerCount} voted`;
+/**
+ * "12 of 40 voted": every vote of the round against everyone who could vote, the phones in the room plus the bot and
+ * key votes (`synthetic`, each a voter of its own). Offline there is no room: "12 voted".
+ */
+export function votedText(tally: Tally, playerCount: number, synthetic: Tally | undefined, offline: boolean): string {
+  const count = (t: Tally | undefined): number => (t === undefined ? 0 : OPTION_IDS.reduce((sum, o) => sum + t[o], 0));
+  return offline ? `${count(tally)} voted` : `${count(tally)} of ${playerCount + count(synthetic)} voted`;
+}
+
+/** The hint on the cards' status line: what Space, C, Y and N do in this phase, with these call-outs. */
+export function optionsFooter(content: CaseContent, phase: Phase, callouts: readonly Callout[]): string {
+  if (phase === 'vote') return 'Space locks the vote';
+  if (phase !== 'locked') return '';
+  if (callouts.some((co) => co.status === 'pending')) return 'Y convincing, N not';
+  if (callouts.length >= content.scoring.maxCallouts) return 'Space: the party strikes';
+  return 'C calls a student out. Space: the party strikes';
 }
 
 /** The seconds left to `deadline` at `now` (the room's clock), "23 s": rounded up, never below 0; empty with no deadline. */
@@ -216,8 +304,5 @@ export function judgeFlash(content: CaseContent, awarded: boolean): string {
 
 /** The call-outs judged so far, for the small list under the cards: "Sarah: +10 rally", "Hand call-out: no bonus". */
 export function judgedNotes(content: CaseContent, callouts: readonly Callout[], players: Record<string, Player>): string[] {
-  return callouts.filter((co) => co.status !== 'pending').map((co) => {
-    const who = playerIn(players, co.playerId)?.name ?? (co.playerId === null ? 'Hand call-out' : 'Removed student');
-    return `${who}: ${judgeFlash(content, co.status === 'awarded')}`;
-  });
+  return callouts.filter((co) => co.status !== 'pending').map((co) => `${calledWho(co, players)}: ${judgeFlash(content, co.status === 'awarded')}`);
 }

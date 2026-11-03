@@ -352,3 +352,27 @@ describe('options status and judged call-outs', () => {
     expect(root.querySelector('.cards + .resolved')).not.toBeNull();   // after the cards, so it sits under them
   });
 });
+
+// ---- Task 8 fix round 1: the timed toast taken down at a skip, and the quotes attributed from one place ---------
+import { SPEAKERS } from '../host/quotes';
+
+describe('timed toast and quote attributions', () => {
+  it('clearTimedToast() takes down the timed toast and leaves the sticky one', () => {
+    vi.useFakeTimers();
+    const { root, hud } = fresh();
+    hud.showToast('Reconnecting to the room', 0);
+    hud.showToast('No Rogues voted this round', 3100);
+    hud.clearTimedToast();
+    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
+    hud.clearTimedToast();   // nothing left to take down
+    vi.advanceTimersByTime(4000);
+    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
+  });
+
+  it('frames the lobby quotes with the speakers and citations from host/quotes.ts', () => {
+    const { root, hud } = fresh();
+    hud.showLobby(lobby());
+    const quotes = [...root.querySelectorAll('.quote')].map((q) => q.textContent);
+    expect(quotes).toEqual([`“single biggest step” ${SPEAKERS.smith}`, `“not failed or withdrawn” ${SPEAKERS.tanui}`]);
+  });
+});

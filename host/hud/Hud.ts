@@ -3,6 +3,7 @@
 // per screen, each building its screen from its arguments alone. Nothing from the room or a player goes through
 // innerHTML. Layers, bottom to top: the screen, the rally flash, the banner with the toasts under it, the key map.
 import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
+import { SPEAKERS } from '../quotes';
 
 /** The option colours, bound to the letters everywhere: badges, bars, the banner letter, the strike flash (spec 7). */
 export const OPTION_COLORS: Record<OptionId, string> = { A: '#b5473d', B: '#3f6fa3', C: '#c9a227', D: '#4f8a5b' };
@@ -20,7 +21,7 @@ export interface LobbyArgs {
   /** The last eight joiners as "Ann, Knight", newest first; empty when names are hidden. */
   recent: string[];
   offline: boolean;
-  /** The bare quotes; the speakers and citations are fixed here (spec 5.6). */
+  /** The bare quotes; the speakers and citations come from host/quotes.ts (spec 5.6). */
   smith: string;
   tanui: string;
 }
@@ -86,8 +87,6 @@ export interface LeaderboardArgs {
 }
 
 const TITLE = 'Olkaria: the Deadlock';
-const SMITH = 'Brad Smith, Microsoft (Vimal, 2026)';
-const TANUI = 'PS John Tanui (James, 2026; Vimal, 2026)';
 
 /** How long a toast stays when no time is given. */
 const TOAST_MS = 4000;
@@ -252,10 +251,10 @@ export class Hud {
         : h('p', { class: 'muted' }, a.count > 0 ? 'Names hidden' : 'No one yet'));
     this.show(panel('lobby',
       h('header', { class: 'lobby-head' },
-        h('div', { class: 'stack' }, h('h1', { class: 'title' }, TITLE), quote(a.smith, SMITH)),
+        h('div', { class: 'stack' }, h('h1', { class: 'title' }, TITLE), quote(a.smith, SPEAKERS.smith)),
         h('p', { class: 'hint lobby-hint' }, 'Space starts the game. Esc shows every key.')),
       h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...room, counts), recent),
-      quote(a.tanui, TANUI)));
+      quote(a.tanui, SPEAKERS.tanui)));
   }
 
   /** Before the vote: the boss, the question, the situation ending in the lead class's call to strike. */
@@ -414,6 +413,11 @@ export class Hud {
   clearToast(): void {
     this.sticky?.remove();
     this.sticky = null;
+  }
+
+  /** Takes down the timed toast, if one is up, before its time. The sticky one stays. */
+  clearTimedToast(): void {
+    this.dropTimed();
   }
 
   /**
