@@ -411,8 +411,9 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 }
 .menu-group { display: flex; flex-direction: column; gap: var(--s2); }
 .menu-row { display: flex; gap: var(--s2); }
-/* Flat on surface-2 with a dim stroke. The label and the hint under it each keep to one line, ending in an ellipsis
-   if they run out of room. Hover and press brighten the stroke; an armed button inverts. */
+/* Flat on surface-2 with a dim stroke, twice as much padding across as down. The label keeps to one line, ending in
+   an ellipsis if it runs out of room; the hint under it wraps. Hover and press brighten the stroke; an armed button
+   inverts. */
 .menu-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -420,7 +421,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   flex-direction: column;
   align-items: flex-start;
   gap: var(--s1);
-  padding: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
   border: 0;
   border-radius: var(--r-md);
   background: var(--surface-2);
@@ -435,8 +436,9 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .menu-btn:disabled { opacity: .4; cursor: default; }
 .menu-btn:focus-visible { outline: var(--s1) solid var(--ink-2); outline-offset: var(--s1); }
 .menu-btn[data-armed] { background: var(--ink); color: var(--bg); }
-.menu-label, .menu-hint { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); color: var(--ink-2); }
+.menu-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The button's font sets --lh-flat, too tight for a hint on two lines. */
+.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); line-height: var(--lh-body); color: var(--ink-2); }
 .menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }
 .menu-note { margin-top: calc(var(--s1) * -1); }
 /* Read down each column: the room's keys on the left, travel and the page on the right. */
