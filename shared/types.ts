@@ -47,3 +47,6 @@ export interface PlayerView {
   callout: { name: string | null; option: OptionId | null; isMe: boolean } | null;
 }
 export type ServerMsg = { t: 'host'; state: HostView } | { t: 'you'; view: PlayerView } | { t: 'error'; msg: string } | { t: 'kicked' };
+/** How the room closes the socket of a phone it has removed. The phone page stops reconnecting on this code. */
+export const KICKED_CLOSE_CODE = 4001;
+export const KICKED_CLOSE_REASON = 'removed';

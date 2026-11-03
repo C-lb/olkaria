@@ -11,7 +11,7 @@ import { isValidCode } from '../shared/codes';
 import { loadContent } from '../shared/content';
 import { hostView, initialState, playerView, reduce } from '../shared/room-logic';
 import {
-  OPTION_IDS, ROLES,
+  KICKED_CLOSE_CODE, KICKED_CLOSE_REASON, OPTION_IDS, ROLES,
   type ClientMsg, type Effect, type HostCmd, type OptionId, type Role, type RoomEvent, type RoomState, type ServerMsg,
 } from '../shared/types';
 
@@ -25,6 +25,12 @@ const IDLE_MS = 6 * 60 * 60 * 1000;
 
 const MAX_CLIENT_ID = 64;
 
+/**
+ * The longest vote window the room accepts, in seconds. It is far past any real vote, and it keeps
+ * seconds * 1000 finite: a huge value would otherwise become an infinite deadline that no alarm can hold.
+ */
+const MAX_VOTE_SECONDS = 3600;
+
 // ---- Messages --------------------------------------------------------------------------------------
 
 const optionId = z.custom<OptionId>((v) => (OPTION_IDS as readonly unknown[]).includes(v));
@@ -33,7 +39,7 @@ const count = z.number().optional();
 
 const hostCmd = z.discriminatedUnion('k', [
   z.object({ k: z.literal('start') }),
-  z.object({ k: z.literal('openVote'), seconds: z.number().optional() }),
+  z.object({ k: z.literal('openVote'), seconds: z.number().positive().max(MAX_VOTE_SECONDS).optional() }),
   z.object({ k: z.literal('closeVote') }),
   z.object({ k: z.literal('reveal') }),
   z.object({ k: z.literal('next') }),
@@ -47,12 +53,19 @@ const hostCmd = z.discriminatedUnion('k', [
   z.object({ k: z.literal('judge'), awarded: z.boolean() }),
 ]);
 
-/** The shape every client message must have. Typed as ClientMsg so a change to that type fails the build here. */
-const clientMsg: z.ZodType<ClientMsg> = z.discriminatedUnion('t', [
+/** The shape every client message must have. */
+const clientMsg = z.discriminatedUnion('t', [
   z.object({ t: z.literal('join'), clientId: z.string(), name: z.string(), role: roleId, table: z.string().optional() }),
   z.object({ t: z.literal('vote'), round: z.number(), option: optionId }),
   z.object({ t: z.literal('cmd'), key: z.string(), cmd: hostCmd }),
 ]);
+
+// Compile-time only, and in both directions so the schema and ClientMsg cannot drift apart. A field with the
+// wrong type fails the first line; a ClientMsg variant the schema lacks (a new host command, say) fails the second.
+type Assignable<To, From extends To> = From;
+type SchemaMsg = z.output<typeof clientMsg>;
+type _SchemaFitsClientMsg = Assignable<ClientMsg, SchemaMsg>;
+type _ClientMsgFitsSchema = Assignable<SchemaMsg, ClientMsg>;
 
 const initBody = z.object({ code: z.string().refine(isValidCode), hostKey: z.string().min(1) });
 
@@ -182,6 +195,11 @@ export class Room extends DurableObject<Env> {
     }
   }
 
+  webSocketError(ws: WebSocket): void {
+    // The runtime reports a broken socket here and does not close it; do so, so it leaves getWebSockets().
+    closeSocket(ws, 1011, 'error');
+  }
+
   async alarm(): Promise<void> {
     if (!(await this.load())) return;
     // The reducer decides whether it is time to lock the vote; apply re-arms the idle cleanup when the vote is not open.
@@ -259,9 +277,14 @@ export class Room extends DurableObject<Env> {
         for (const ws of this.ctx.getWebSockets('player')) {
           if (attachmentOf(ws)?.clientId !== effect.clientId) continue;
           send(ws, { t: 'kicked' });
-          closeSocket(ws, 4001, 'removed');
+          closeSocket(ws, KICKED_CLOSE_CODE, KICKED_CLOSE_REASON);
         }
         break;
+      default: {
+        // A new Effect variant that no case above handles fails the build here instead of being ignored.
+        const _exhaustive: never = effect;
+        return _exhaustive;
+      }
     }
   }
 
@@ -285,11 +308,12 @@ export class Room extends DurableObject<Env> {
 
   /** Closes every socket and deletes everything the room stored, the alarm included. */
   private async wipe(): Promise<void> {
+    // Forget the room in memory first, so nothing can write the old state back while the deletes are in flight.
+    this.state = undefined;
+    this.lastActivity = 0;
     for (const ws of this.ctx.getWebSockets()) closeSocket(ws, 1001, 'room closed');
     await this.ctx.storage.deleteAll();
     // deleteAll leaves a pending alarm alone on compatibility dates before 2026-02-24.
     await this.ctx.storage.deleteAlarm();
-    this.state = undefined;
-    this.lastActivity = 0;
   }
 }
