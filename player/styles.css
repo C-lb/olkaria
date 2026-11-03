@@ -1,0 +1,287 @@
+/* Phone page. Built from the house anti-vibecode tokens and component classes, cut down to what this page uses.
+   One agreed exception: the four vote buttons carry the option colours as their fills (--option-a to --option-d).
+   Every colour and font below comes from the token block; nothing else in the file names one. */
+
+:root {
+  color-scheme: dark;
+
+  /* The one accent. Bone, not a hue: red, blue, yellow and green all belong to the four vote options. */
+  --accent:          #ddd7c7;
+  --accent-2:        #ebe6d9;                 /* hover only */
+  --accent-ink:      #14120d;                 /* text and spinner on the accent fill */
+  --accent-ink-dim:  rgba(20, 18, 13, .24);
+
+  /* Neutral ramp, cold stone. Surfaces step lighter than the canvas. */
+  --bg:              #0d0f13;
+  --surface-1:       #161a20;
+  --surface-2:       #1f242c;
+  --surface-3:       #2a303a;
+  --line:            rgba(255, 255, 255, .07);
+  --ink:             #eeece6;
+  --ink-2:           #a8abb3;
+  --ink-3:           #72767f;
+
+  /* Semantic. The error line is the only place this page needs one. */
+  --danger:          #f4607a;
+
+  /* Vote options. Fills for the four vote buttons and nothing else. */
+  --option-a:        #b5473d;
+  --option-b:        #3f6fa3;
+  --option-c:        #c9a227;
+  --option-d:        #4f8a5b;
+  --option-ink:      #ffffff;
+
+  --shadow:          0 14px 34px -18px rgba(0, 0, 0, .55);
+  --shadow-lg:       0 30px 60px -28px rgba(0, 0, 0, .65);
+  --raise:           inset 0 1px 0 rgba(255, 255, 255, .10), inset 0 -1px 0 rgba(0, 0, 0, .45);   /* cards and fields only, never buttons */
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --gutter: var(--s4);
+  --card-pad: var(--s5);
+  --col: 480px;
+
+  --r-sm: 10px; --r-md: 14px; --r-lg: 20px;
+
+  --fs-base: 17px;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --t-sub:  calc(var(--fs-base) * .76);   /* a step under caption, for a name that must fit half a phone's width */
+  --t-cap:  calc(var(--fs-base) * .80);
+  --t-body: var(--fs-base);
+  --t-lead: calc(var(--fs-base) * 1.18);
+  --t-h3:   calc(var(--fs-base) * 1.45);
+  --t-h2:   calc(var(--fs-base) * 1.95);
+  --t-h1:   calc(var(--fs-base) * 2.60);
+
+  --lh-display: 1.05; --lh-h2: 1.12; --lh-h3: 1.22; --lh-lead: 1.45; --lh-body: 1.55; --lh-tight: 1.30; --lh-flat: 1;
+  --tr-display: -.032em; --tr-h2: -.026em; --tr-h3: -.02em; --tr-lead: -.01em; --tr-cap: .006em; --tr-eyebrow: .012em;
+}
+
+/* Desktop tightens the base type, per the house sheet. This page is built for a phone and works at any width. */
+@media (min-width: 1024px) {
+  :root { --fs-base: 13px; }
+}
+
+/* ---- Base --------------------------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 var(--t-body)/var(--lh-body) var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[hidden] { display: none !important; }
+svg { max-width: 100%; }
+
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--col);
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--s5) var(--gutter);
+  padding-top: max(var(--s5), env(safe-area-inset-top));
+  padding-bottom: max(var(--s5), env(safe-area-inset-bottom));
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+}
+.screen { display: flex; flex-direction: column; flex: 1 1 auto; gap: var(--s5); min-width: 0; }
+.screen > * { min-width: 0; }
+.screen.is-centered { justify-content: center; }
+
+/* ---- Type --------------------------------------------------------------------------------------------- */
+
+.title, .subtitle, .hero { font-weight: 600; overflow-wrap: anywhere; }
+.title { font-size: var(--t-h3); line-height: var(--lh-h3); letter-spacing: var(--tr-h3); }
+.title.is-lg { font-size: var(--t-h2); line-height: var(--lh-h2); letter-spacing: var(--tr-h2); }
+.subtitle { font-size: var(--t-lead); line-height: var(--lh-lead); letter-spacing: var(--tr-lead); }
+.hero { font-size: var(--t-h1); line-height: var(--lh-display); letter-spacing: var(--tr-display); }
+.hero .unit { font-size: var(--t-body); font-weight: 500; letter-spacing: 0; color: var(--ink-2); }
+.cap { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
+/* Sentence case, never uppercase. Block, so an eyebrow can never share a line with the control it names. */
+.eyebrow { display: block; font-size: var(--t-cap); font-weight: 600; line-height: var(--lh-tight); letter-spacing: var(--tr-eyebrow); color: var(--ink-2); }
+.text-stack { display: flex; flex-direction: column; gap: var(--s2); }
+.text-stack.is-jump { gap: var(--s3); }   /* when the size jump between the two lines is past 1.5x */
+
+/* ---- Icons -------------------------------------------------------------------------------------------- */
+
+.ico { display: block; flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- Card: one level of padding, children spaced by margin, groups split by a rule ------------------- */
+
+.card { background: var(--surface-1); border-radius: var(--r-lg); padding: var(--card-pad); box-shadow: var(--raise), var(--shadow); }
+.card-lifted { box-shadow: var(--raise), var(--shadow-lg); }
+.card > * { min-width: 0; }
+.card > * + * { margin-top: var(--s4); }
+.card-sep { height: 1px; margin: var(--s4) calc(var(--card-pad) * -1); background: var(--line); }
+.glyph { display: flex; }
+.glyph .ico { width: 2.4em; height: 2.4em; color: var(--ink); }
+
+/* ---- Buttons: flat, one line, horizontal padding twice the vertical ----------------------------------- */
+
+.btn {
+  --btn-py: 12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: .6em;
+  padding: var(--btn-py) calc(var(--btn-py) * 2);
+  border: 1px solid transparent; border-radius: var(--r-md);
+  font: 600 var(--t-body)/var(--lh-flat) var(--font-sans);
+  text-box: trim-both cap alphabetic;
+  white-space: nowrap;
+  color: var(--ink); background: var(--surface-1);
+  box-shadow: var(--shadow);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.btn:active { transform: translateY(1px) scale(.985); background: var(--surface-3); box-shadow: none; }
+.btn:disabled { opacity: .4; pointer-events: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-block { width: 100%; }
+.btn-accent { background: var(--accent); color: var(--accent-ink); }
+.btn-accent:active { background: var(--accent); filter: brightness(.92); }
+
+/* Async: the label stays to hold the width, a spinner takes its place. */
+.btn.is-loading { position: relative; color: transparent; pointer-events: none; }
+.btn.is-loading:disabled { opacity: 1; }
+.btn.is-loading::after {
+  content: ""; position: absolute; width: 1.1em; height: 1.1em; border-radius: 50%;
+  border: 2px solid var(--accent-ink-dim); border-top-color: var(--accent-ink);
+  animation: spin .7s linear infinite;
+}
+
+/* ---- Fields ------------------------------------------------------------------------------------------- */
+
+.field { display: flex; flex-direction: column; gap: var(--s2); }
+.field .control {
+  display: flex; align-items: center; gap: .5em;
+  padding: 12px 14px; border-radius: var(--r-md);
+  background: var(--surface-1); box-shadow: var(--raise);
+  transition: box-shadow .18s ease, background .18s ease;
+}
+.field input {
+  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  font: 500 var(--t-body)/1.4 var(--font-sans); outline: none;
+}
+.field input::placeholder { color: var(--ink-3); }
+.field .control:focus-within { box-shadow: var(--raise), 0 0 0 2px var(--accent); }
+.actions { display: flex; flex-direction: column; gap: var(--s3); }
+.hint { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
+
+/* ---- Role buttons: a 2 x 2 grid, class icon and names, no colour ---------------------------------------- */
+
+.roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+.role {
+  --btn-py: 8px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2);
+  min-width: 0;
+  padding: var(--btn-py) calc(var(--btn-py) * 2);
+  border: 0; border-radius: var(--r-md);
+  background: var(--surface-1); color: var(--ink);
+  font: 600 var(--t-body)/var(--lh-tight) var(--font-sans);
+  text-align: left;
+  box-shadow: var(--shadow);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .18s ease, transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.role .ico { width: 1.6em; height: 1.6em; margin-top: var(--s2); }   /* the icon's own air keeps the top inset level with the sides */
+.role-name, .role-sub { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-sub { font-size: var(--t-sub); font-weight: 500; line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
+.role:active { transform: translateY(1px) scale(.985); background: var(--surface-3); box-shadow: none; }
+.role[aria-pressed="true"] { background: var(--surface-3); box-shadow: inset 0 0 0 2px var(--accent); }
+.role:disabled { opacity: .4; pointer-events: none; }
+.role:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Vote ----------------------------------------------------------------------------------------------- */
+
+.round-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.countdown {
+  font-size: var(--t-h3); font-weight: 600; line-height: var(--lh-h3); letter-spacing: var(--tr-h3);
+  font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
+}
+.note { display: flex; align-items: center; gap: .5em; color: var(--ink-2); }
+.votes { display: flex; flex-direction: column; gap: var(--s3); }
+.vote {
+  --btn-py: 8px;                    /* the 64px height comes from min-height; the narrow padding leaves the label room */
+  display: flex; align-items: center; gap: var(--s2);
+  width: 100%; min-width: 0; min-height: 64px;
+  padding: var(--btn-py) calc(var(--btn-py) * 2);
+  border: 0; border-radius: var(--r-md);
+  background: var(--fill); color: var(--option-ink);
+  font: 500 var(--t-body)/var(--lh-flat) var(--font-sans);
+  text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: filter .12s ease, transform .12s ease, opacity .2s ease;
+}
+.vote[data-option="A"] { --fill: var(--option-a); }
+.vote[data-option="B"] { --fill: var(--option-b); }
+.vote[data-option="C"] { --fill: var(--option-c); }
+.vote[data-option="D"] { --fill: var(--option-d); }
+.vote .ico { width: 1.3em; height: 1.3em; }
+.vote-letter { flex: none; width: .8em; text-align: center; font-size: var(--t-lead); font-weight: 700; }
+.vote-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vote:active { filter: brightness(.92); transform: translateY(1px) scale(.99); }
+.vote:disabled { filter: grayscale(1); opacity: .4; pointer-events: none; }
+.vote[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 3px; }
+.vote:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ---- Result and ending -------------------------------------------------------------------------------- */
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+.stat { display: flex; flex-direction: column; gap: var(--s2); }
+.stat-line { white-space: nowrap; color: var(--ink-2); }
+.stat-line b { font-size: var(--t-h3); font-weight: 600; letter-spacing: var(--tr-h3); font-variant-numeric: tabular-nums; color: var(--ink); }
+.picks { display: grid; gap: var(--s4); list-style: none; }
+.pick {
+  display: grid; grid-template-columns: 1.2em minmax(0, 1fr); grid-template-areas: "round round" "letter label";
+  align-items: baseline; column-gap: var(--s3); row-gap: var(--s2);
+}
+.pick-round { grid-area: round; font-size: var(--t-cap); line-height: var(--lh-tight); color: var(--ink-2); }
+.pick-letter { grid-area: letter; text-align: center; font-weight: 700; }
+.pick-label { grid-area: label; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- Status and errors -------------------------------------------------------------------------------- */
+
+.status { display: inline-flex; align-items: center; justify-content: center; gap: .6em; color: var(--ink-2); }
+.wheel {
+  flex: none; display: inline-block; vertical-align: middle; width: 1.15em; height: 1.15em; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 12%, currentColor);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), currentColor calc(100% - 3px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 3px), currentColor calc(100% - 3px));
+  animation: spin .9s steps(8) infinite;
+}
+.msg { display: flex; align-items: center; gap: .5em; font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--danger); }
+.msg .ico { width: 1.2em; height: 1.2em; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ---- Pointer devices get a hover step; touch screens do not, so a tap never leaves one stuck --------- */
+
+@media (hover: hover) {
+  .btn:hover { background: var(--surface-2); }
+  .btn-accent:hover { background: var(--accent-2); }
+  .field .control:hover { background: var(--surface-2); }
+  .role:hover { background: var(--surface-2); }
+  .role[aria-pressed="true"]:hover { background: var(--surface-3); }
+  .vote:hover { filter: brightness(1.08); }
+  .vote:disabled:hover { filter: grayscale(1); }
+}
+
+/* ---- Narrow phones ------------------------------------------------------------------------------------ */
+
+@media (max-width: 374px) {
+  :root { --gutter: var(--s3); --card-pad: var(--s4); }
+  .roles { gap: var(--s2); }
+}
+
+/* Reduced motion keeps a signal that something is happening: movement becomes a slow fade. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  .wheel, .btn.is-loading::after { animation: breathe 1.8s ease-in-out infinite; }
+}
