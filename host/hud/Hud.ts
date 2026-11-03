@@ -1,7 +1,8 @@
 // The projector's text layer: an HTML element laid exactly over the 320 x 180 game canvas. Every word on the
 // projector is drawn here, never on the canvas (spec 7), so it wraps, stays crisp, and scales with --zoom. One method
 // per screen, each building its screen from its arguments alone. Nothing from the room or a player goes through
-// innerHTML. Layers, bottom to top: the screen, the rally flash, the banner with the toasts under it, the key map.
+// innerHTML. Layers, bottom to top: the screen, the rally flash, the menu on its scrim, the banner with the toasts
+// under it.
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../../shared/shapes';
 import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
 import { SPEAKERS } from '../quotes';
@@ -89,6 +90,12 @@ export interface LeaderboardArgs {
   question: string;
 }
 
+/** One of the menu's buttons. An armed one reads "Sure?" until it is pressed again or the arming lapses (host/menu.ts). */
+export interface MenuButton { id: string; label: string; hint?: string; enabled: boolean; armed: boolean }
+
+/** The menu's two rows, the line under the stages, and what a press on a button or a click on the scrim does. */
+export interface MenuArgs { actions: MenuButton[]; stages: MenuButton[]; stagesHint: string; onPick: (id: string) => void; onClose: () => void }
+
 const TITLE = 'Olkaria: the Deadlock';
 
 /** How long a toast stays when no time is given. */
@@ -96,7 +103,7 @@ const TOAST_MS = 4000;
 /** How long a rally flash stays when no time is given. */
 const FLASH_MS = 1500;
 
-/** The facilitator's keys (spec 6.5), for the key map behind Esc. */
+/** The facilitator's keys (spec 6.5), for the key map in the menu. */
 const KEYS: readonly (readonly [string, string])[] = [
   ['Space', 'Advance: start, open the vote, lock, reveal, next'],
   ['1 to 4', 'Add a vote for A to D'],
@@ -111,7 +118,7 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['A', 'Pause or resume the walk'],
   ['N', 'Skip to the arena in travel'],
   ['Shift+R twice', 'Reset to the lobby'],
-  ['Esc', 'Show or hide these keys'],
+  ['M or Esc', 'This menu'],
 ];
 
 // ---- Builders ---------------------------------------------------------------------------------------
@@ -204,11 +211,38 @@ function quote(text: string, who: string): HTMLElement {
   return h('p', { class: 'quote' }, `“${text}”`, ' ', h('span', { class: 'cite' }, who));
 }
 
-function keymap(): HTMLElement {
-  return h('div', { class: 'hud-keymap', role: 'dialog', 'aria-label': 'Keys' },
-    h('section', { class: 'keymap' },
-      h('h2', { class: 'title' }, 'Keys'),
+/** One of the menu's buttons: its label, or "Sure?" while it is armed, then its hint if it has one. */
+function menuButton(b: MenuButton, onPick: (id: string) => void): HTMLButtonElement {
+  const attrs: Record<string, string> = { class: 'menu-btn', type: 'button', 'data-menu-item': b.id };
+  if (b.armed) Object.assign(attrs, { 'data-armed': '', 'aria-label': `Sure? ${b.label}` });
+  const el = h('button', attrs, h('span', { class: 'menu-label' }, b.armed ? 'Sure?' : b.label), b.hint ? h('span', { class: 'menu-hint' }, b.hint) : null);
+  el.disabled = !b.enabled;
+  el.addEventListener('click', () => onPick(b.id));
+  return el;
+}
+
+/** An eyebrow over a row of buttons, and the note under the row if there is one. */
+function menuGroup(eyebrow: string, buttons: MenuButton[], onPick: (id: string) => void, note = ''): HTMLElement {
+  return h('section', { class: 'menu-group' },
+    h('p', { class: 'eyebrow' }, eyebrow),
+    h('div', { class: 'menu-row' }, ...buttons.map((b) => menuButton(b, onPick))),
+    note ? h('p', { class: 'hint menu-note' }, note) : null);
+}
+
+/** The menu on its scrim: the title, the actions, the stages and the line under them, a rule, then the key map. */
+function menuPanel(a: MenuArgs): HTMLElement {
+  const scrim = h('div', { class: 'hud-menu', role: 'dialog', 'aria-label': 'Menu' },
+    h('section', { class: 'menu' },
+      h('h2', { class: 'title' }, 'Menu'),
+      menuGroup('Actions', a.actions, a.onPick),
+      menuGroup('Go to', a.stages, a.onPick, a.stagesHint),
+      h('div', { class: 'sep' }),
       h('ul', { class: 'keys' }, ...KEYS.map(([key, what]) => h('li', { class: 'key-row' }, h('span', { class: 'key' }, key), h('span', {}, what))))));
+  // Only a click on the scrim itself closes: a click on the panel or a button has its own element as the target.
+  scrim.addEventListener('click', (event) => {
+    if (event.target === scrim) a.onClose();
+  });
+  return scrim;
 }
 
 // ---- The HUD ----------------------------------------------------------------------------------------
@@ -218,7 +252,8 @@ export class Hud {
   private readonly flash = h('div', { class: 'hud-flash' });
   private readonly banner = h('div', { class: 'banner', role: 'status' });
   private readonly toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
-  private keys: HTMLElement | null = null;
+  /** The menu on its scrim while it is up (showMenu). */
+  private menu: HTMLElement | null = null;
   /** The two toast slots: one that stays until replaced or cleared, and one that times out. */
   private sticky: HTMLElement | null = null;
   private timed: { el: HTMLElement; timer: ReturnType<typeof setTimeout> } | null = null;
@@ -260,10 +295,12 @@ export class Hud {
         ? h('ol', { class: 'recent' }, ...a.recent.map((who) => h('li', {}, who)))
         // Players but no names means the names are hidden (H); the caller empties the list then.
         : h('p', { class: 'muted' }, a.count > 0 ? 'Names hidden' : 'No one yet'));
+    const keycap = (key: string, label: string): HTMLElement => h('li', { class: 'lobby-key' }, h('kbd', { class: 'key' }, key), h('span', {}, label));
     this.show(panel('lobby',
       h('header', { class: 'lobby-head' },
         h('div', { class: 'stack' }, h('h1', { class: 'title' }, TITLE), quote(a.smith, SPEAKERS.smith)),
-        h('p', { class: 'hint lobby-hint' }, 'Space starts the game. Esc shows every key.')),
+        // Esc opens the menu as M does; the lobby names Esc (spec 3.1).
+        h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('Esc', 'Shows hotkeys'))),
       h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...room, counts), recent),
       quote(a.tanui, SPEAKERS.tanui)));
   }
@@ -433,15 +470,33 @@ export class Hud {
   }
 
   /**
-   * The facilitator's key map, on a scrim over the screen and the rally flash. The banner and the toasts stay above the
-   * scrim, and the panel sits low so they do not cover it. clear() leaves the key map as it is.
+   * The facilitator's menu (host/menu.ts), on a scrim over the screen and the rally flash. The banner and the toasts
+   * stay above the scrim, and the panel sits low so they do not cover it. Each call draws the menu afresh and keeps
+   * the focus on the item that had it, if that item is still enabled; null takes the menu down. clear() leaves it.
    */
-  showKeymap(show: boolean): void {
-    if (show && this.keys === null) {
-      this.keys = keymap();
-      this.root.append(this.keys);
-    }
-    if (this.keys !== null) this.keys.hidden = !show;
+  showMenu(a: MenuArgs | null): void {
+    const focused = this.focusedMenuItem();
+    this.menu?.remove();
+    this.menu = a === null ? null : menuPanel(a);
+    if (this.menu === null) return;
+    this.root.append(this.menu);
+    if (focused !== null) this.menuButtons().find((b) => !b.disabled && b.getAttribute('data-menu-item') === focused)?.focus();
+  }
+
+  /** Moves the focus through the menu's enabled buttons in reading order, wrapping; with none focused, 1 goes to the first and -1 to the last. */
+  moveMenuFocus(step: 1 | -1): void {
+    const buttons = this.menuButtons().filter((b) => !b.disabled);
+    if (buttons.length === 0) return;
+    const at = buttons.findIndex((b) => b === document.activeElement);
+    const next = at === -1 ? (step === 1 ? 0 : buttons.length - 1) : (at + step + buttons.length) % buttons.length;
+    buttons[next].focus();
+  }
+
+  /** The id of the menu item that has the focus; null when none has, or the menu is down. */
+  focusedMenuItem(): string | null {
+    const el = document.activeElement;
+    if (this.menu === null || el === null || !this.menu.contains(el)) return null;
+    return el.getAttribute('data-menu-item');
   }
 
   /** Empties the screen and takes down the banner, the flash and every toast. */
@@ -461,6 +516,10 @@ export class Hud {
     this.status = null;   // showOptions() sets it again for its own screen
     this.screen.replaceChildren(node);
     if (!keepBanner) this.showBanner(null);
+  }
+
+  private menuButtons(): HTMLButtonElement[] {
+    return this.menu === null ? [] : [...this.menu.querySelectorAll<HTMLButtonElement>('button[data-menu-item]')];
   }
 
   private qrImage(src: string): HTMLImageElement {

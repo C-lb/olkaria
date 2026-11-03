@@ -99,6 +99,15 @@ describe('lobby', () => {
     expect(root.querySelector('.recent img')).toBeNull();
     expect(text(root, '.recent li')).toBe('<img src=x onerror=alert(1)>, Rogue');
   });
+
+  it('the lobby hint is two keycaps: Space to start, Esc for the hotkeys', () => {
+    const { root, hud } = fresh();
+    hud.showLobby(lobby());
+    expect([...root.querySelectorAll('.lobby-key')].map((li) => [li.querySelector('kbd.key')!.textContent, li.querySelector('span')!.textContent]))
+      .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys']]);
+    expect(root.querySelector('.lobby-hint')).toBeNull();
+    expect(root.textContent).not.toContain('every key');
+  });
 });
 
 describe('options and banner', () => {
@@ -240,7 +249,7 @@ describe('narration, debrief, ending and leaderboard', () => {
   });
 });
 
-describe('toasts, flash, key map and clear', () => {
+describe('toasts, flash and clear', () => {
   it('keeps one sticky toast and one timed toast, each replacing only its own kind', () => {
     vi.useFakeTimers();
     const { root, hud } = fresh();
@@ -304,19 +313,6 @@ describe('toasts, flash, key map and clear', () => {
     expect(root.querySelector('.flash')?.classList.contains('is-bonus')).toBe(false);
     vi.advanceTimersByTime(500);
     expect(root.querySelector('.flash')).toBeNull();
-  });
-
-  it('toggles the key map, which clear() leaves alone', () => {
-    const { root, hud } = fresh();
-    expect(root.querySelector('.hud-keymap')).toBeNull();
-    hud.showKeymap(true);
-    const map = root.querySelector('.hud-keymap') as HTMLElement;
-    expect(map.hidden).toBe(false);
-    expect(map.textContent).toContain('Shift+R twice');
-    hud.clear();
-    expect(map.hidden).toBe(false);
-    hud.showKeymap(false);
-    expect(map.hidden).toBe(true);
   });
 
   it('clear() empties the screen and takes the banner down', () => {
@@ -407,5 +403,118 @@ describe('timed toast and quote attributions', () => {
     hud.showLobby(lobby());
     const quotes = [...root.querySelectorAll('.quote')].map((q) => q.textContent);
     expect(quotes).toEqual([`“single biggest step” ${SPEAKERS.smith}`, `“not failed or withdrawn” ${SPEAKERS.tanui}`]);
+  });
+});
+
+// ---- Facilitator menu: the panel, its buttons and the key map under them, and the focus ------------------------
+import type { MenuArgs, MenuButton } from '../host/hud/Hud';
+
+describe('menu', () => {
+  const button = (id: string, label: string, over: Partial<MenuButton> = {}): MenuButton => ({ id, label, enabled: true, armed: false, ...over });
+  const stagesHint = 'Earlier rounds stay. The one you go to, and the ones after it, start over. Ending shows what has been played.';
+  /** Restart and the second stage disabled, the lobby armed. */
+  const menu = (over: Partial<MenuArgs> = {}): MenuArgs => ({
+    actions: [
+      button('restart', 'Restart the round', { hint: 'This round again from its road. Its votes go; earlier rounds stay.', enabled: false }),
+      button('lobby', 'Back to the lobby', { hint: 'Players stay; votes and scores go.', armed: true }),
+      button('reload', 'Reload the page', { hint: 'The same room and screen come back.' }),
+    ],
+    stages: [button('stage-0', '1 Grid Wyrm'), button('stage-1', '2 Debt Golem', { enabled: false }), button('stage-4', 'Ending')],
+    stagesHint,
+    onPick: () => {},
+    onClose: () => {},
+    ...over,
+  });
+  const ids = (buttons: Iterable<Element>) => [...buttons].map((b) => b.getAttribute('data-menu-item'));
+  const focused = () => document.activeElement?.getAttribute('data-menu-item') ?? null;
+
+  it('draws a button for every item, the armed one asking "Sure?", the stages hint and the key rows; null takes it down', () => {
+    const { root, hud } = fresh();
+    hud.showMenu(menu());
+    expect(root.querySelector('.hud-menu[role=dialog][aria-label=Menu] > .menu > h2.title')?.textContent).toBe('Menu');
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('button.menu-btn[type=button][data-menu-item]')];
+    expect(ids(buttons)).toEqual(['restart', 'lobby', 'reload', 'stage-0', 'stage-1', 'stage-4']);
+    expect(ids(buttons.filter((b) => b.disabled))).toEqual(['restart', 'stage-1']);
+    expect([...root.querySelectorAll('.menu-group > .eyebrow')].map((e) => e.textContent)).toEqual(['Actions', 'Go to']);
+
+    const lobbyButton = root.querySelector('[data-menu-item=lobby]')!;
+    expect(ids(root.querySelectorAll('[data-armed]'))).toEqual(['lobby']);
+    expect(lobbyButton.querySelector('.menu-label')!.textContent).toBe('Sure?');
+    expect(lobbyButton.getAttribute('aria-label')).toBe('Sure? Back to the lobby');
+    const reloadButton = root.querySelector('[data-menu-item=reload]')!;
+    expect([...reloadButton.children].map((s) => [s.className, s.textContent])).toEqual([['menu-label', 'Reload the page'], ['menu-hint', 'The same room and screen come back.']]);
+    expect(reloadButton.hasAttribute('aria-label')).toBe(false);
+    expect(root.querySelector('[data-menu-item=stage-0]')!.children).toHaveLength(1);   // no hint given, no hint line
+    expect(text(root, '.menu-group + .menu-group > p.hint.menu-note')).toBe(stagesHint);
+
+    const keys = [...root.querySelectorAll('.menu > .sep + ul.keys > .key-row')].map((row) => [...row.children].map((cell) => cell.textContent));
+    expect(keys).toHaveLength(14);
+    expect(keys).toContainEqual(['Shift+R twice', 'Reset to the lobby']);
+    expect(keys.at(-1)).toEqual(['M or Esc', 'This menu']);
+    expect(root.textContent).not.toContain('Show or hide these keys');
+
+    hud.showMenu(null);
+    expect(root.querySelector('.hud-menu')).toBeNull();
+    expect(root.querySelector('[data-menu-item]')).toBeNull();
+  });
+
+  it('puts the labels and hints in as text, never as markup', () => {
+    const { root, hud } = fresh();
+    hud.showMenu(menu({ stages: [button('stage-0', '1 <b>Grid</b> Wyrm')], stagesHint: '<i>x</i>' }));
+    expect(text(root, '[data-menu-item=stage-0] .menu-label')).toBe('1 <b>Grid</b> Wyrm');
+    expect(text(root, '.menu-note')).toBe('<i>x</i>');
+    expect(root.querySelector('.menu b, .menu i')).toBeNull();
+  });
+
+  it('walks the focus through the enabled buttons, wrapping both ways, and a redraw keeps the focused item', () => {
+    const { root, hud } = fresh();
+    document.body.append(root);   // in the page, so its buttons can take the focus
+    hud.showMenu(menu());
+    expect(hud.focusedMenuItem()).toBeNull();
+    hud.moveMenuFocus(-1);
+    expect(focused()).toBe('stage-4');   // none focused: back goes to the last
+    hud.moveMenuFocus(1);
+    expect(focused()).toBe('lobby');     // past the end it wraps to the first enabled, skipping the restart
+    hud.moveMenuFocus(-1);
+    expect(focused()).toBe('stage-4');   // and back again
+    hud.moveMenuFocus(-1);
+    expect(focused()).toBe('stage-0');   // the disabled second stage is skipped
+    expect(hud.focusedMenuItem()).toBe('stage-0');
+
+    const before = document.activeElement;
+    hud.showMenu(menu({ stages: [button('stage-0', '1 Grid Wyrm', { armed: true }), button('stage-1', '2 Debt Golem'), button('stage-4', 'Ending')] }));
+    expect(focused()).toBe('stage-0');
+    expect(document.activeElement).not.toBe(before);   // the new button took it: the old one is gone
+    expect(root.contains(document.activeElement)).toBe(true);
+    hud.moveMenuFocus(1);
+    expect(focused()).toBe('stage-1');   // enabled now
+
+    hud.showMenu(menu({ stages: [button('stage-0', '1 Grid Wyrm'), button('stage-1', '2 Debt Golem', { enabled: false }), button('stage-4', 'Ending')] }));
+    expect(hud.focusedMenuItem()).toBeNull();   // the focused item is disabled now, so nothing has the focus
+    hud.moveMenuFocus(1);
+    expect(focused()).toBe('lobby');     // none focused: forward goes to the first enabled
+
+    hud.showMenu(null);
+    expect(hud.focusedMenuItem()).toBeNull();
+    hud.moveMenuFocus(1);                // no menu: nothing to move through
+    expect(focused()).toBeNull();
+    root.remove();
+  });
+
+  it('picks a clicked button, closes on a click on the scrim but not on the panel, and clear() leaves it up', () => {
+    const onPick = vi.fn();
+    const onClose = vi.fn();
+    const { root, hud } = fresh();
+    hud.showMenu(menu({ onPick, onClose }));
+    (root.querySelector('[data-menu-item=reload] .menu-hint') as HTMLElement).click();
+    expect(onPick.mock.calls).toEqual([['reload']]);
+    (root.querySelector('.menu .title') as HTMLElement).click();
+    (root.querySelector('.keys') as HTMLElement).click();
+    expect(onClose).not.toHaveBeenCalled();
+    (root.querySelector('.hud-menu') as HTMLElement).click();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPick).toHaveBeenCalledTimes(1);
+    hud.clear();
+    expect(root.querySelector('.hud-menu')).not.toBeNull();
   });
 });

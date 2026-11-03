@@ -1,6 +1,7 @@
 // The facilitator's keys that work in every scene (spec 6.5). Space, the arrows and A belong to the scenes, and so
-// does N in travel. A refused command (a key pressed in the wrong phase) comes back through the client's onError,
-// which main.ts shows as a toast, so the reducer is the one place that decides what each phase allows.
+// does N in travel; M and Esc open the menu (menu.ts), which keeps every key from here while it is open. A refused
+// command (a key pressed in the wrong phase) comes back through the client's onError, which main.ts shows as a
+// toast, so the reducer is the one place that decides what each phase allows.
 import type Phaser from 'phaser';
 import { OPTION_IDS, type HostView } from '../shared/types';
 import type { Hud } from './hud/Hud';
@@ -24,7 +25,8 @@ function digitOf(code: string): number {
   return match === null ? 0 : Number(match[1]);
 }
 
-function typing(): boolean {
+/** Whether a form field has the focus, so that a key goes into it and is not a command. */
+export function typing(): boolean {
   const el = document.activeElement;
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement
     || (el instanceof HTMLElement && el.isContentEditable);
@@ -37,14 +39,13 @@ function pendingCallout(view: HostView | null): boolean {
 /**
  * 1 to 4 add a vote to A to D and Shift+1 to 4 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
  * pending call-out (only while one is pending in `locked`, otherwise N is the Travel scene's skip); R reopens; H hides
- * or shows names; F toggles fullscreen; Esc toggles the key map; Shift+R twice within 3 s resets to the lobby, and any
- * other key in between calls the reset off. Held keys do not repeat, and Ctrl, Alt or Cmd chords (a reload) are left
- * to the browser. Returns the function that removes the keys again; installing again removes the earlier install
- * first, so a key never sends twice.
+ * or shows names; F toggles fullscreen; Shift+R twice within 3 s resets to the lobby, and any other key in between
+ * calls the reset off. Escape is the menu's (menu.ts), not one of these. Held keys do not repeat, and Ctrl, Alt or Cmd
+ * chords (a reload) are left to the browser. Returns the function that removes the keys again; installing again
+ * removes the earlier install first, so a key never sends twice.
  */
 export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): () => void {
   uninstall?.();
-  let keymap = false;
   let resetUntil = 0;
 
   const onKeyDown = (event: KeyboardEvent): void => {
@@ -90,10 +91,6 @@ export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud):
         break;
       case 'r':
         client.send({ k: 'reopen' });
-        break;
-      case 'escape':
-        keymap = !keymap;
-        hud.showKeymap(keymap);
         break;
       default:
         break;

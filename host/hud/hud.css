@@ -86,7 +86,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .hud [hidden] { display: none !important; }
 .hud [data-option="C"] { --on-option: var(--option-ink-c); }
 
-.hud-screen, .hud-keymap { position: absolute; inset: 0; }
+.hud-screen, .hud-menu { position: absolute; inset: 0; }
 .hud-screen { z-index: var(--z-base); }
 
 /* ---- Shared pieces -------------------------------------------------------------------------------------- */
@@ -153,7 +153,16 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 
 .lobby { position: absolute; top: var(--s4); left: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s4); }
 .lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s6); }
-.lobby-hint { flex: 0 1 auto; text-align: right; }
+/* Two keycaps, each a flat cap with a dim stroke and a hard one-pixel bottom edge, then its label. The cap sets its own
+   face: a kbd would otherwise fall back to the browser's monospace. */
+.lobby-keys { flex: 0 0 auto; list-style: none; display: flex; gap: var(--s4); }
+.lobby-key { display: flex; align-items: center; gap: var(--s2); white-space: nowrap; color: var(--ink-2); }
+.lobby-key .key {
+  font: 600 var(--t-body)/var(--lh-flat) var(--font-body);
+  padding: var(--s1) var(--s2);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line), 0 var(--s1) 0 var(--bg);
+}
 .lobby-body {
   display: grid;
   grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 1fr);
@@ -378,17 +387,19 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .board-class { color: var(--ink-2); }
 .board-score { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* ---- Key map: a scrim over everything, the panel low on the screen so the banner stays readable ---------- */
+/* ---- Menu: a scrim over the screen and the flash, under the banner and the toasts; the panel sits low so they
+   stay readable above it. The actions, the stages, then the key map ----------------------------------------- */
 
-.hud-keymap {
+.hud-menu {
   z-index: var(--z-overlay);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: var(--s4);
   background: var(--scrim);
+  pointer-events: auto;
 }
-.keymap {
+.menu {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
@@ -398,6 +409,36 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   background: var(--surface-1);
   box-shadow: var(--shadow-pop);
 }
+.menu-group { display: flex; flex-direction: column; gap: var(--s2); }
+.menu-row { display: flex; gap: var(--s2); }
+/* Flat on surface-2 with a dim stroke. The label and the hint under it each keep to one line, ending in an ellipsis
+   if they run out of room. Hover and press brighten the stroke; an armed button inverts. */
+.menu-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: 600 var(--t-body)/var(--lh-flat) var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.menu-btn:enabled:hover { box-shadow: inset 0 0 0 1px var(--ink-3); }
+.menu-btn:enabled:active { box-shadow: inset 0 0 0 1px var(--ink-2); }
+.menu-btn:disabled { opacity: .4; cursor: default; }
+.menu-btn:focus-visible { outline: var(--s1) solid var(--ink-2); outline-offset: var(--s1); }
+.menu-btn[data-armed] { background: var(--ink); color: var(--bg); }
+.menu-label, .menu-hint { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-hint { font-weight: 500; font-size: calc(var(--zoom) * 3.5px); color: var(--ink-2); }
+.menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }
+.menu-note { margin-top: calc(var(--s1) * -1); }
 /* Read down each column: the room's keys on the left, travel and the page on the right. */
 .keys { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(7, auto); grid-auto-flow: column; gap: var(--s2) var(--s6); }
 .key-row { display: grid; grid-template-columns: calc(var(--zoom) * 30px) minmax(0, 1fr); align-items: baseline; column-gap: var(--s3); }

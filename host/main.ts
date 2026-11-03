@@ -2,11 +2,14 @@
 // over a 320 x 180 Phaser world at a whole-number zoom, and lets the router start whichever scene the room's phase
 // calls for. The scenes share one registry: 'client', 'content', 'hud', 'view', the latest HostView or null (listen
 // for 'changedata-view'), and 'spaceLockedUntil' (SPACE_LOCK_KEY in strikers.ts), the game time before which Space
-// does nothing, which Lobby, Travel, Battle and Ending set so that a press's rest holds across a scene switch.
+// does nothing, which Lobby, Travel, Battle and Ending set so that a press's rest holds across a scene switch. The
+// facilitator's hotkeys work in every scene, and M or Esc opens the menu over any screen (menu.ts): restart the
+// round, back to the lobby, reload the page, go to a stage, and the key map.
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
 import { installHotkeys } from './hotkeys';
 import { capitalise, Hud } from './hud/Hud';
+import { installMenu } from './menu';
 import { createRoomClient } from './net';
 import { connectionNotices } from './notices';
 import { makeRouter } from './router';
@@ -73,6 +76,7 @@ async function main(): Promise<void> {
   window.addEventListener('resize', fit);
   document.addEventListener('fullscreenchange', fit);
   installHotkeys(game, client, hud);
+  installMenu(game, client, hud, content);
 }
 
 main().catch((err: unknown) => {

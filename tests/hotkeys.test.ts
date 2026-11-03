@@ -11,17 +11,25 @@ let view: Partial<HostView> | null = null;
 const send = vi.fn();
 const addBots = vi.fn();
 const showToast = vi.fn();
-const showKeymap = vi.fn();
 const toggleFullscreen = vi.fn();
+/** Every HUD method the keys call, by name. The HUD is a stand-in that has whatever is asked of it; showToast reaches its mock. */
+const hudCalls: string[] = [];
+const hud = new Proxy({}, {
+  get: (_target, method) => (...args: unknown[]) => {
+    hudCalls.push(String(method));
+    if (method === 'showToast') showToast(...args);
+  },
+}) as unknown as Hud;
 
 const game = { registry: { get: (key: string) => (key === 'view' ? view : undefined) }, scale: { toggleFullscreen } } as unknown as Phaser.Game;
-const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, { showToast, showKeymap } as unknown as Hud);
+const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, hud);
 let dispose: () => void = () => {};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   view = null;
+  hudCalls.length = 0;
   dispose = install();
 });
 afterEach(() => {
@@ -121,10 +129,15 @@ it('replaces an earlier install, and its disposer removes the listener', () => {
   expect(send).toHaveBeenCalledTimes(1);
 });
 
-it('toggles the key map with Esc and fullscreen with F', () => {
+it('leaves Escape alone', () => {
   press('Escape', 'Escape');
   press('Escape', 'Escape');
-  expect(showKeymap.mock.calls).toEqual([[true], [false]]);
+  expect(send).not.toHaveBeenCalled();
+  expect(addBots).not.toHaveBeenCalled();
+  expect(hudCalls).toEqual([]);
+});
+
+it('toggles fullscreen with F', () => {
   press('KeyF', 'f');
   expect(toggleFullscreen).toHaveBeenCalledTimes(1);
 });
