@@ -12,6 +12,11 @@ const RESET_WINDOW_MS = 3000;
 const BOTS = 30;
 /** Keys that are only ever held with another: on their own they are not a press. */
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
+/** How long the toasts that answer Shift+R ("Room reset", "Reset called off") stay. */
+const RESET_NOTE_MS = 1500;
+
+/** The listener installed last, removed when another install replaces it. */
+let uninstall: (() => void) | null = null;
 
 /** 1 to 4 on the top row or the number pad, read by position so Shift (which turns "1" into "!") does not hide it; else 0. */
 function digitOf(code: string): number {
@@ -34,30 +39,35 @@ function pendingCallout(view: HostView | null): boolean {
  * pending call-out (only while one is pending in `locked`, otherwise N is the Travel scene's skip); R reopens; H hides
  * or shows names; F toggles fullscreen; Esc toggles the key map; Shift+R twice within 3 s resets to the lobby, and any
  * other key in between calls the reset off. Held keys do not repeat, and Ctrl, Alt or Cmd chords (a reload) are left
- * to the browser.
+ * to the browser. Returns the function that removes the keys again; installing again removes the earlier install
+ * first, so a key never sends twice.
  */
-export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): void {
+export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): () => void {
+  uninstall?.();
   let keymap = false;
   let resetUntil = 0;
 
-  window.addEventListener('keydown', (event) => {
+  const onKeyDown = (event: KeyboardEvent): void => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || MODIFIERS.has(event.key) || typing()) return;
-    const armed = resetUntil;
+    const armed = Date.now() <= resetUntil;
     resetUntil = 0;
-
-    const digit = digitOf(event.code);
-    if (digit > 0) {
-      client.send({ k: 'injectVotes', counts: { [OPTION_IDS[digit - 1]]: event.shiftKey ? 10 : 1 } });
-      return;
-    }
     const key = event.key.toLowerCase();
     if (key === 'r' && event.shiftKey) {
-      if (Date.now() <= armed) {
+      if (armed) {
         client.send({ k: 'reset' });
+        hud.showToast('Room reset', RESET_NOTE_MS);
       } else {
         resetUntil = Date.now() + RESET_WINDOW_MS;
         hud.showToast('Press Shift+R again to reset', RESET_WINDOW_MS);
       }
+      return;
+    }
+    // Any other key calls an armed reset off, and the confirm toast says so instead of lingering.
+    if (armed) hud.showToast('Reset called off', RESET_NOTE_MS);
+
+    const digit = digitOf(event.code);
+    if (digit > 0) {
+      client.send({ k: 'injectVotes', counts: { [OPTION_IDS[digit - 1]]: event.shiftKey ? 10 : 1 } });
       return;
     }
     const view = (game.registry.get('view') as HostView | null | undefined) ?? null;
@@ -88,5 +98,13 @@ export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud):
       default:
         break;
     }
-  });
+  };
+
+  window.addEventListener('keydown', onKeyDown);
+  const dispose = (): void => {
+    window.removeEventListener('keydown', onKeyDown);
+    if (uninstall === dispose) uninstall = null;
+  };
+  uninstall = dispose;
+  return dispose;
 }

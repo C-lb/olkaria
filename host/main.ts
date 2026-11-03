@@ -4,11 +4,10 @@
 // (listen for 'changedata-view').
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
-import type { HostView } from '../shared/types';
 import { installHotkeys } from './hotkeys';
-import { Hud } from './hud/Hud';
+import { capitalise, Hud } from './hud/Hud';
 import { createRoomClient } from './net';
-import { sceneFor, type ActiveScene, type SceneData } from './router';
+import { makeRouter } from './router';
 import { applyZoom, integerZoom } from './scale';
 import { Battle } from './scenes/Battle';
 import { Boot } from './scenes/Boot';
@@ -17,55 +16,12 @@ import { Leaderboard } from './scenes/Leaderboard';
 import { Lobby } from './scenes/Lobby';
 import { Travel } from './scenes/Travel';
 
-const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-
 /** ?new=1 has done its work once the client exists: a reload that kept it would open another room and orphan the phones. */
 function dropNewFlag(): void {
   const url = new URL(location.href);
   if (url.searchParams.get('new') !== '1') return;
   url.searchParams.delete('new');
   history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
-}
-
-/**
- * Starts the scene the room's phase calls for. Phaser starts a scene at once, so a start asked for while a frame is
- * being processed (a scene's own key handler, sending a command the offline room answers on the spot) waits for the
- * start of the next frame instead of tearing down the scene that is mid-update. The waiting start counts as the
- * active scene, so the views that keep arriving in the meantime do not ask for it again.
- */
-function makeRouter(game: Phaser.Game): (view: HostView) => void {
-  let queued: { key: string; data: SceneData } | null = null;
-
-  const active = (): ActiveScene | null => {
-    if (queued !== null) return { key: queued.key, round: queued.data.round };
-    for (const scene of game.scene.getScenes(false)) {
-      const { key, status, data } = scene.sys.settings;
-      if (key === 'Boot' || status < Phaser.Scenes.START || status > Phaser.Scenes.RUNNING) continue;
-      const round = (data as Partial<SceneData> | undefined)?.round;
-      return { key, round: typeof round === 'number' ? round : -1 };
-    }
-    return null;
-  };
-
-  const go = (): void => {
-    const next = queued;
-    queued = null;
-    if (next === null) return;
-    for (const scene of game.scene.getScenes(false)) {
-      const { key, status } = scene.sys.settings;
-      if (key !== next.key && status >= Phaser.Scenes.START && status <= Phaser.Scenes.SLEEPING) game.scene.stop(key);
-    }
-    game.scene.start(next.key, next.data);
-  };
-
-  return (view) => {
-    const next = sceneFor(view, active());
-    if (next === null) return;
-    const waiting = queued !== null;
-    queued = next;
-    if (!game.scene.isProcessing) go();
-    else if (!waiting) game.events.once(Phaser.Core.Events.PRE_STEP, go);
-  };
 }
 
 async function main(): Promise<void> {
@@ -83,6 +39,7 @@ async function main(): Promise<void> {
     height: 180,
     pixelArt: true,
     backgroundColor: '#15141c',
+    banner: false,
     scale: {
       mode: Phaser.Scale.NONE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -98,6 +55,7 @@ async function main(): Promise<void> {
   game.registry.set('hud', hud);
   game.registry.set('view', null);
 
+  // Scene switches wait until the handler that delivered the view has returned (see makeRouter).
   const route = makeRouter(game);
   client.onState((view) => {
     game.registry.set('view', view);
@@ -105,13 +63,15 @@ async function main(): Promise<void> {
   });
   // Refusals ("bad phase", "not connected") show for 2 s, so a key pressed at the wrong moment is never silent.
   client.onError((msg) => hud.showToast(capitalise(msg), 2000));
+  // A drop keeps "Reconnecting to the room" up for as long as it lasts; the reconnect takes it down.
   let dropped = false;
   client.onStatus((status) => {
     if (status === 'closed') {
       dropped = true;
-      hud.showToast('Reconnecting to the room', 10000);
+      hud.showToast('Reconnecting to the room', 0);
     } else if (dropped) {
       dropped = false;
+      hud.clearToast();
       hud.showToast('Connected', 1500);
     }
   });

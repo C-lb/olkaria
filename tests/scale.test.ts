@@ -16,6 +16,12 @@ import { applyZoom } from '../host/scale';
 
 const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height }) as DOMRect;
 
+it('is held back by the width when the window is narrower than 16:9', () => {
+  expect(integerZoom(1024, 768)).toBe(3);
+  expect(integerZoom(1280, 4000)).toBe(4);
+  expect(integerZoom(330, 2000)).toBe(1);
+});
+
 it('zooms the game to fit its parent, then lays the HUD exactly over the canvas and sets --zoom', () => {
   let zoom = 1;
   const setZoom = vi.fn((z: number) => { zoom = z; });

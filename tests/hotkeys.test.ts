@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The facilitator's keys: what each sends, and what it must not.
-import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import { installHotkeys } from '../host/hotkeys';
 import type { Hud } from '../host/hud/Hud';
@@ -14,18 +14,20 @@ const showToast = vi.fn();
 const showKeymap = vi.fn();
 const toggleFullscreen = vi.fn();
 
-beforeAll(() => {
-  const game = { registry: { get: (key: string) => (key === 'view' ? view : undefined) }, scale: { toggleFullscreen } } as unknown as Phaser.Game;
-  installHotkeys(game, { send, addBots } as unknown as RoomClient, { showToast, showKeymap } as unknown as Hud);
-});
+const game = { registry: { get: (key: string) => (key === 'view' ? view : undefined) }, scale: { toggleFullscreen } } as unknown as Phaser.Game;
+const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, { showToast, showKeymap } as unknown as Hud);
+let dispose: () => void = () => {};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   view = null;
-  press('Space', ' ');   // a key the module ignores, to call off any reset armed by the test before
-  vi.clearAllMocks();
+  dispose = install();
 });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  dispose();
+  vi.useRealTimers();
+});
 
 function press(code: string, key: string, init: KeyboardEventInit = {}): void {
   window.dispatchEvent(new KeyboardEvent('keydown', { code, key, bubbles: true, ...init }));
@@ -97,6 +99,26 @@ it('resets only on a second Shift+R within 3 s, with no other key between', () =
   press('Digit1', '!', { shiftKey: true });
   press('KeyR', 'R', { shiftKey: true });
   expect(send.mock.calls.map(([cmd]) => cmd)).toEqual([{ k: 'injectVotes', counts: { A: 10 } }]);
+});
+
+it('confirms a reset, and says so when another key calls it off', () => {
+  press('KeyR', 'R', { shiftKey: true });
+  press('KeyR', 'R', { shiftKey: true });
+  press('KeyR', 'R', { shiftKey: true });
+  press('KeyC', 'c');
+  expect(showToast.mock.calls).toEqual([
+    ['Press Shift+R again to reset', 3000], ['Room reset', 1500], ['Press Shift+R again to reset', 3000], ['Reset called off', 1500],
+  ]);
+  expect(send.mock.calls.map(([cmd]) => cmd)).toEqual([{ k: 'reset' }, { k: 'callout' }]);
+});
+
+it('replaces an earlier install, and its disposer removes the listener', () => {
+  const second = install();
+  press('KeyC', 'c');
+  expect(send).toHaveBeenCalledTimes(1);
+  second();
+  press('KeyC', 'c');
+  expect(send).toHaveBeenCalledTimes(1);
 });
 
 it('toggles the key map with Esc and fullscreen with F', () => {

@@ -35,3 +35,54 @@ it('goes back to the lobby from anywhere after a reset, and leaves the closing s
   expect(sceneFor({ phase: 'leaderboard', round: 3 }, { key: 'Ending', round: 3 })!.key).toBe('Leaderboard');
   expect(sceneFor({ phase: 'leaderboard', round: 3 }, { key: 'Leaderboard', round: 3 })).toBeNull();
 });
+
+// ---- Applying the route: makeRouter with a stand-in for Phaser's scene manager -----------------------------
+import type Phaser from 'phaser';
+import { makeRouter } from '../host/router';
+
+/** Phaser's scene manager, cut down to what the router touches: each scene's key, started flag and start data. */
+function fakeGame(started: string, log: string[]): Phaser.Game {
+  const scenes = ['Boot', 'Lobby', 'Travel', 'Battle', 'Ending', 'Leaderboard'].map((key) => ({
+    sys: { settings: { key, active: key === started, data: (key === started ? { round: -1, resume: false } : {}) as object } },
+  }));
+  const find = (key: string) => scenes.find((s) => s.sys.settings.key === key)!;
+  return {
+    scene: {
+      getScenes: () => scenes,
+      stop: (key: string) => { log.push(`stop ${key}`); find(key).sys.settings.active = false; },
+      start: (key: string, data: { round: number; resume: boolean }) => {
+        log.push(`start ${key} round ${data.round}${data.resume ? ' resume' : ''}`);
+        Object.assign(find(key).sys.settings, { active: true, data });
+      },
+    },
+  } as unknown as Phaser.Game;
+}
+
+it('switches scenes only after the handler whose command brought the view has returned', async () => {
+  const log: string[] = [];
+  const route = makeRouter(fakeGame('Lobby', log));
+  // Offline, a command sent from a scene's key handler comes back as a view before send() returns, and repeats.
+  const send = () => { route({ phase: 'travel', round: 0 }); route({ phase: 'travel', round: 0 }); };
+  log.push('Space handler starts');
+  send();
+  log.push('Space handler returns');
+  expect(log).toEqual(['Space handler starts', 'Space handler returns']);
+  await Promise.resolve();
+  expect(log).toEqual(['Space handler starts', 'Space handler returns', 'stop Lobby', 'start Travel round 0']);
+});
+
+it('lets a newer view replace a waiting switch, and does nothing when that view fits the scene already up', async () => {
+  const log: string[] = [];
+  const route = makeRouter(fakeGame('Lobby', log));
+  route({ phase: 'travel', round: 0 });
+  route({ phase: 'lobby', round: -1 });   // reset before the switch ran
+  await Promise.resolve();
+  expect(log).toEqual([]);
+  route({ phase: 'travel', round: 0 });
+  route({ phase: 'vote', round: 0 });
+  await Promise.resolve();
+  expect(log).toEqual(['stop Lobby', 'start Battle round 0 resume']);
+  route({ phase: 'locked', round: 0 });
+  await Promise.resolve();
+  expect(log).toHaveLength(2);
+});

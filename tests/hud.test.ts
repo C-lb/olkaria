@@ -23,17 +23,17 @@ it('shows the lobby counts, the banner and the debrief lines', () => {
   expect(root.textContent).toContain('Sarah, defend B: Yes to 60 to 100 MW, tied');
   hud.showBanner({ name: null, letter: null, phone: null, footer: '' });
   expect(root.textContent).toContain('Hand call-out');
-  hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'line a' }, { letter: 'B', damage: 44, text: 'line b' }], breakdown: { base: 62.5, focus: 0, alignment: 10, exhibit: 10, rally: 10, total: 93, capped: false }, alignment: 'The party stood with the Rogues: both chose B', rally: 'Rally: Sarah +10', discuss: 'Why?' });
+  hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'line a' }, { letter: 'B', damage: 44, text: 'line b' }], breakdown: { base: 62.5, focus: 0, alignment: 10, exhibit: 10, rally: 10, total: 93, capped: false, cap: 100 }, alignment: 'The party stood with the Rogues: both chose B', rally: 'Rally: Sarah +10', discuss: 'Why?' });
   expect(root.querySelectorAll('[data-debrief-line]')).toHaveLength(2);
   expect(root.textContent).toContain('Rally: Sarah +10'); expect(root.textContent).toContain('stood with the Rogues');
   expect(root.textContent).toContain('Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally +10. Total 93');
-  hud.showDebrief({ lines: [], breakdown: { base: 80, focus: 15, alignment: 0, exhibit: 15, rally: 20, total: 100, capped: true }, alignment: '', rally: null, discuss: '' });
+  hud.showDebrief({ lines: [], breakdown: { base: 80, focus: 15, alignment: 0, exhibit: 15, rally: 20, total: 100, capped: true, cap: 100 }, alignment: '', rally: null, discuss: '' });
   expect(root.textContent).toContain('Total 100 (capped at 100)');
 });
 
 // ---- Beyond the brief: the tests above are its code unchanged ----------------------------------------------
 import { afterEach, describe, vi } from 'vitest';
-import type { LobbyArgs } from '../host/hud/Hud';
+import { capitalise, type LobbyArgs } from '../host/hud/Hud';
 
 const lobby = (over: Partial<LobbyArgs> = {}): LobbyArgs => ({
   qrDataUrl: null, code: 'ABCD', joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
@@ -112,6 +112,7 @@ describe('options and banner', () => {
     const { root, hud } = fresh();
     hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '23 s', votedText: '5 of 9 voted', leadShares: null, supportShares: null, footer: 'Space locks the vote' });
     expect(root.querySelectorAll('[data-bar]')).toHaveLength(0);
+    expect(root.querySelector('.card.has-bars')).toBeNull();
     expect(text(root, '.status')).toBe('Rogues lead23 s5 of 9 votedSpace locks the vote');
   });
 
@@ -124,6 +125,7 @@ describe('options and banner', () => {
     expect((a.querySelector('[data-bar=lead]') as HTMLElement).style.width).toBe('33.3%');
     expect(text(a as HTMLElement, '.bar-value')).toBe('33%');
     expect(text(root.querySelector('[data-card=B]') as HTMLElement, '.bar-value')).toBe('67%');
+    expect(a.classList.contains('has-bars')).toBe(true);
   });
 
   it('marks every badge with its letter, so the stylesheet can put dark ink on C', () => {
@@ -165,11 +167,11 @@ describe('narration, debrief, ending and leaderboard', () => {
 
   it('prints damage with one decimal, the breakdown without trailing zeros, and the discuss line apart', () => {
     const { root, hud } = fresh();
-    hud.showDebrief({ lines: [{ letter: 'C', damage: 1.5, text: 'line c' }], breakdown: { base: 73.333, focus: 15, alignment: 0, exhibit: 0, rally: 10, total: 98, capped: false }, alignment: '', rally: null, discuss: 'What should Microsoft do, and why?' });
+    hud.showDebrief({ lines: [{ letter: 'C', damage: 1.5, text: 'line c' }], breakdown: { base: 73.333, focus: 15, alignment: 0, exhibit: 0, rally: 10, total: 98, capped: false, cap: 100 }, alignment: '', rally: null, discuss: 'What should Microsoft do, and why?' });
     expect(text(root, '.debrief-damage')).toBe('1.5');
     expect(text(root, '.breakdown')).toBe('Base 73.3, Focus +15, Party aligned 0, Exhibits 0, Rally +10. Total 98');
     expect(text(root, '.discuss')).toBe('Discuss: What should Microsoft do, and why?');
-    hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'a' }], breakdown: { base: 0, focus: 0, alignment: 0, exhibit: 0, rally: 0, total: 0, capped: false }, alignment: '', rally: null, discuss: '' });
+    hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'a' }], breakdown: { base: 0, focus: 0, alignment: 0, exhibit: 0, rally: 0, total: 0, capped: false, cap: 100 }, alignment: '', rally: null, discuss: '' });
     expect(text(root, '.debrief-damage')).toBe('6.0');
     expect(root.querySelector('.discuss')).toBeNull();
   });
@@ -192,27 +194,59 @@ describe('narration, debrief, ending and leaderboard', () => {
     expect([...root.querySelectorAll('.board-row')].map((r) => r.textContent)).toEqual(['1AnnKnight212', '2CyRogue198']);
     expect(root.textContent).toContain('Most consistent strategist: Ann');
     expect(text(root, 'h1')).toBe('What should Microsoft do, and why?');
+    expect(text(root, '.eyebrow')).toBe('Top 2');
+    hud.showLeaderboard({ rows: [], consistent: 'No one voted in all four rounds', table: null, split: { A: 0, B: 0, C: 0, D: 0 }, question: 'q' });
+    expect(text(root, '.eyebrow')).toBe('Top players');
+    expect(root.textContent).toContain('No scores yet');
+  });
+
+  it('names the cap it is given, never a number of its own', () => {
+    const { root, hud } = fresh();
+    hud.showDebrief({ lines: [], breakdown: { base: 90, focus: 15, alignment: 10, exhibit: 5, rally: 0, total: 120, capped: true, cap: 120 }, alignment: '', rally: null, discuss: '' });
+    expect(text(root, '.breakdown')).toBe('Base 90, Focus +15, Party aligned +10, Exhibits +5, Rally 0. Total 120 (capped at 120)');
   });
 });
 
 describe('toasts, flash, key map and clear', () => {
-  it('shows one timed toast at a time, and keeps a toast with no timeout above it until clear()', () => {
+  it('keeps one sticky toast and one timed toast, each replacing only its own kind', () => {
     vi.useFakeTimers();
     const { root, hud } = fresh();
     const toasts = () => [...root.querySelectorAll('.toast')].map((t) => t.textContent);
+    hud.showToast('Bad phase', 2000);
     hud.showToast('Travel 1: Grid Wyrm ahead. Rogues lead.', 0);
-    hud.showToast('Reconnecting to the room', 10000);
-    hud.showToast('Connected', 1500);
-    expect(toasts()).toEqual(['Travel 1: Grid Wyrm ahead. Rogues lead.', 'Connected']);
-    vi.advanceTimersByTime(1500);
-    expect(toasts()).toEqual(['Travel 1: Grid Wyrm ahead. Rogues lead.']);
+    expect(toasts()).toEqual(['Travel 1: Grid Wyrm ahead. Rogues lead.', 'Bad phase']);   // sticky above timed
+    hud.showToast('Reconnecting to the room', 0);
+    expect(toasts()).toEqual(['Reconnecting to the room', 'Bad phase']);
+    vi.advanceTimersByTime(2000);
+    expect(toasts()).toEqual(['Reconnecting to the room']);   // the timed toast goes on its own and leaves the sticky one
     hud.showToast('Olkaria generates about 950 MW (James, 2026)');
+    hud.showToast('Record peak demand 2,444 MW, January 2026 (James, 2026)');
+    expect(toasts()).toEqual(['Reconnecting to the room', 'Record peak demand 2,444 MW, January 2026 (James, 2026)']);
     vi.advanceTimersByTime(3999);
     expect(toasts()).toHaveLength(2);
     vi.advanceTimersByTime(1);
-    expect(toasts()).toHaveLength(1);
+    expect(toasts()).toEqual(['Reconnecting to the room']);
+    hud.showToast('Reconnecting to the room', Infinity);   // the same sticky text again changes nothing
+    expect(toasts()).toEqual(['Reconnecting to the room']);
+    hud.showToast('Connected', 1500);
     hud.clear();
     expect(toasts()).toEqual([]);
+  });
+
+  it('clearToast() takes down the sticky toast and leaves the timed one', () => {
+    vi.useFakeTimers();
+    const { root, hud } = fresh();
+    hud.showToast('Reconnecting to the room', 0);
+    hud.showToast('Press Shift+R again to reset', 3000);
+    hud.clearToast();
+    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Press Shift+R again to reset']);
+    hud.clearToast();
+    expect(root.querySelectorAll('.toast')).toHaveLength(1);
+  });
+
+  it('capitalises the first letter of a message and nothing else', () => {
+    expect(capitalise('bad phase')).toBe('Bad phase');
+    expect(capitalise('')).toBe('');
   });
 
   it('keeps a repeated toast up from the repeat instead of stacking a copy', () => {

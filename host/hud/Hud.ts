@@ -49,7 +49,8 @@ export interface OptionsArgs {
 /** The call-out. No name is a hand call-out: the facilitator picks someone in the room. */
 export interface BannerArgs { name: string | null; letter: OptionId | null; phone: string | null; footer: string }
 
-export interface Breakdown { base: number; focus: number; alignment: number; exhibit: number; rally: number; total: number; capped: boolean }
+/** The parts of a round's damage. `cap` is the most one round can drain (`scoring.roundHp`), named when `capped`. */
+export interface Breakdown { base: number; focus: number; alignment: number; exhibit: number; rally: number; total: number; capped: boolean; cap: number }
 
 export interface DebriefArgs {
   lines: { letter: OptionId; damage: number; text: string }[];
@@ -87,8 +88,6 @@ const TANUI = 'PS John Tanui (James, 2026; Vimal, 2026)';
 const TOAST_MS = 4000;
 /** How long a rally flash stays when no time is given. */
 const FLASH_MS = 1500;
-/** Toasts without a timeout that can be up at once; another pushes out the oldest. */
-const MAX_STICKY = 3;
 
 /** The facilitator's keys (spec 6.5), for the key map behind Esc. */
 const KEYS: readonly (readonly [string, string])[] = [
@@ -139,12 +138,13 @@ const pct = (share: number): string => `${num(clampShare(share) * 100)}%`;
 /** A share in figures for the room to read: whole percentages, "33%". */
 const pctText = (share: number): string => `${Math.round(clampShare(share) * 100)}%`;
 
-const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+/** The text with its first letter in capitals: the room's refusals and the content's bullets are stored lowercase. */
+export const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** "Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83", the sum the strike just drew (spec 3.2). */
+/** "Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83", the sum the strike just drew (spec 3.2), then " (capped at 100)" if it passed the cap. */
 function breakdownText(b: Breakdown): string {
   const parts = [`Base ${num(b.base)}`, `Focus ${plus(b.focus)}`, `Party aligned ${plus(b.alignment)}`, `Exhibits ${plus(b.exhibit)}`, `Rally ${plus(b.rally)}`];
-  return `${parts.join(', ')}. Total ${num(b.total)}${b.capped ? ' (capped at 100)' : ''}`;
+  return `${parts.join(', ')}. Total ${num(b.total)}${b.capped ? ` (capped at ${num(b.cap)})` : ''}`;
 }
 
 /** Marks `el` as option `letter`: its colour as --option, and data-option, from which the stylesheet takes the ink. */
@@ -204,6 +204,8 @@ export class Hud {
   private readonly banner = h('div', { class: 'banner', role: 'status' });
   private readonly toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   private keys: HTMLElement | null = null;
+  /** The two toast slots: one that stays until replaced or cleared, and one that times out. */
+  private sticky: HTMLElement | null = null;
   private timed: { el: HTMLElement; timer: ReturnType<typeof setTimeout> } | null = null;
   private flashTimer: ReturnType<typeof setTimeout> | null = null;
   /** The QR image, kept across lobby refreshes so a new joiner does not make it decode again. */
@@ -271,7 +273,8 @@ export class Hud {
         const bars: HTMLElement[] = [];
         if (a.leadShares !== null) bars.push(bar('lead', a.leadLabel, a.leadShares[o.letter]));
         if (a.supportShares !== null) bars.push(bar('support', 'Party', a.supportShares[o.letter]));
-        return tint(h('article', { class: 'card', 'data-card': o.letter },
+        // A card with bars says so: its text then gets fewer lines before the clamp (hud.css), so it never covers them.
+        return tint(h('article', { class: bars.length > 0 ? 'card has-bars' : 'card', 'data-card': o.letter },
           badge(o.letter),
           h('p', { class: 'card-text' }, o.screen),
           bars.length > 0 ? h('div', { class: 'bars' }, ...bars) : null), o.letter);
@@ -351,17 +354,22 @@ export class Hud {
         h('span', { class: 'board-class' }, row.className),
         h('span', { class: 'board-score' }, String(Math.round(row.score))))));
     this.show(panel('leaderboard',
-      h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, 'Top five'), rows, h('p', {}, a.consistent), a.table ? h('p', {}, a.table) : null),
+      h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, a.rows.length > 0 ? `Top ${a.rows.length}` : 'Top players'), rows, h('p', {}, a.consistent), a.table ? h('p', {}, a.table) : null),
       h('div', { class: 'stack' }, h('h1', { class: 'title' }, a.question), split(a.split))));
   }
 
   /**
-   * A message under the banner. One timed toast is up at a time: a new one replaces it, and the same text again keeps
-   * it up from now. `ms` defaults to 4 s; 0 (or Infinity) keeps the toast until clear(), above the timed one.
+   * A message under the banner, in one of two slots. A timed toast (`ms` defaults to 4 s) replaces the timed one before
+   * it and goes by itself; the same text again keeps it up from now. A sticky toast (`ms` of 0, or Infinity) replaces
+   * the sticky one before it and stays, above the timed one, until the next sticky toast, clearToast() or clear().
+   * Neither kind ever takes down the other.
    */
   showToast(text: string, ms = TOAST_MS): void {
     if (!(Number.isFinite(ms) && ms > 0)) {
-      this.stickyToast(text);
+      if (this.sticky?.textContent === text) return;
+      this.clearToast();
+      this.sticky = h('p', { class: 'toast' }, text);
+      this.toasts.prepend(this.sticky);
       return;
     }
     let el: HTMLElement;
@@ -379,7 +387,16 @@ export class Hud {
     this.timed = { el, timer };
   }
 
-  /** The facilitator's key map, over everything. clear() leaves it as it is. */
+  /** Takes down the sticky toast, if one is up. The timed one stays. */
+  clearToast(): void {
+    this.sticky?.remove();
+    this.sticky = null;
+  }
+
+  /**
+   * The facilitator's key map, on a scrim over the screen and the rally flash. The banner and the toasts stay above the
+   * scrim, and the panel sits low so they do not cover it. clear() leaves the key map as it is.
+   */
   showKeymap(show: boolean): void {
     if (show && this.keys === null) {
       this.keys = keymap();
@@ -396,7 +413,7 @@ export class Hud {
     this.flashTimer = null;
     this.flash.replaceChildren();
     this.dropTimed();
-    this.toasts.replaceChildren();
+    this.clearToast();
   }
 
   /** Puts up a screen. Every screen but the options takes the call-out banner down. */
@@ -408,13 +425,6 @@ export class Hud {
   private qrImage(src: string): HTMLImageElement {
     if (this.qr === null || this.qr.getAttribute('src') !== src) this.qr = h('img', { class: 'qr', src, alt: 'Scan to join' });
     return this.qr;
-  }
-
-  private stickyToast(text: string): void {
-    const sticky = [...this.toasts.querySelectorAll<HTMLElement>('[data-sticky]')];
-    if (sticky.some((el) => el.textContent === text)) return;
-    this.toasts.insertBefore(h('p', { class: 'toast', 'data-sticky': '' }, text), this.timed?.el ?? null);
-    if (sticky.length + 1 > MAX_STICKY) sticky[0].remove();
   }
 
   private dropTimed(): void {

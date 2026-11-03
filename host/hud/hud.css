@@ -215,7 +215,19 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   background: var(--panel);
 }
 .card > .badge { grid-area: badge; }
-.card-text { grid-area: text; overflow-wrap: anywhere; }
+/* Backstop for a wider fallback font on the projector PC: the text stops at the last whole line that fits its row
+   (6 lines on its own, 3 above the bars; the longest option today is 3) and ends in an ellipsis, never under the bars. */
+.card-text {
+  grid-area: text;
+  align-self: start;         /* the box ends at the clamped line; stretched to its row it would show part of the next */
+  max-height: 100%;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+.card.has-bars .card-text { -webkit-line-clamp: 3; }
 .bars { grid-area: bars; display: grid; gap: var(--s1); }
 .bar {
   display: grid;
@@ -268,9 +280,12 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   padding: var(--s2) var(--s5);
   border-radius: var(--r-lg);
   background: var(--panel);
+  max-width: calc(100% - 2 * var(--s4));
+  overflow: hidden;
   font: 700 var(--t-flash)/var(--lh-title) var(--font-title);
   color: var(--ink-2);
   white-space: nowrap;
+  text-overflow: ellipsis;
   animation: hud-pop .16s ease-out;
 }
 .flash.is-bonus { color: var(--accent); }
