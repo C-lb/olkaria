@@ -1,0 +1,39 @@
+OLKARIA: THE DEADLOCK
+Fixed questions and options
+
+Main decision maker: Microsoft (the Wizards). The case brief makes the company the primary decision-maker, so Microsoft decides last, in round 4, and the closing question is "What should Microsoft do, and why?"
+Rounds 1 to 3 are the other stakeholders setting the terms. Each round is led by one class.
+
+ROUND 1: GRID WYRM
+Question: What will Kenyans accept on power?
+Led by: Rogues (Citizen)
+A) Households first. No data-centre load until household and industrial supply is secure; the deal waits for new generation.  [evidence 40]
+B) Accept a 60 to 100 MW first phase, about 4% of peak demand, on condition that new generation is tied to every expansion.  [evidence 80]
+C) Accept the full 1 GW for the jobs, the skills lab and the regional hub.  [evidence 15]
+D) Only with a community deal: Olkaria communities get compensation and a share of the benefit before any expansion.  [evidence 55]
+
+ROUND 2: DEBT GOLEM
+Question: What does the Government offer instead of a guarantee?
+Led by: Knights (Kenyan Government)
+A) Sign the anchor-tenant guarantee. The hub is worth the risk.  [evidence 10]
+B) No guarantee of any kind. Microsoft can build on market terms or not at all.  [evidence 45]
+C) KenGen signs a smaller power and capacity commitment for a 60 MW phase, kept off the national balance sheet.  [evidence 65]
+D) Be the customer, not the guarantor: move government services to the local region under the Cloud Policy, paid from annual budgets.  [evidence 60]
+
+ROUND 3: FOG OF DEMAND
+Question: What do Kenya's businesses commit?
+Led by: Bards (Local Businesses)
+A) Commit now. Safaricom, the banks and the large startups sign letters of intent to move workloads to a Nairobi region if price and latency beat South Africa.  [evidence 70]
+B) Partner, don't just buy. EcoCloud and local developers co-build a 60 MW first phase and sell capacity to Kenyan firms as they migrate.  [evidence 80]
+C) Wait and compare. Keep workloads with Oracle at iXAfrica, Huawei and South Africa until Azure's local pricing is known.  [evidence 40]
+D) Skills first. No commitments until the innovation lab and training promised in 2024 replace the development centre that is closing.  [evidence 35]
+
+ROUND 4: THE CORE
+Question: What should Microsoft do?
+Led by: Wizards (Microsoft)
+A) Proceed with the full 1 GW build, taking a larger stake and securing dedicated generation.
+B) Build a 24 to 60 MW facility now and expand in stages as contracts and power arrive.
+C) Pause Kenya. Put the capital into South Africa and return when power, finances and demand improve.
+D) Become the tenant. Local partners such as EcoCloud build and own the facility; Microsoft anchors it with Azure capacity.
+
+Evidence scores (0 to 100) weight the damage an option deals. Round 4 has none: it scores on consistency with rounds 1 to 3.
