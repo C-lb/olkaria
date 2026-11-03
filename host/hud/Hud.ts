@@ -69,6 +69,8 @@ export interface DebriefArgs {
 export interface EndingArgs {
   title: string;
   tier: string;
+  /** One paragraph under the title, above the rows: why the Deadlock holds. Absent for an option's ending. */
+  text?: string;
   /** Round 4's votes per option, as counts or shares: each bar is the option's part of the whole. */
   split: Record<OptionId, number>;
   /** Stored lowercase in the content; each bullet is capitalised here. */
@@ -362,6 +364,7 @@ export class Hud {
     this.show(panel('ending',
       a.tier ? h('p', { class: 'eyebrow' }, capitalise(a.tier)) : null,
       h('h1', { class: 'title' }, a.title),
+      a.text ? h('p', {}, a.text) : null,
       h('div', { class: 'ending-body' },
         h('div', { class: 'stack ending-text' }, holds, bullets('What must be true', a.mustBeTrue), bullets('The risk you accepted', a.risk)),
         h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, 'Round 4 split'), split(a.split)))));

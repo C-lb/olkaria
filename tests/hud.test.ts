@@ -188,6 +188,17 @@ describe('narration, debrief, ending and leaderboard', () => {
     expect([...root.querySelectorAll('.split .bar-value')].map((v) => v.textContent)).toEqual(['0%', '0%', '0%', '0%']);
   });
 
+  it('puts the sentence of the Deadlock holding under the title and above the rows, and none when there is no text', () => {
+    const { root, hud } = fresh();
+    const split = { A: 0, B: 2, C: 0, D: 0 };
+    hud.showEnding({ title: 'The Deadlock holds', tier: 'holds', text: 'Your board sends the party back to Nairobi.', split, mustBeTrue: [], risk: [], holds: [{ round: 'Round 1', chose: 'Rogues chose C: Full 1 GW for the hub', needed: 'B or D' }] });
+    const parts = [...root.querySelector('.ending')!.children];
+    expect(parts.slice(0, 3).map((el) => [el.tagName, el.textContent])).toEqual([['P', 'Holds'], ['H1', 'The Deadlock holds'], ['P', 'Your board sends the party back to Nairobi.']]);
+    expect(parts[3].querySelector('.holds-row')?.textContent).toBe('Round 1Rogues chose C: Full 1 GW for the hubNeeded: B or D');
+    hud.showEnding({ title: 'The Seed Plant', tier: 'decisive', split, mustBeTrue: ['the expansion option stays open'], risk: ['weak early returns'], holds: null });
+    expect([...root.querySelector('.ending')!.children].map((el) => el.tagName)).toEqual(['P', 'H1', 'DIV']);
+  });
+
   it('ranks the leaderboard and closes on the question over the split', () => {
     const { root, hud } = fresh();
     hud.showLeaderboard({ rows: [{ name: 'Ann', className: 'Knight', score: 212.4 }, { name: 'Cy', className: 'Rogue', score: 198 }], consistent: 'Most consistent strategist: Ann', table: null, split: { A: 0, B: 3, C: 0, D: 1 }, question: 'What should Microsoft do, and why?' });
