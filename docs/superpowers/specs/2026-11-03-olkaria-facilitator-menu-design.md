@@ -21,7 +21,7 @@ Goals
 
 - From any screen the facilitator can restart the current round, go back to the lobby, reload the page, or go to any of the four stages or the ending, by mouse or keyboard.
 - Nothing destructive happens on one press.
-- A jump keeps what was played before the stage it goes to and clears the rest, so scores and the boss's HP stay honest.
+- A jump keeps the rounds revealed before the stage it goes to and clears the rest, so scores and the boss's HP stay honest. A round counts as played only once it is revealed.
 - The phone shows the player's class figure wherever it names their role, drawn from the same pixel data the projector paints; the lobby screen shows the same figures beside its counts.
 - Travel walks itself to the gate from the moment the segment starts, resting at each exhibit. The arrows still take over, A pauses, N skips.
 - A student onboards with a name, a role and a table, and nothing else to read.
@@ -56,13 +56,13 @@ Actions, one row of three:
 
 - Restart round N (the label names the round: "Restart round 2"). This round again from its road. Enabled once the game has started; in the lobby it reads "Restart the round" and is disabled. Hint: "This round again from its road. Its votes go; earlier rounds stay."
 - Back to the lobby. The existing reset: players stay, votes and scores go. Disabled in the lobby. Hint: "Players stay; votes and scores go."
-- Reload the page. `location.reload()`. Online, hint "The same room and screen come back." Offline, hint "Offline mode starts over."
+- Reload the page. `location.reload()`. Online with the link up, hint "The same room and screen come back." Online with the link down or the room gone, hint "Needs the network. Without it the page is lost." Offline it is disabled, with the hint "Offline mode starts over on a reload. Use Back to the lobby.", because a reload with no network loses the page and the game, and the lobby already restarts offline.
 
 Go to, one row of five: "1 Grid Wyrm", "2 Debt Golem", "3 Fog of Demand", "4 The core", "Ending". The boss names come from the content. Every one is enabled whenever the room is connected, in the lobby too ("1 Grid Wyrm" from the lobby starts the game). One hint under the row: "Earlier rounds stay. The one you go to, and the ones after it, start over. Ending shows what has been played."
 
 Until the first view has arrived, only Reload is enabled.
 
-Asking twice. An item that changes the room (restart, lobby, every stage, the ending) arms on its first press: the button inverts and reads "Sure?" for 3 s. A second press on it inside that time fires it. A press on another item arms that one instead; closing the menu or the time running out disarms. Reload asks twice only offline, where it loses the game; online it fires at once.
+Asking twice. An item that changes the room (restart, lobby, every stage, the ending) arms on its first press: the button inverts and reads "Sure?" for 3 s. A second press on it inside that time fires it. A press on another item arms that one instead; closing the menu or the time running out disarms. Reload fires at once while the link is up and asks twice while it is down.
 
 After an item fires the menu closes. The room's answer moves the screens as any command does, and a refusal shows as the usual toast.
 
@@ -81,15 +81,17 @@ Anti-vibecode, HUD tokens only, every size in canvas pixels through `--zoom`. Th
 
 `{ k: 'goto', stage: number }`. Stage 0 to 3 is the road of that round; stage 4, the number of rounds, is the ending. Anything else is refused with "bad stage". Allowed in every phase.
 
+A round is settled once it is revealed: `damageLog` holds one entry per settled round, so the settled rounds are the first `damageLog.length`. Only the current round can be unsettled (the room advances through reveals), and it is unsettled in `travel`, `vote` and `locked`. Any jump clears an unsettled round: its votes never became points or damage, and keeping them would let them count toward the ending's majority but not its tier, and show on the leaderboard as picks that scored nothing.
+
 To a road (stage s, 0 to 3):
 
 - Phase `travel`, round s, `voteOpenedAt` and `voteDeadline` null. The alarm is cleared when a vote was open.
-- Rounds before s are kept entire. Round s and every later round are cleared: each player's votes in them go, their score becomes the sum of the points on the votes kept, and `lastPoints` becomes the points of round s minus 1 (0 when s is 0). Synthetic votes, exhibits and call-outs of the cleared rounds go. `damageLog` and `majorities` are cut to s entries. `bossHp` becomes the full HP less the damage of the kept rounds.
-- A jump forward over rounds never played pads `majorities` with null and `damageLog` with a zero round (`computeDamage` over empty tallies, which deals 0) up to s entries, so the next reveal lands at its own index and the ending sums only what was dealt.
+- The settled rounds before s are kept entire. Everything from the smaller of s and the settled count onward is cleared: each player's votes in those rounds go, their score becomes the sum of the points on the votes kept, and `lastPoints` becomes the points of round s minus 1 (0 when s is 0 or that round has no vote of theirs). Synthetic votes, exhibits and call-outs of the cleared rounds go. `damageLog` and `majorities` are cut to the kept rounds. `bossHp` becomes the full HP less the damage of the kept rounds.
+- A jump forward over rounds never settled pads `majorities` with null and `damageLog` with a zero round (`computeDamage` over empty tallies, which deals 0) up to s entries, so the next reveal lands at its own index and the ending sums only what was dealt.
 - `trips` goes up by one (4.3).
 - Players, bans and `hideNames` stay.
 
-To the ending (stage 4): phase `ending`, round 3, the deadline fields null, the alarm cleared when a vote was open. Nothing is cleared: the ending shows what was played, and "No one voted in the final round" when round 4 was not. Space from there shows the leaderboard as before.
+To the ending (stage 4): phase `ending`, round 3, the deadline fields null, the alarm cleared when a vote was open. An unsettled current round is cleared as above; nothing settled changes. The ending shows what was revealed, and "No one voted in the final round" when round 4 was not revealed. Space from there shows the leaderboard as before. A facilitator who wants round 4 in the ending reveals it first.
 
 ### 4.2 Points per round
 

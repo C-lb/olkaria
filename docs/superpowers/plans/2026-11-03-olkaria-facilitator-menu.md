@@ -149,6 +149,20 @@ describe('goto', () => {
       else expect(p.lastPoints).toBe(0);
     }
   });
+
+  it('a round voted on but never revealed does not survive a jump past it, forward or to the ending', () => {
+    const voting = run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'C')]).state;   // round 0 open, two votes in, no reveal
+    const forward = cmd(voting, { k: 'goto', stage: 2 }).state;
+    expect(Object.values(forward.players).every((p) => Object.keys(p.votes).length === 0)).toBe(true);
+    expect(forward.majorities).toEqual([null, null]);
+    expect(forward.damageLog.map((d) => d.total)).toEqual([0, 0]);
+    expect(forward.bossHp).toBe(400);
+    const ending = cmd(voting, { k: 'goto', stage: 4 }).state;
+    expect(ending.phase).toBe('ending');
+    expect(Object.values(ending.players).every((p) => Object.keys(p.votes).length === 0)).toBe(true);
+    expect(tallyFor(ending, 0)).toEqual({ A: 0, B: 0, C: 0, D: 0 });
+    expect(ending.damageLog).toEqual([]);
+  });
 });
 ```
 
@@ -169,13 +183,16 @@ In `shared/room-logic.ts`:
 - `initialState` sets `trips: 0`.
 - `start`: `{ phase: 'travel', round: 0, trips: state.trips + 1 }`. `next` into travel adds one the same way. `reset` keeps `trips: state.trips`.
 - `reveal`: for a voter, `votes: { ...p.votes, [round]: { ...vote, points: lastPoints } }`.
-- `function goto(state: RoomState, now: number, stage: number, content: CaseContent): Result`: refuse `'bad stage'` unless `Number.isInteger(stage) && stage >= 0 && stage <= content.rounds.length`. Effects `state.phase === 'vote' ? [{ type: 'clearAlarm' }] : []`. Stage `rounds.length`: `update(state, now, { phase: 'ending', round: rounds.length - 1, voteOpenedAt: null, voteDeadline: null }, effects)`. Otherwise:
-  - `keep = (entries: Record<number, T>) => entries with keys < stage` for `synthetic`, `exhibits`, `callouts` and each player's `votes`;
-  - per player: `score = sum of votes[r].points ?? 0 for kept r`, `lastPoints = votes[stage - 1]?.points ?? 0`;
-  - `const pad = <T>(list: T[], n: number, fill: (i: number) => T): T[]` appends `fill(i)` until length `n`;
-  - `majorities: pad(state.majorities.slice(0, stage), stage, () => null)`;
-  - `damageLog: pad(state.damageLog.slice(0, stage), stage, (r) => computeDamage({ content, roundIndex: r, lead: zeroTally(), support: zeroTally(), prior: [], exhibits: 0, rallies: 0 }))`;
-  - `bossHp: content.rounds.length * content.scoring.roundHp - sum of kept damageLog totals`;
+- `function goto(state: RoomState, now: number, stage: number, content: CaseContent): Result`: refuse `'bad stage'` unless `Number.isInteger(stage) && stage >= 0 && stage <= content.rounds.length`. Effects `state.phase === 'vote' ? [{ type: 'clearAlarm' }] : []`. Then:
+  - `const settled = state.damageLog.length;` (one entry per revealed or padded round, so only the current round can lie beyond it, and only in travel, vote or locked);
+  - `const cut = stage === content.rounds.length ? settled : Math.min(stage, settled);`
+  - `keep = <T>(entries: Record<number, T>) => entries whose key < cut` for `synthetic`, `exhibits`, `callouts` and each player's `votes`;
+  - per player: `score = sum of votes[r].points ?? 0 over the kept votes`, `lastPoints = votes[cut - 1]?.points ?? 0`;
+  - stage `rounds.length` (the ending): `update(state, now, { phase: 'ending', round: rounds.length - 1, voteOpenedAt: null, voteDeadline: null, players, synthetic, exhibits, callouts }, effects)`; `damageLog`, `majorities`, `bossHp` and `trips` stay;
+  - otherwise `const pad = <T>(list: T[], n: number, fill: (i: number) => T): T[]` appends `fill(i)` until length `n`;
+  - `majorities: pad(state.majorities.slice(0, cut), stage, () => null)`;
+  - `damageLog: pad(state.damageLog.slice(0, cut), stage, (r) => computeDamage({ content, roundIndex: r, lead: zeroTally(), support: zeroTally(), prior: [], exhibits: 0, rallies: 0 }))`;
+  - `bossHp: content.rounds.length * content.scoring.roundHp - sum of the kept damageLog totals`;
   - `update(state, now, { phase: 'travel', round: stage, voteOpenedAt: null, voteDeadline: null, trips: state.trips + 1, players, synthetic, exhibits, callouts, damageLog, majorities, bossHp }, effects)`.
 - `runCmd`: `case 'goto': return goto(state, now, cmd.stage, content);`
 - Header comment of the file: add one line on `goto` and `trips`.
@@ -316,7 +333,8 @@ export interface MenuItem { id: string; label: string; hint: string; enabled: bo
 export interface MenuModel { actions: MenuItem[]; stages: MenuItem[]; stagesHint: string }
 /** How long an armed item waits for its second press. */
 export const ARM_MS = 3000;
-export function menuItems(content: CaseContent, view: HostView | null, mode: 'online' | 'offline'): MenuModel;
+/** `link` is the client's latest ConnectionStatus (host/net.ts), null before the first one. */
+export function menuItems(content: CaseContent, view: HostView | null, mode: 'online' | 'offline', link: ConnectionStatus | null): MenuModel;
 export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, content: CaseContent, reload: () => void = () => location.reload()): () => void;
 
 // host/hud/Hud.ts
@@ -327,17 +345,17 @@ moveMenuFocus(step: 1 | -1): void;       // through the enabled buttons in DOM o
 focusedMenuItem(): string | null;
 ```
 
-Item ids: `restart`, `lobby`, `reload`, `stage-0` to `stage-3`, `stage-4` (the ending). Labels and hints are the spec's (3.2) verbatim; stage labels are `${i + 1} ${content.rounds[i].boss}` and `Ending`.
+Item ids: `restart`, `lobby`, `reload`, `stage-0` to `stage-3`, `stage-4` (the ending). Labels and hints are the spec's (3.2) verbatim; stage labels are `${i + 1} ${content.rounds[i].boss}` and `Ending`. The reload item: offline, disabled with the hint "Offline mode starts over on a reload. Use Back to the lobby."; online with `link === 'open'`, enabled, no confirm, hint "The same room and screen come back."; online otherwise (`'closed'`, `'gone'` or null), enabled, confirm, hint "Needs the network. Without it the page is lost."
 
-`installMenu` behaviour: one `keydown` listener on `window` in the capture phase. Chords (`ctrlKey`, `metaKey`, `altKey`) pass. Closed: `m` or `Escape` (not a repeat, not while `typing()`) opens and the event is stopped. Open: every keydown is stopped (`stopPropagation`); `Escape` or `m` closes; the arrows call `hud.moveMenuFocus` (Left/Up `-1`, Right/Down `1`) and prevent default; `Enter` or ` ` prevent default and pick `hud.focusedMenuItem()` if any; other keys do nothing. Keyup is never touched. Opening disarms, builds `menuItems(content, view, client.mode)`, shows it, and subscribes to `changedata-view` to redraw while open; closing unsubscribes, disarms, blurs the active element and calls `hud.showMenu(null)`. `pick(id)`: ignore a disabled or unknown id; if `confirm` and the id is not armed within `ARM_MS`, arm it (redraw, and a timer redraws when it lapses); else fire: `reload()` for the reload act, `client.send(cmd)` otherwise, then close. Returns the uninstall function, and installing again removes the earlier install first (as `installHotkeys` does).
+`installMenu` behaviour: it subscribes to `client.onStatus` at install (unsubscribing on dispose) and keeps the latest status as `link`, redrawing if the menu is open. One `keydown` listener on `window` in the capture phase. Chords (`ctrlKey`, `metaKey`, `altKey`) pass. Closed: `m` or `Escape` (not a repeat, not while `typing()`) opens and the event is stopped. Open: every keydown is stopped (`stopPropagation`); `Escape` or `m` closes; the arrows call `hud.moveMenuFocus` (Left/Up `-1`, Right/Down `1`) and prevent default; `Enter` or ` ` prevent default and pick `hud.focusedMenuItem()` if any; other keys do nothing. Keyup is never touched. Opening disarms, builds `menuItems(content, view, client.mode)`, shows it, and subscribes to `changedata-view` to redraw while open; closing unsubscribes, disarms, blurs the active element and calls `hud.showMenu(null)`. `pick(id)`: ignore a disabled or unknown id; if `confirm` and the id is not armed within `ARM_MS`, arm it (redraw, and a timer redraws when it lapses); else fire: `reload()` for the reload act, `client.send(cmd)` otherwise, then close. Returns the uninstall function, and installing again removes the earlier install first (as `installHotkeys` does).
 
 - [ ] **Step 1: Write the failing tests**
 
-`tests/menu.test.ts` (`// @vitest-environment happy-dom`), with a fake game `{ registry: { get, events: { on, off } } }`, a fake client `{ send: vi.fn(), mode: 'online' }`, a real `Hud` on a root in `document.body`, and a `reload = vi.fn()`; `view` is a lobby `HostView` fixture unless a test sets another. Key presses: `window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))`.
+`tests/menu.test.ts` (`// @vitest-environment happy-dom`), with a fake game `{ registry: { get, events: { on, off } } }`, a fake client `{ send: vi.fn(), mode: 'online', onStatus: vi.fn((cb) => { status = cb; return () => {}; }) }` (the tests call `status('open')` after install unless they say otherwise), a real `Hud` on a root in `document.body`, and a `reload = vi.fn()`; `view` is a lobby `HostView` fixture unless a test sets another. Key presses: `window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))`.
 
 ```ts
 it('lists the actions and the stages for the lobby online', () => {
-  const m = menuItems(c, lobbyView, 'online');
+  const m = menuItems(c, lobbyView, 'online', 'open');
   expect(m.actions.map((a) => [a.id, a.label, a.enabled, a.confirm])).toEqual([
     ['restart', 'Restart the round', false, true], ['lobby', 'Back to the lobby', false, true], ['reload', 'Reload the page', true, false]]);
   expect(m.actions[2].hint).toBe('The same room and screen come back.');
@@ -345,14 +363,19 @@ it('lists the actions and the stages for the lobby online', () => {
   expect(m.stages.map((s) => s.act)).toEqual([0, 1, 2, 3, 4].map((stage) => ({ kind: 'cmd', cmd: { k: 'goto', stage } })));
   expect(m.stages.every((s) => s.enabled && s.confirm)).toBe(true);
 });
-it('names the round to restart and sends goto for it; offline the reload asks twice', () => {
-  const m = menuItems(c, { ...lobbyView, phase: 'reveal', round: 2 }, 'offline');
+it('names the round to restart and sends goto for it; offline the reload is disabled and says why', () => {
+  const m = menuItems(c, { ...lobbyView, phase: 'reveal', round: 2 }, 'offline', 'open');
   expect(m.actions[0]).toMatchObject({ label: 'Restart round 3', enabled: true, act: { kind: 'cmd', cmd: { k: 'goto', stage: 2 } } });
   expect(m.actions[1]).toMatchObject({ enabled: true, act: { kind: 'cmd', cmd: { k: 'reset' } } });
-  expect(m.actions[2]).toMatchObject({ hint: 'Offline mode starts over.', confirm: true, act: { kind: 'reload' } });
+  expect(m.actions[2]).toMatchObject({ enabled: false, hint: 'Offline mode starts over on a reload. Use Back to the lobby.', act: { kind: 'reload' } });
+});
+it('online with the link down, the reload asks twice and says it needs the network', () => {
+  for (const link of ['closed', 'gone', null] as const) {
+    expect(menuItems(c, lobbyView, 'online', link).actions[2]).toMatchObject({ enabled: true, confirm: true, hint: 'Needs the network. Without it the page is lost.' });
+  }
 });
 it('with no view yet only the reload is enabled', () => {
-  const m = menuItems(c, null, 'online');
+  const m = menuItems(c, null, 'online', 'open');
   expect([...m.actions, ...m.stages].filter((i) => i.enabled).map((i) => i.id)).toEqual(['reload']);
 });
 it('M opens with nothing focused, Esc closes, and M typed into a field does nothing', () => {
@@ -412,11 +435,15 @@ it('the arrows walk the enabled buttons, wrapping, and Enter presses the focused
   press('Enter'); press('Enter');
   expect(send).toHaveBeenCalledWith({ k: 'goto', stage: 4 });
 });
-it('reload fires at once online and calls the reload given, and a click on the scrim closes', () => {
+it('reload fires at once while the link is up, asks twice once it drops, and a click on the scrim closes', () => {
   press('m');
   (root.querySelector('[data-menu-item=reload]') as HTMLButtonElement).click();
   expect(reload).toHaveBeenCalledTimes(1);
+  status('closed');
   press('m');
+  (root.querySelector('[data-menu-item=reload]') as HTMLButtonElement).click();
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(root.querySelector('[data-menu-item=reload]')!.hasAttribute('data-armed')).toBe(true);
   (root.querySelector('.hud-menu') as HTMLElement).click();
   expect(root.querySelector('[role=dialog]')).toBeNull();
 });
