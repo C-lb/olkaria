@@ -240,6 +240,7 @@ git commit -m "feat: how-to-play slides drawn by the HUD from the case content"
 **Files:**
 - Modify: `host/howto.ts` (add `installHowTo`)
 - Modify: `host/main.ts` (install order: hotkeys, how-to, menu)
+- Modify: `host/hud/HowTo.ts` (`HowToArgs` without `onClose`)
 - Modify: `host/hud/Hud.ts` (the lobby's third keycap; the `KEYS` row)
 - Modify: `host/hud/hud.css` (`.keys` grid rows 8)
 - Test: `tests/howto.test.ts`, `tests/hud.test.ts`
@@ -352,7 +353,7 @@ Expected: `installHowTo` is not exported; the keycap and key-map counts fail.
 
 - [ ] **Step 3: Keys**
 
-`host/howto.ts`: `installHowTo` per the Interfaces, with a module-level `uninstall` as `menu.ts` has. State: `index: number | null` (null is closed). `draw()` calls `hud.showHowTo({ slide: slides[index], index, count: slides.length, onNext: next, onClose: close })`; `next()` closes on the last slide; `back()` stays at 0; `close()` blurs a focused element and calls `hud.showHowTo(null)`. The listener: closed, a chord returns untouched, and only `?` without `repeat`, `typing()` or `hud.menuOpen()` opens, with `stopPropagation`; open, M or m without a chord or `repeat` closes and returns without stopping; every other keydown, chords included, gets `stopImmediatePropagation()` (so the menu's listener on the same target never runs and Phaser never sees Ctrl+Space), after which a chord returns with no `preventDefault` (Cmd+R still reloads) and the keys named get `preventDefault()` and their action, ignoring `repeat`. `dispose` closes, removes the listener and clears `uninstall`.
+`host/howto.ts`: `installHowTo` per the Interfaces, with a module-level `uninstall` as `menu.ts` has. State: `index: number | null` (null is closed). `draw()` calls `hud.showHowTo({ slide: slides[index], index, count: slides.length, onNext: next })`; `HowToArgs` loses `onClose` (the keycaps are hints, not controls, so the panel never calls it: remove it from `host/hud/HowTo.ts` and from the hud tests' `showHowTo` calls); `next()` closes on the last slide; `back()` stays at 0; `close()` blurs a focused element and calls `hud.showHowTo(null)`. The listener: closed, a chord returns untouched, and only `?` without `repeat`, `typing()` or `hud.menuOpen()` opens, with `stopPropagation`; open, M or m without a chord or `repeat` closes and returns without stopping; every other keydown, chords included, gets `stopImmediatePropagation()` (so the menu's listener on the same target never runs and Phaser never sees Ctrl+Space), after which a chord returns with no `preventDefault` (Cmd+R still reloads) and the keys named get `preventDefault()` and their action, ignoring `repeat`. `dispose` closes, removes the listener and clears `uninstall`.
 
 `host/main.ts`: `const howto = installHowTo(hud, content);` between `installHotkeys` and `installMenu`, with a comment saying the order is what lets the how-to swallow keys before the menu; update the header comment to name the how-to.
 
