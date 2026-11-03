@@ -722,7 +722,7 @@ git commit -m "feat: lean onboarding copy on the phone; the unreachable note poi
 
 **Interfaces:**
 - Consumes: `figureSvg` from Task 5, `ROLES`, `LobbyArgs.classNames` and `roleCounts`.
-- Produces: `LobbyArgs` without `code`, `smith` and `tanui`; "connecting" is now `!offline && joinUrl === ''`. Markup of `showLobby`: `section.panel.lobby` holding `header.lobby-head` (`h1.title.lobby-title` with `aria-label` TITLE, holding `span.lobby-name` "Olkaria" and `span.lobby-sub` "the Deadlock"; then Task 4's `ul.lobby-keys`, unchanged), `div.lobby-body` (the square: `img.qr`, or `div.join` with the offline notice or "Connecting to the room" as today; `div.stack.lobby-info`: when `joinUrl` is given, `p.eyebrow` "Scan, or go to" and `p.join-url` with `span.join-host` (the host, scheme stripped) and `span.join-path` (the path, "/j/ABCD"); always `p.joined` with `b.joined-n` the count and `span.joined-word` " joined", then `ul.counts` of four `li.count` in `ROLES` order, each the figure through a holder (`figureSvg(role, 1)`), `span.count-name` (the plural class name) and `b` (the count); then the `div.stack` of recent names as today). No quote anywhere in the lobby.
+- Produces: `LobbyArgs` without `code`, `smith` and `tanui`; "connecting" is now `!offline && joinUrl === ''`. Markup of `showLobby`: `section.panel.lobby` holding `header.lobby-head` (`h1.title.lobby-title` with `aria-label` TITLE, holding `span.lobby-name` "Olkaria" and `span.lobby-sub` "the Deadlock"; then the `ul.lobby-keys` of Task 4 and the how-to plan, three keycaps, unchanged), `div.lobby-body` (the square: `img.qr`, or `div.join` with the offline notice or "Connecting to the room" as today; `div.stack.lobby-info`: when `joinUrl` is given, `p.eyebrow` "Scan, or go to" and `p.join-url` with `span.join-host` (the host, scheme stripped) and `span.join-path` (the path, "/j/ABCD"); always `p.joined` with `b.joined-n` the count and `span.joined-word` " joined", then `ul.counts` of four `li.count` in `ROLES` order, each the figure through a holder (`figureSvg(role, 1)`), `span.count-name` (the plural class name) and `b` (the count); then the `div.stack` of recent names as today). No quote anywhere in the lobby.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -743,7 +743,7 @@ it('the lobby shows the address in two lines, the count as a hero and the four c
   expect(root.querySelector('.lobby-title .lobby-name')!.textContent).toBe('Olkaria');
   expect(root.querySelector('.lobby-title .lobby-sub')!.textContent).toBe('the Deadlock');
   expect(root.querySelector('.quote')).toBeNull();
-  expect(root.querySelectorAll('.lobby-key')).toHaveLength(2);
+  expect(root.querySelectorAll('.lobby-key')).toHaveLength(3);   // Space, Esc and ? (the how-to plan)
 });
 it('offline and connecting lobbies keep the tiles but show no address', () => {
   const root = document.createElement('div'); const hud = new Hud(root);
