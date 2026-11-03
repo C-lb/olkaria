@@ -5,6 +5,16 @@
    the Discuss line and the rally flash only), option colours only on letter badges and bars.
    Every colour and font below comes from the token block; nothing else in the file names one. */
 
+/* The title face, bundled so the projector needs no network (host/art/assets/fonts, OFL 1.1, CREDITS.md). It is the
+   face --font-title names: one variable file for every weight the HUD sets, 400 to 700. */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('../art/assets/fonts/PixelifySans-Variable.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
 

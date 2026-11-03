@@ -8,6 +8,7 @@
 import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import type { HostView } from '../../shared/types';
+import { addBackdrop } from '../art/backdrop';
 import { PALETTE } from '../art/placeholders';
 import type { Hud } from '../hud/Hud';
 import { standAt, Trail } from '../levels/party';
@@ -103,6 +104,7 @@ export class Travel extends Phaser.Scene {
     const height = this.scale.height;
     this.physics.world.setBounds(0, 0, width, height);
     this.cameras.main.setBounds(0, 0, width, height);
+    addBackdrop(this, width);
     const { road, ledges } = this.lay(height);
     this.add.image(gateX, GROUND_Y, 'gate').setOrigin(0.5, 1).setDepth(DEPTH.gate);
     const column = gateColumn(this.segment);

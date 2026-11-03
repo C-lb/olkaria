@@ -26,13 +26,17 @@ export const PALETTE = {
   white: '#ffffff',   // the digits font, so a tint gives the exact colour
 } as const;
 
-/** The characters of the `digits` bitmap font: damage numbers, and enough for an "HP 100/400" label. */
-export const DIGIT_CHARS = '0123456789+-.%/ HP';
+/**
+ * The characters of the `digits` bitmap font: damage numbers, enough for an "HP 100/400" label, and the M and W of the
+ * Fog of Demand's "20 MW" (bosses.ts). M and W fill their whole 5 px cell, so a label that sets them side by side adds
+ * a pixel of letter spacing.
+ */
+export const DIGIT_CHARS = '0123456789+-.%/ HPMW';
 
 type Rect = readonly [x: number, y: number, w: number, h: number, colour: string];
 
 /** Draws whole-pixel shapes on a texture's canvas. */
-class Painter {
+export class Painter {
   constructor(readonly ctx: CanvasRenderingContext2D) {}
 
   rects(list: readonly Rect[]): void {
@@ -73,7 +77,8 @@ class Painter {
   }
 }
 
-function texture(scene: Phaser.Scene, key: string, width: number, height: number, draw: (p: Painter) => void): void {
+/** Paints a canvas texture once: a key that already exists, a loaded asset say, is left alone. */
+export function texture(scene: Phaser.Scene, key: string, width: number, height: number, draw: (p: Painter) => void): void {
   if (scene.textures.exists(key)) return;
   const tex = scene.textures.createCanvas(key, width, height);
   if (tex === null) return;
@@ -213,7 +218,7 @@ function gate(p: Painter): void {
   p.rects([[2, 16, 2, 3, P.amber], [28, 16, 2, 3, P.amber], [2, 19, 2, 3, P.wood], [28, 19, 2, 3, P.wood]]);
 }
 
-// ---- The digits font: 4 x 6 glyphs in 5 x 6 cells --------------------------------------------------------
+// ---- The digits font: 4 x 6 glyphs (M and W 5 x 6) in 5 x 6 cells ----------------------------------------
 
 const GLYPHS: Record<string, readonly string[]> = {
   '0': ['.##.', '#..#', '#..#', '#..#', '#..#', '.##.'],
@@ -234,6 +239,8 @@ const GLYPHS: Record<string, readonly string[]> = {
   ' ': ['....', '....', '....', '....', '....', '....'],
   H: ['#..#', '#..#', '####', '#..#', '#..#', '#..#'],
   P: ['###.', '#..#', '#..#', '###.', '#...', '#...'],
+  M: ['#...#', '##.##', '#.#.#', '#...#', '#...#', '#...#'],
+  W: ['#...#', '#...#', '#...#', '#.#.#', '##.##', '#...#'],
 };
 const CELL_W = 5;
 const CELL_H = 6;

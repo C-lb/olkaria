@@ -8,6 +8,7 @@ import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import { shares } from '../../shared/scoring';
 import type { Callout, DamageResult, HostView, Phase, Role } from '../../shared/types';
+import { buildBoss, type Boss, type BossId } from '../art/bosses';
 import { PALETTE } from '../art/placeholders';
 import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../hud/Hud';
 import type { RoomClient } from '../net';
@@ -24,7 +25,7 @@ const hex = (colour: string): number => Number.parseInt(colour.slice(1), 16);
 /** The phases this scene draws. In any other the router is about to move on. */
 const PHASES: readonly Phase[] = ['travel', 'vote', 'locked', 'reveal'];
 /** The boss of each round, by round index. */
-const BOSSES = ['boss-grid', 'boss-debt', 'boss-fog', 'boss-core'] as const;
+const BOSSES: readonly BossId[] = ['grid', 'debt', 'fog', 'core'];
 
 /** The top of the arena floor, where everyone stands: just above the HUD's status line, so the cards never hide the party. */
 const GROUND_Y = 84;
@@ -71,7 +72,7 @@ export class Battle extends Phaser.Scene {
   private content!: CaseContent;
   private hud!: Hud;
 
-  private boss!: Phaser.GameObjects.Image;
+  private boss!: Boss;
   private sprites = new Map<Role, Phaser.GameObjects.Image>();
   private homes = new Map<Role, number>();
   private hp!: HpBar;
@@ -161,7 +162,7 @@ export class Battle extends Phaser.Scene {
     // One row of floor tiles over flat stone: stacked rows of the tile would stripe the lower canvas like a wall.
     this.add.tileSprite(0, GROUND_Y, 320, FLOOR_H, 'tile-ground').setOrigin(0, 0).setDepth(0);
     this.add.rectangle(0, GROUND_Y + FLOOR_H, 320, 180 - GROUND_Y - FLOOR_H, hex(PALETTE.stoneDeep)).setOrigin(0, 0).setDepth(0);
-    this.boss = this.add.image(BOSS_X, GROUND_Y, BOSSES[Math.min(BOSSES.length - 1, Math.max(0, this.round))]).setOrigin(0.5, 1).setDepth(10);
+    this.boss = buildBoss(this, BOSSES[Math.min(BOSSES.length - 1, Math.max(0, this.round))], BOSS_X, GROUND_Y).setDepth(10);
     this.idle();
     const stand = (role: Role, x: number): void => {
       this.homes.set(role, x);
@@ -173,10 +174,9 @@ export class Battle extends Phaser.Scene {
     this.hp = new HpBar(this, HP_X, HP_Y, HP_W, roundHp, this.content.rounds.length * roundHp).setDepth(30);
   }
 
-  /** The boss breathes, a pixel up and down, whenever nothing else moves it. */
+  /** The boss's idle loop (bosses.ts), from where it stands; again after a skip has killed every tween. */
   private idle(): void {
-    this.boss.setPosition(BOSS_X, GROUND_Y);
-    this.tweens.add({ targets: this.boss, y: GROUND_Y - 1, duration: 900, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+    this.boss.idle();
   }
 
   /** Everyone back where they stand, untinted, and no damage numbers left. Leaves the boss's breathing alone. */
@@ -188,8 +188,7 @@ export class Battle extends Phaser.Scene {
     this.stepped = null;
     for (const n of this.numbers) n.destroy();
     this.numbers.clear();
-    this.boss.clearTint();
-    this.boss.x = BOSS_X;
+    this.boss.reset();
   }
 
   /** The class of the student called out steps forward; the one before steps back. Null steps everyone back. */
@@ -425,13 +424,9 @@ export class Battle extends Phaser.Scene {
     });
   }
 
-  /** The boss flashes and recoils. */
+  /** The boss flashes bone and recoils (bosses.ts). */
   private hitBoss(): void {
-    this.boss.setTintFill(hex(PALETTE.bone));
-    this.tweens.add({
-      targets: this.boss, x: BOSS_X + 3, duration: 60, yoyo: true, ease: 'Quad.easeOut',
-      onComplete: () => { this.boss.clearTint(); this.boss.x = BOSS_X; },
-    });
+    this.boss.hit();
   }
 
   /**
