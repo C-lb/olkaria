@@ -1,0 +1,243 @@
+{
+  "eyebrow": "",
+  "title": "Olkaria: Deadlock Character Sheet",
+  "lead": "",
+  "partyHeading": "MEET YOUR PARTY",
+  "roles": [
+    {
+      "id": "citizen",
+      "stakeholder": "Citizens, households, Olkaries communities represent:",
+      "className": "Family Rogue",
+      "who": "",
+      "strike": " Round 1: What will Kenyans accept on power?"
+    },
+    {
+      "id": "government",
+      "stakeholder": "Kenyan Government & Treasury represent:",
+      "className": "Kenyan Knight",
+      "who": "",
+      "strike": " Round 2: What can the Government offer instead of a guarantee?"
+    },
+    {
+      "id": "business",
+      "stakeholder": "Local businesses, banks, startups represent:",
+      "className": "Busy Bard",
+      "who": "",
+      "strike": " Round 3: What can Kenya's local businesses commit?"
+    },
+    {
+      "id": "microsoft",
+      "stakeholder": "Microsoft & G42 represent:",
+      "className": "Page Wizard",
+      "who": "",
+      "strike": " Round 4: What should Microsoft do?"
+    }
+  ],
+  "briefHeading": "PREAMBLE",
+  "briefing": [
+    "Microsoft, with G42, wants to build a US$1 billion data centre at Olkaria, Kenya's geothermal steam fields, with a headline of 1 GW. Brad Smith called it the “single biggest step to advance the availability of digital technology”. Today the project is deadlocked. President Ruto has said that switching it on would “shut off power for half the country”, and some lines already run above 120% of their design capacity. The Treasury will not sign the anchor-tenant guarantee Microsoft wants. Kenya's whole data-centre market is about 20 MW.",
+    "PS John Tanui says the project is “not failed or withdrawn” but “requires some structuring”. Your party's job is to find that structure. In rounds 1 to 3 one stakeholder sets its terms; in round 4 Microsoft decides."
+  ],
+  "stepsHeading": "HOW-TO-PLAY",
+  "steps": [
+    "The narration sets the scene and names the lead character.",
+    "Everyone votes on their phone within 2 minutes, or until everyone has voted. The lead characters' votes contribute half the attack while the rest of the party's are the other half.",
+    "The vote locks. The facilitator will call out up to 4 voters, each for a different option, to defend their pick in one breath. A defence the room finds convincing earns a rally strike.",
+    "The party strikes. The damage shows on the boss, number by number.",
+    "The debrief shows what each option did, then one question to argue over at your table."
+  ],
+  "scoringHeading": "SCORING",
+  "scoring": [
+    {
+      "k": "Damage.",
+      "text": "How well the case's evidence supports the options the party chose. Each boss has 100 HP. Below 180 in total, the Deadlock holds."
+    },
+    {
+      "k": "Round 4.",
+      "text": "The whole party casts with the Wizards. Its options score on how well they fit what the party chose in rounds 1 to 3. The majority option decides the ending."
+    },
+    {
+      "k": "Your points.",
+      "text": "Your option's evidence weight, a speed bonus for voting early, 10 more when your class leads the round, and 10 for answering a call-out (30 if you win the rally). "
+    }
+  ],
+  "strikesHeading": "ROUNDS",
+  "strikesIntro": "",
+  "rounds": [
+    {
+      "label": "Round 1: Grid Wyrm. Rogues (Citizen) lead; the rest of the party supports.",
+      "question": "What will Kenyans accept on power?",
+      "narration": "Olkaria steam fields. The Grid Wyrm coils around the plants that make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced hundreds of Maasai families. Rogues, this is your strike: what will Kenyans accept?",
+      "optionsLabel": "The options",
+      "options": [
+        {
+          "letter": "A",
+          "screen": "Households first. No data-centre load until household and industrial supply is secure; the deal waits for new generation.",
+          "phone": "On your phone: Households first, deal waits"
+        },
+        {
+          "letter": "B",
+          "screen": "Accept a 60 to 100 MW first phase, about 4% of peak demand, on condition that new generation is tied to every expansion.",
+          "phone": "On your phone: Yes to 60 to 100 MW, tied"
+        },
+        {
+          "letter": "C",
+          "screen": "Accept the full 1 GW for the jobs, the skills lab and the regional hub.",
+          "phone": "On your phone: Full 1 GW for the hub"
+        },
+        {
+          "letter": "D",
+          "screen": "Only with a community deal: Olkaria communities get compensation and a share of the benefit before any expansion.",
+          "phone": "On your phone: Community deal first"
+        }
+      ],
+      "factsLabel": "Facts in play, the three exhibits on the road to this boss",
+      "facts": [
+        {
+          "text": "Olkaria generates about 950 MW",
+          "source": "James, 2026"
+        },
+        {
+          "text": "Record peak demand 2,444 MW, January 2026",
+          "source": "James, 2026"
+        },
+        {
+          "text": "1 GW = about 31% of installed capacity",
+          "source": "Exhibit 2"
+        }
+      ]
+    },
+    {
+      "label": "Round 2: Debt Golem. Knights (Kenyan Government) lead; the rest of the party supports.",
+      "question": "What does the Government offer instead of a guarantee?",
+      "narration": "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?",
+      "optionsLabel": "The options",
+      "options": [
+        {
+          "letter": "A",
+          "screen": "Sign the anchor-tenant guarantee. The hub is worth the risk.",
+          "phone": "On your phone: Sign the guarantee"
+        },
+        {
+          "letter": "B",
+          "screen": "No guarantee of any kind. Microsoft can build on market terms or not at all.",
+          "phone": "On your phone: No guarantee, market terms"
+        },
+        {
+          "letter": "C",
+          "screen": "KenGen signs a smaller power and capacity commitment for a 60 MW phase, kept off the national balance sheet.",
+          "phone": "On your phone: KenGen signs, 60 MW"
+        },
+        {
+          "letter": "D",
+          "screen": "Be the customer, not the guarantor: move government services to the local region under the Cloud Policy, paid from annual budgets.",
+          "phone": "On your phone: Government as customer"
+        }
+      ],
+      "factsLabel": "Facts in play, the three exhibits on the road to this boss",
+      "facts": [
+        {
+          "text": "Public debt about 68% of GDP, June 2025",
+          "source": "Ecofin Agency, 2025"
+        },
+        {
+          "text": "48.5% of ordinary revenue goes to debt service",
+          "source": "People Daily, 2025"
+        },
+        {
+          "text": "PPP liabilities need Parliament's approval, September 2026",
+          "source": "Capital FM, 2026"
+        }
+      ]
+    },
+    {
+      "label": "Round 3: Fog of Demand. Bards (Local Businesses) lead; the rest of the party supports.",
+      "question": "What do Kenya's businesses commit?",
+      "narration": "The Fog. Microsoft wants proof that Kenyans will pay before it builds. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?",
+      "optionsLabel": "The options",
+      "options": [
+        {
+          "letter": "A",
+          "screen": "Commit now. Safaricom, the banks and the large startups sign letters of intent to move workloads to a Nairobi region if price and latency beat South Africa.",
+          "phone": "On your phone: Sign letters of intent"
+        },
+        {
+          "letter": "B",
+          "screen": "Partner, don't just buy. EcoCloud and local developers co-build a 60 MW first phase and sell capacity to Kenyan firms as they migrate.",
+          "phone": "On your phone: Co-build 60 MW with EcoCloud"
+        },
+        {
+          "letter": "C",
+          "screen": "Wait and compare. Keep workloads with Oracle at iXAfrica, Huawei and South Africa until Azure's local pricing is known.",
+          "phone": "On your phone: Wait, compare providers"
+        },
+        {
+          "letter": "D",
+          "screen": "Skills first. No commitments until the innovation lab and training promised in 2024 replace the development centre that is closing.",
+          "phone": "On your phone: Skills lab before contracts"
+        }
+      ],
+      "factsLabel": "Facts in play, the three exhibits on the road to this boss",
+      "facts": [
+        {
+          "text": "Kenya's data-centre market is about 20 MW",
+          "source": "The Analyst, 2026b"
+        },
+        {
+          "text": "Market worth US$266 million in 2025, US$805 million by 2031",
+          "source": "Semafor, 2026"
+        },
+        {
+          "text": "97.5% of online Kenyans vs 8.7% of all Kenyans used AI",
+          "source": "Whitehead, 2026"
+        }
+      ]
+    },
+    {
+      "label": "Round 4: The core. Wizards (Microsoft) lead, and the whole party casts with them.",
+      "question": "What should Microsoft do?",
+      "narration": "The Deadlock's core is exposed. Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. Wizards, this is your strike, and the whole party casts with you: what should Microsoft do?",
+      "optionsLabel": "The options",
+      "options": [
+        {
+          "letter": "A",
+          "screen": "Proceed with the full 1 GW build, taking a larger stake and securing dedicated generation.",
+          "phone": "On your phone: Full 1 GW build"
+        },
+        {
+          "letter": "B",
+          "screen": "Build a 24 to 60 MW facility now and expand in stages as contracts and power arrive.",
+          "phone": "On your phone: Build small, expand later"
+        },
+        {
+          "letter": "C",
+          "screen": "Pause Kenya. Put the capital into South Africa and return when power, finances and demand improve.",
+          "phone": "On your phone: Wait, invest elsewhere"
+        },
+        {
+          "letter": "D",
+          "screen": "Become the tenant. Local partners such as EcoCloud build and own the facility; Microsoft anchors it with Azure capacity.",
+          "phone": "On your phone: Partners build, we rent"
+        }
+      ],
+      "factsLabel": "Facts in play, the three exhibits on the road to this boss",
+      "facts": [
+        {
+          "text": "US$1 billion is 0.6% of Microsoft's FY2027 capex",
+          "source": "Exhibit 4"
+        },
+        {
+          "text": "Nairobi development centre closing, October 2026",
+          "source": "Namunwa, 2026"
+        },
+        {
+          "text": "Microsoft committed US$329 million more to South Africa, April 2026",
+          "source": "Kamau, 2026"
+        }
+      ]
+    }
+  ],
+  "planHeading": "",
+  "planIntro": "",
+  "planLines": 4
+}

@@ -109,12 +109,14 @@ def model(content: dict) -> dict:
         "structuring”. Your party's job is to find that structure. In rounds 1 to 3 one stakeholder sets its "
         "terms; in round 4 Microsoft decides.",
     ]
+    secs = s["voteSeconds"]
+    window = f"{secs // 60} minute{'s' if secs // 60 != 1 else ''}" if secs % 60 == 0 else f"{secs} seconds"
     steps = [
         "The narration sets the scene and names the lead class.",
-        f"Everyone votes on their phone within {s['voteSeconds']} seconds. The lead class's votes are half the "
-        "attack; the rest of the party's are the other half.",
-        "The vote locks. The facilitator may call out a voter from the lead class to defend their pick in one "
-        "breath. A defence the room finds convincing earns a rally strike.",
+        f"Everyone votes on their phone within {window}. The vote closes as soon as everyone has voted. The lead "
+        "class's votes are half the attack; the rest of the party's are the other half.",
+        f"The vote locks. The facilitator calls out up to {s['maxCallouts']} voters, each for an option the round has "
+        "not heard yet, to defend their pick in one breath. A defence the room finds convincing earns a rally strike.",
         "The party strikes. The damage shows on the boss, number by number.",
         "The debrief shows what each option did, then one question to argue over at your table.",
     ]
