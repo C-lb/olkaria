@@ -169,3 +169,24 @@ it('an effect plays from now and a hit ducks the music', () => {
   );
   expect(vi.getTimerCount()).toBe(0); // effects alone start no scheduler
 });
+
+it('a note the voicer refuses is dropped: the scheduler keeps going and nothing escapes into the game loop', () => {
+  const key = (n: VoicerNote) => `${n.start.toFixed(6)} ${n.wave} ${n.hz}`;
+  // Refused on the first note of the theme (inside play) and again on a note scheduled by a later tick.
+  let calls = 0;
+  voicer.note.mockImplementation(() => {
+    calls += 1;
+    if (calls === 1 || clock > 0.5) {
+      if (clock > 0.5) voicer.note.mockImplementation(() => {});
+      throw new Error('bad note');
+    }
+  });
+  const chip = new Chip(voicer);
+  expect(() => chip.play('lobby')).not.toThrow();
+  expect(() => tick(30)).not.toThrow();
+  const after = notes().filter((n) => n.start > 1);
+  expect(after.length).toBeGreaterThan(0); // still scheduling after both refusals
+  const keys = notes().map(key);
+  expect(new Set(keys).size).toBe(keys.length); // the refused notes were not handed over again
+  chip.stop();
+});

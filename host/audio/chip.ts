@@ -273,7 +273,19 @@ export class Chip {
     return this.origin + beat * this.secondsPerBeat();
   }
 
+  /**
+   * Tops the look-ahead up. It runs from a timer, outside the facade's guard, so nothing it throws leaves it: a note the
+   * voicer refuses is dropped (schedule) and the schedule moves on past it, and anything else waits for the next tick.
+   */
   private tick(): void {
+    try {
+      this.advance();
+    } catch {
+      // the next tick tries again from where the schedule reached
+    }
+  }
+
+  private advance(): void {
     if (this.current === null) return;
     const now = this.voicer.now();
     // Fell behind (a throttled timer in a background tab): pick up from now rather than play the backlog at once.
@@ -286,7 +298,11 @@ export class Chip {
         this.schedule(this.reached, p.atBeat);
         const at = this.timeOf(p.atBeat);
         // Called once the old theme is fully handed over, so its last notes before the boundary are released too.
-        this.voicer.releaseMusic(at);
+        try {
+          this.voicer.releaseMusic(at);
+        } catch {
+          // the old notes run to their own end; the switch still lands
+        }
         this.current = p.theme;
         this.tension = p.tension;
         this.origin = at;
@@ -303,7 +319,11 @@ export class Chip {
     if (this.current === null || toBeat <= fromBeat) return;
     const spb = this.secondsPerBeat();
     for (const e of stepsBetween(THEMES[this.current], fromBeat, toBeat, this.tension)) {
-      this.voicer.note({ bus: 'music', wave: e.wave, hz: e.hz, gain: e.gain, start: this.origin + e.beat * spb, seconds: e.beats * spb });
+      try {
+        this.voicer.note({ bus: 'music', wave: e.wave, hz: e.hz, gain: e.gain, start: this.origin + e.beat * spb, seconds: e.beats * spb });
+      } catch {
+        // a refused note is a rest; the ones after it still play
+      }
     }
     this.reached = toBeat;
   }
