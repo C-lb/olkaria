@@ -6,8 +6,8 @@
 import type { HowToSlide, Party } from '../howto';
 import { badge, figure, h, tint, type Kid } from './Hud';
 
-/** The slide to draw, where it falls among the slides, what a click on the slide does, and what closes the how-to. */
-export interface HowToArgs { slide: HowToSlide; index: number; count: number; onNext: () => void; onClose: () => void }
+/** The slide to draw, where it falls among the slides, and what a click on the slide does. */
+export interface HowToArgs { slide: HowToSlide; index: number; count: number; onNext: () => void }
 
 /** The class figures at three canvas pixels to each of their pixels; the stylesheet sizes them to match. */
 const FIGURE_SCALE = 3;
@@ -61,10 +61,12 @@ function body(s: HowToSlide): Kid[] {
         ...s.lines.map((text, i) => line(text, i)),
       ];
     case 'lead':
-      // The four rise in together, then the lead class steps forward.
+      // The four rise in together, then the lead class steps forward. The split rises in after the lines under it,
+      // which say what it shows.
       return [
         h('ul', { class: 'howto-party' }, ...s.party.map((m) => member(m, m.role === s.lead ? 'howto-in howto-lead' : 'howto-in'))),
-        h('div', { class: 'howto-split' }, h('span', { class: 'howto-half is-lead' }, s.halves[0]), h('span', { class: 'howto-half' }, s.halves[1])),
+        staggered(h('div', { class: 'howto-split howto-in' },
+          h('span', { class: 'howto-half is-lead' }, s.halves[0]), h('span', { class: 'howto-half' }, s.halves[1])), s.lines.length + 1),
         ...s.lines.map((text, i) => line(text, i + 1)),
       ];
     case 'points':
@@ -82,15 +84,17 @@ function body(s: HowToSlide): Kid[] {
         line(s.line, s.chunks.length),
       ];
     case 'ending': {
+      // The lines, then the gauge filling, then the line under it; the gauge ends in its top score.
       const mark = (at: number, label: string): HTMLElement =>
         vars(h('span', { class: 'howto-mark' }, h('b', {}, String(at)), ` ${label}`), { '--at': percent(share(at, s.max)) });
       return [
         ...s.lines.map((text, i) => line(text, i)),
         h('div', { class: 'howto-gauge' },
-          vars(h('div', { class: 'howto-gaugefill howto-fill' }), { '--w': percent(share(s.fill, s.max)) }),
+          vars(h('div', { class: 'howto-gaugefill howto-fill' }), { '--w': percent(share(s.fill, s.max)), '--i': s.lines.length }),
           mark(s.fragile, 'Fragile'),
-          mark(s.decisive, 'Decisive')),
-        line(s.holds, s.lines.length),
+          mark(s.decisive, 'Decisive'),
+          h('b', { class: 'howto-end' }, String(s.max))),
+        line(s.holds, s.lines.length + 1),
       ];
     }
     case 'awards':

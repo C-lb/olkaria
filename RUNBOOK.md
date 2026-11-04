@@ -37,6 +37,8 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 
 ## The 12-minute run of show
 
+? opens How to play: eight slides, Space next, Esc closes. Show it while the phones join.
+
 | Time | Beat | On the projector | You |
 |---|---|---|---|
 | 0:00 to 1:30 | Lobby | QR, code, address, counts per class, avatars dropping in | "Tables of four. Scan, type your name, pick your role (one of each per table), then type your table number, just the number." Space starts. |
@@ -75,6 +77,7 @@ The times above are for a 30 s vote and one call-out. A vote of up to 2 min and 
 | B | Add 30 bot votes, weighted toward the evidence |
 | H | Hide or show names in the lobby list and on the leaderboard |
 | F | Fullscreen on or off |
+| ? | How to play, eight slides; Space next, Esc closes |
 | Esc | Show or hide the key map. In fullscreen, Chrome takes Esc to leave fullscreen. |
 | Shift+R twice | Within 3 s: back to the lobby. Players stay; votes and scores go. |
 | Cmd+R | Reload. Needs the network. The same room and screen come back, except that the narration comes back as the start of travel, and a strike in progress comes back as its debrief. |

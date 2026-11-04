@@ -120,6 +120,7 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['A', 'Pause or resume the walk'],
   ['N', 'Skip to the arena in travel'],
   ['Shift+R twice', 'Reset to the lobby'],
+  ['?', 'How to play'],
   ['M or Esc', 'This menu'],
 ];
 
@@ -311,7 +312,7 @@ export class Hud {
       h('header', { class: 'lobby-head' },
         h('div', { class: 'stack' }, h('h1', { class: 'title' }, TITLE), quote(a.smith, SPEAKERS.smith)),
         // Esc opens the menu as M does; the lobby names Esc (spec 3.1).
-        h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('Esc', 'Shows hotkeys'))),
+        h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('Esc', 'Shows hotkeys'), keycap('?', 'How to play'))),
       h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...room, counts), recent),
       quote(a.tanui, SPEAKERS.tanui)));
   }

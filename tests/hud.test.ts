@@ -100,11 +100,11 @@ describe('lobby', () => {
     expect(text(root, '.recent li')).toBe('<img src=x onerror=alert(1)>, Rogue');
   });
 
-  it('the lobby hint is two keycaps: Space to start, Esc for the hotkeys', () => {
+  it('the lobby hint is three keycaps: Space to start, Esc for the hotkeys, ? for how to play', () => {
     const { root, hud } = fresh();
     hud.showLobby(lobby());
     expect([...root.querySelectorAll('.lobby-key')].map((li) => [li.querySelector('kbd.key')!.textContent, li.querySelector('span')!.textContent]))
-      .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys']]);
+      .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys'], ['?', 'How to play']]);
     expect(root.querySelector('.lobby-hint')).toBeNull();
     expect(root.textContent).not.toContain('every key');
   });
@@ -448,8 +448,9 @@ describe('menu', () => {
     expect(text(root, '.menu-group + .menu-group > p.hint.menu-note')).toBe(stagesHint);
 
     const keys = [...root.querySelectorAll('.menu > .sep + ul.keys > .key-row')].map((row) => [...row.children].map((cell) => cell.textContent));
-    expect(keys).toHaveLength(14);
+    expect(keys).toHaveLength(15);
     expect(keys).toContainEqual(['Shift+R twice', 'Reset to the lobby']);
+    expect(keys).toContainEqual(['?', 'How to play']);
     expect(keys.at(-1)).toEqual(['M or Esc', 'This menu']);
     expect(root.textContent).not.toContain('Show or hide these keys');
 
@@ -529,8 +530,8 @@ const c = loadContent(raw);
 describe('how to play', () => {
   it('showHowTo draws one slide on a full-bleed dialog with the dots and the keycaps, restarts on each call, and null takes it down', () => {
     const root = document.createElement('div'); const hud = new Hud(root);
-    const slides = howtoSlides(c); const onNext = vi.fn(); const onClose = vi.fn();
-    hud.showHowTo({ slide: slides[2], index: 2, count: 8, onNext, onClose });
+    const slides = howtoSlides(c); const onNext = vi.fn();
+    hud.showHowTo({ slide: slides[2], index: 2, count: 8, onNext });
     const dialog = root.querySelector('.hud-howto')!;
     expect(dialog.getAttribute('role')).toBe('dialog');
     expect(dialog.getAttribute('aria-label')).toBe('How to play');
@@ -544,7 +545,7 @@ describe('how to play', () => {
     expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['Esc', 'Close']]);
     (dialog.querySelector('.howto-slide') as HTMLElement).click();
     expect(onNext).toHaveBeenCalledTimes(1);
-    hud.showHowTo({ slide: slides[7], index: 7, count: 8, onNext, onClose });
+    hud.showHowTo({ slide: slides[7], index: 7, count: 8, onNext });
     expect(root.querySelectorAll('.hud-howto')).toHaveLength(1);
     expect([...root.querySelectorAll('.howto-key span')].map((s) => s.textContent)).toEqual(['Close', 'Close']);
     hud.showLobby(lobby({}));   // a screen change under the dialog
@@ -556,22 +557,35 @@ describe('how to play', () => {
     const root = document.createElement('div'); const hud = new Hud(root);
     const slides = howtoSlides(c); const noop = () => {};
     for (const [i, slide] of slides.entries()) {
-      hud.showHowTo({ slide, index: i, count: slides.length, onNext: noop, onClose: noop });
+      hud.showHowTo({ slide, index: i, count: slides.length, onNext: noop });
       expect(root.querySelector('.howto-slide')!.getAttribute('data-kind')).toBe(slide.kind);
       expect(root.querySelector('.howto-slide .eyebrow')!.textContent).toBe(slide.eyebrow);
     }
-    hud.showHowTo({ slide: slides[0], index: 0, count: 8, onNext: noop, onClose: noop });
+    hud.showHowTo({ slide: slides[0], index: 0, count: 8, onNext: noop });
     expect([...root.querySelectorAll('.howto-member svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
     expect(root.querySelector('.howto-name')!.textContent).toBe('Olkaria');
-    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop, onClose: noop });
+    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop });
     expect(root.querySelector('.howto-member.howto-lead svg.figure')!.getAttribute('data-role')).toBe('citizen');
-    hud.showHowTo({ slide: slides[5], index: 5, count: 8, onNext: noop, onClose: noop });
+    hud.showHowTo({ slide: slides[5], index: 5, count: 8, onNext: noop });
     expect(root.querySelectorAll('.howto-chunk')).toHaveLength(5);
     expect((root.querySelector('.howto-chunk') as HTMLElement).style.getPropertyValue('--w')).toBe('50%');
   });
+  it('the gauge ends in its top score, and the split and the gauge fill come in after the lines that explain them', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    const slides = howtoSlides(c); const noop = () => {};
+    const at = (el: Element | null): number => Number((el as HTMLElement).style.getPropertyValue('--i'));
+    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop });
+    const split = root.querySelector('.howto-split.howto-in');
+    expect(at(split)).toBeGreaterThan(Math.max(...[...root.querySelectorAll('.howto-line')].map(at)));
+    hud.showHowTo({ slide: slides[6], index: 6, count: 8, onNext: noop });
+    expect(text(root, '.howto-gauge > .howto-end')).toBe('400');
+    const [first, second, holds] = [...root.querySelectorAll('.howto-line')].map(at);
+    const fill = at(root.querySelector('.howto-gaugefill'));
+    expect([first < second, second < fill, fill < holds]).toEqual([true, true, true]);
+  });
   it('clear() leaves the how-to up, as it leaves the menu', () => {
     const root = document.createElement('div'); const hud = new Hud(root);
-    hud.showHowTo({ slide: howtoSlides(c)[0], index: 0, count: 8, onNext: () => {}, onClose: () => {} });
+    hud.showHowTo({ slide: howtoSlides(c)[0], index: 0, count: 8, onNext: () => {} });
     hud.clear();
     expect(root.querySelector('.hud-howto')).not.toBeNull();
   });

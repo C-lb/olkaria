@@ -4,10 +4,12 @@
 // for 'changedata-view'), and 'spaceLockedUntil' (SPACE_LOCK_KEY in strikers.ts), the game time before which Space
 // does nothing, which Lobby, Travel, Battle and Ending set so that a press's rest holds across a scene switch. The
 // facilitator's hotkeys work in every scene, and M or Esc opens the menu over any screen (menu.ts): restart the
-// round, back to the lobby, reload the page, go to a stage, and the key map.
+// round, back to the lobby, reload the page, go to a stage, and the key map. The ? key opens How to play over any
+// screen (howto.ts): eight slides on how the game is played and scored.
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
 import { installHotkeys } from './hotkeys';
+import { installHowTo } from './howto';
 import { capitalise, Hud } from './hud/Hud';
 import { installMenu } from './menu';
 import { createRoomClient } from './net';
@@ -76,6 +78,9 @@ async function main(): Promise<void> {
   window.addEventListener('resize', fit);
   document.addEventListener('fullscreenchange', fit);
   installHotkeys(game, client, hud);
+  // The how-to's key listener goes on before the menu's: both listen on window in the capture phase, where listeners
+  // run in the order they were added, and this order is what lets the how-to swallow every key before the menu.
+  const howto = installHowTo(hud, content);
   installMenu(game, client, hud, content);
 }
 
