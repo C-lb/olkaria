@@ -309,6 +309,7 @@ section{ margin-bottom:var(--s5); }
 /* Rounds */
 .round{ break-inside:avoid; border-top:1px solid var(--line); padding-top:var(--s3); margin-bottom:var(--s4); }
 .round-head{ margin-bottom:var(--s2); }
+.round-head .sub:empty{ display:none; }
 .round-head h2{ color:var(--ink); margin:0; }
 .narration{ max-width:84ch; }
 .options-sub, .facts-sub{ margin-top:var(--s2); }

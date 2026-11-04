@@ -157,8 +157,8 @@
   "strikesIntro": "",
   "rounds": [
     {
-      "label": "Round 1: Grid Wyrm. Rogues (Citizen) lead; the rest of the party supports.",
-      "question": "How much data-centre power use will Kenyans accept?",
+      "label": "",
+      "question": "Q1. How much data-centre power use will Kenyans accept?",
       "narration": "Olkaria steam fields. The Grid Wyrm coils around the plants that make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced hundreds of Maasai families. Rogues, this is your strike: what will Kenyans accept?",
       "optionsLabel": "The options",
       "options": [
@@ -200,8 +200,8 @@
       ]
     },
     {
-      "label": "Round 2: Debt Golem. Knights (Kenyan Government) lead; the rest of the party supports.",
-      "question": "What will the Government offer instead of a guarantee?",
+      "label": "",
+      "question": "Q2. What will the Government offer instead of a guarantee?",
       "narration": "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?",
       "optionsLabel": "The options",
       "options": [
@@ -243,8 +243,8 @@
       ]
     },
     {
-      "label": "Round 3: Fog of Demand. Bards (Local Businesses) lead; the rest of the party supports.",
-      "question": "What will Kenya's businesses commit to?",
+      "label": "",
+      "question": "Q3. What will Kenya's businesses commit to?",
       "narration": "The Fog. Microsoft wants proof that Kenyans will pay before it builds. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?",
       "optionsLabel": "The options",
       "options": [
@@ -286,8 +286,8 @@
       ]
     },
     {
-      "label": "Round 4: The core. Wizards (Microsoft) lead, and the whole party casts with them.",
-      "question": "What should Microsoft do?",
+      "label": "",
+      "question": "Q4. What should Microsoft do?",
       "narration": "The Deadlock's core is exposed. Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. Wizards, this is your strike, and the whole party casts with you: what should Microsoft do?",
       "optionsLabel": "The options",
       "options": [
