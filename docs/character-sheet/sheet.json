@@ -29,7 +29,7 @@
       "special": {
         "k": "Special",
         "icon": "community",
-        "name": "Community"
+        "name": "Power of Friendship"
       },
       "strike": " Round 1: How much data-centre power use will Kenyans accept?"
     },
@@ -58,7 +58,7 @@
       "special": {
         "k": "Special",
         "icon": "wall",
-        "name": "Sovereign wall"
+        "name": "Sovereign Wall"
       },
       "strike": " Round 2: What will the Government offer instead of a guarantee?"
     },
@@ -87,7 +87,7 @@
       "special": {
         "k": "Special",
         "icon": "song",
-        "name": "Trade song"
+        "name": "Song of Development"
       },
       "strike": " Round 3: What will Kenya's businesses commit to?"
     },
@@ -116,7 +116,7 @@
       "special": {
         "k": "Special",
         "icon": "fireball",
-        "name": "Azure fireball"
+        "name": "FIREBALL"
       },
       "strike": " Round 4: What should Microsoft do?"
     }
@@ -156,30 +156,30 @@
       "label": "",
       "question": "Q1. How much data-centre power use will Kenyans accept?",
       "narration": "Olkaria steam fields. The Grid Wyrm coils around the plants that make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced hundreds of Maasai families. Rogues, this is your strike: what will Kenyans accept?",
-      "optionsLabel": "The options",
+      "optionsLabel": "Your Options",
       "options": [
         {
           "letter": "A",
-          "screen": "Put households first. The deal waits for new generation, and no data-centre load connects until household and industrial supply is secure.",
-          "phone": "On your phone: Households first, deal waits"
+          "screen": "Prioritise households first. The deal waits for new generation, and no data-centre load connects until household and industrial supply is secure.",
+          "phone": "On your phone: Prioritise households, stall the deal."
         },
         {
           "letter": "B",
           "screen": "Accept a first phase of 60 to 100 MW, about 4% of peak demand, on condition that new generation is tied to every expansion.",
-          "phone": "On your phone: Yes to 60 to 100 MW, tied"
+          "phone": "On your phone: Rolling progression of 60 to 100 MW each generation."
         },
         {
           "letter": "C",
           "screen": "Accept the full 1 GW in return for the jobs, the skills lab and the regional hub.",
-          "phone": "On your phone: Full 1 GW for the hub"
+          "phone": "On your phone: Full 1 GW for greater opportunities."
         },
         {
           "letter": "D",
           "screen": "Accept only with a community deal, which gives Olkaria communities compensation and a share of the benefit before any expansion.",
-          "phone": "On your phone: Community deal first"
+          "phone": "On your phone: Enact a community deal: Receive compensation before expansion."
         }
       ],
-      "factsLabel": "Facts in play, the three exhibits on the road to this boss",
+      "factsLabel": "The Facts",
       "facts": [
         {
           "text": "Olkaria generates about 950 MW",
@@ -198,22 +198,22 @@
     {
       "label": "",
       "question": "Q2. What will the Government offer instead of a guarantee?",
-      "narration": "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?",
+      "narration": "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that the anchor-tenant guarantee be counted as debt. An anchor tenant is the large, committed customer that makes a big project viable. Under this guarantee, the Government would fill that role by covering any shortfall in demand for the data centre's capacity, so the demand risk would move from Microsoft and G42 to Kenyan public finances. Microsoft wants this because Kenya's whole data-centre market is about 20 MW. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. KenGen, Kenya's largest power producer, is about 70% government-owned and runs much of the geothermal capacity at Olkaria. Knights, this is your strike: what does the Government offer?",
       "optionsLabel": "The options",
       "options": [
         {
           "letter": "A",
           "screen": "Sign the anchor-tenant guarantee, because the hub is worth the risk.",
-          "phone": "On your phone: Sign the guarantee"
+          "phone": "On your phone: Sign the guarantee."
         },
         {
           "letter": "B",
           "screen": "Offer no guarantee of any kind, so Microsoft either builds on market terms or doesn't build.",
-          "phone": "On your phone: No guarantee, market terms"
+          "phone": "On your phone: No guarantee, Microsoft builds on market terms"
         },
         {
           "letter": "C",
-          "screen": "KenGen signs a smaller power and capacity commitment for a 60 MW phase, which stays off the national balance sheet.",
+          "screen": "KenGen sign a smaller power and capacity commitment for a 60 MW phase, which stays off the national balance sheet.",
           "phone": "On your phone: KenGen signs, 60 MW"
         },
         {
