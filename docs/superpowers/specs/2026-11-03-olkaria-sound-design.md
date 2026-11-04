@@ -6,7 +6,7 @@ Date: 3 November 2026. Adds sound to the host page. Amends `2026-11-02-olkaria-d
 
 Caleb asked: "are there sound effects? and background music? make it intense like kahoot's, and sound effects make it sound pixel like." There is no sound in the build today.
 
-Why. Kahoot's hold on a room is half its music: a bouncy lobby loop, then a tense question loop that speeds up as the clock runs down. Olkaria has the same beats (lobby, travel, a 30 s vote, a strike, an ending) and a pixel-art world, so the music should be chiptune, and the effects the clicks and blips of an 8-bit game.
+Why. Kahoot's hold on a room is half its music: a bouncy lobby loop, then a tense question loop that speeds up as the clock runs down. Olkaria has the same beats (lobby, travel, a vote of up to 2:00, a strike, an ending) and a pixel-art world, so the music should be chiptune, and the effects the clicks and blips of an 8-bit game.
 
 ## 2. Goals, non-goals, anti-goals
 

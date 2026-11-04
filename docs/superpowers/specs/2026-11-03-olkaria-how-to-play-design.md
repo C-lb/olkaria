@@ -2,7 +2,7 @@
 
 ## 1. Intent
 
-Caleb asked on 3 Nov 2026 for a how-to-play with some animation that shows how the scoring matters, in few words, straight to the point, simple; then that it live in the game itself, so he can show it on screen before the game, not in the character sheet or on a separate page. The host page gets a slide show over the game: `?` opens it (the lobby's keycaps name it), Space walks it, Esc closes it. Eight slides, one idea each, each animating in once as it is shown.
+Caleb asked on 3 Nov 2026 for a how-to-play with some animation that shows how the scoring matters, in few words, straight to the point, simple; then that it live in the game itself, so he can show it on screen before the game, not in the character sheet or on a separate page. The host page gets a slide show over the game: `?` opens it (the lobby's keycaps name it), Space walks it, ? closes it (Esc too, outside fullscreen). Eight slides, one idea each, each animating in once as it is shown.
 
 ## 2. Where it lives
 

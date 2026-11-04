@@ -45,19 +45,19 @@ Anti-goals
 | Time | Beat | On the projector | Facilitator |
 |---|---|---|---|
 | 0:00 to 1:30 | Lobby | QR, URL, counts per class with their figures, avatars dropping in | "Tables of four. Scan, type your name, pick your role: one of each per table." |
-| 1:30 to 2:00 | Travel 1 | Party runs toward Olkaria; three exhibit pickups (or N to skip) | Reads the exhibit facts as they pop. |
+| 1:30 to 2:00 | Travel 1 | Party walks toward Olkaria by itself; three exhibit pickups (or N to skip) | Reads the exhibit facts as they pop. |
 | 2:00 to 6:00 | Round 1, Grid Wyrm | Rogues' special attack: what Kenyans accept on power | Up to 2 min vote, locks when everyone has voted, up to four call-outs, strike, 45 s debrief |
 | 6:00 to 10:00 | Round 2, Debt Golem | Knights' special attack: what the Government offers | Same shape |
 | 10:00 to 14:00 | Round 3, Fog of Demand | Bards' special attack: what Kenya's businesses commit | Same shape |
 | 14:00 to 17:30 | Round 4, the core | Wizards' special attack with the whole party: Microsoft's decision; ending | "What should Microsoft do, and why?" |
 | 17:30 to 18:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hands the split to the discussion that follows |
 
-Travel 2 to 4 are skipped with N unless the segment is running early. The times assume every vote runs its full two minutes and each round has one call-out; a vote that locks early pulls them in (with 30 s votes the table ends at 12:00) and each further call-out pushes them out. The debrief lines are built to be picked up again in the facilitated discussion after the game. Because the host advances everything manually, the same build also works as the spine of the whole slot if the team changes its mind.
+Travel 2 to 4 are skipped with N unless the segment is running early. The times assume every vote runs its full two minutes and each round has one call-out; a vote that locks early pulls them in (if every vote locks at 30 s, the table ends at 12:00) and each further call-out pushes them out. The debrief lines are built to be picked up again in the facilitated discussion after the game. Because the host advances everything manually, the same build also works as the spine of the whole slot if the team changes its mind.
 
 ### 3.2 Host screens (projector)
 
 - Lobby. The title on two lines, "Olkaria" over "the Deadlock", with three keycaps beside it: Space "Start", Esc "Shows hotkeys" and ? "How to play". QR code at least a quarter of the screen height with the join address beside it, "N joined" in large type and the count per class in four class tiles, each the class figure beside its name and count ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline, and a list of the last eight joiners by name and class ("Ann, Knight") in the text layer. The room code and both quotes are gone from the lobby: the address ends in the code, Tanui's line opens round 2 (section 5.6) and Smith's is shown nowhere (`2026-11-03-olkaria-facilitator-menu-design.md`, section 7). Space starts the game.
-- Travel. Side-scrolling platform segment through a dark-fantasy Rift Valley. The presenter controls the lead class of the coming round; the other three trail. Three exhibit pickups per segment. The arena gate starts the round.
+- Travel. Side-scrolling platform segment through a dark-fantasy Rift Valley. The lead class of the coming round walks it by itself, the other three trailing; arrows take over, A pauses, N skips (section 4.5). Three exhibit pickups per segment. The arena gate starts the round.
 - Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; while the vote is open, who is still to vote ("N still to vote", "Everyone has voted"), and "N of M voted" once it locks. Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, one at a time and up to four times, each for an option the round has not heard yet. Then the strike. Every number shown adds up to the damage drained: the lead class performs the special attack carrying the lead half of the base damage, flashing in the colour of its majority option; the other three classes strike together carrying the support half; then one flourish per bonus earned, each with its number ("Focus +15", "Party stands together +10", "Exhibit +5" per pickup) and one rally strike per convincing call-out with the student's name and "+10"; the HP drains by the total. When the sum passes 100 the panel says "capped at 100". When no one of the lead class voted, the special attack is skipped ("No Rogues voted this round") and the support strike carries all of the base; the mirror case skips the support strike. Then the debrief panel: per option, its damage contribution and one projector line with citation; a breakdown line ("Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83"); an alignment line in one of four forms ("The party stood with the Rogues: both chose B", "Split: Rogues chose B, the party chose A", "The Rogues were split" or "The party was split" when a group tied, "No Rogues voted this round"); the discuss line.
 - Ending. One of five cutscenes (section 4.6) with the final split, "what must be true" and "the risk you accepted".
 - Leaderboard. Top five students, most consistent strategist, top table, and the final split under "What should Microsoft do, and why?".
@@ -66,7 +66,7 @@ Text on the projector is an HTML layer over the game canvas, not canvas text (se
 
 ### 3.3 Player screens (phone)
 
-Join (name, required, up to 16 characters; role, required, four large buttons with class and stakeholder; table name, optional, up to 16 characters), Waiting ("You're in as Ann, Knight. Watch the screen."), Vote (four large buttons: letter, shape, short label; countdown; a line "Your class leads this round" when it does), Locked in ("Locked: B. Yes to 60 to 100 MW, tied."), Called out ("You're up. Defend B: …", with one vibration where supported), Someone else called out ("Sarah is defending B."), Round result (points this round, running total, rank, and the full debrief of the option you chose), Ending summary (your four picks, your coherence count, your rank), Removed, Reconnecting.
+Join ("Join the game": Name, required, up to 16 characters; Role, required, four tiles each with the class figure, class name and stakeholder; Table, optional, up to 16 characters, placeholder "Optional"; Join, disabled until a name is typed and a role picked), Waiting (the class figure, the name, "Rogue, Citizen" as class then stakeholder, and "Table: 3" when a table was given; the role can change in the lobby only), Vote (four large buttons: letter, shape, short label; countdown; the class figure with "Your class leads this round" when it does), Locked in ("Locked: B. Yes to 60 to 100 MW, tied."), Called out ("You're up. Defend B: …", with one vibration where supported), Someone else called out ("Sarah is defending B."), Round result (points this round, running total, rank, and the full debrief of the option you chose), Ending summary (your four picks, your coherence count, your rank), Removed, Reconnecting.
 
 ## 4. Game design
 
@@ -279,7 +279,7 @@ The state also counts `trips`, the roads the room has set off on (`start`, a `ne
 Transitions
 
 - `lobby` → `travel` on host `start` (round 0).
-- `travel` → `vote` on host `openVote` with a window in seconds (default 120). Sets the deadline and schedules an alarm. A vote that leaves no player without a vote locks at once.
+- `travel` → `vote` on host `openVote` with a window in seconds (default 120). Sets the deadline and schedules an alarm.
 - `vote` → `locked` on host `closeVote`, when the alarm fires, or at once when a vote leaves every player in the room with a vote for this round (the early lock: the same transition as `closeVote`, clearing the alarm; it needs at least one player, and synthetic votes never trigger it).
 - In `locked`, host `callout` picks a random player who voted this round and has not been called this round, from those whose option the round has not heard yet, or from any uncalled voter once every voted option has been heard (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 4 per round; with no eligible player it records a call-out with no player so the facilitator can cold-call by hand. Host `judge` resolves the pending call-out (30 points awarded, 10 declined). A second `callout` while one is pending, or outside `locked`, is an error.
 - `locked` → `reveal` on host `reveal`. Tallies the lead role and the rest separately, computes damage and bonuses, applies damage, awards points (vote points, caster bonus, call-out points), records the majority. A still-pending call-out counts as declined.
@@ -313,7 +313,7 @@ Reconnect. The host page remembers its room for the tab and resumes at the saved
 
 ### 6.5 Host keyboard
 
-Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Space does nothing, so the closing screen survives a stray press. Shift+R twice within 3 seconds: reset to the lobby (the first press shows "Press Shift+R again to reset"). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: pause or resume the walk. N in travel: skip. H: hide names on the lobby list and the leaderboard (the banner still names the called student). F: fullscreen. M or Esc: the menu (actions and the key map). 1 to 4, Shift+1 to Shift+4, B: tallies.
+Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Space does nothing, so the closing screen survives a stray press. Shift+R twice within 3 seconds: reset to the lobby (the first press shows "Press Shift+R again to reset"). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: pause or resume the walk. N in travel: skip. H: hide names on the lobby list and the leaderboard (the banner still names the called student). F: fullscreen. ?: How to play, eight slides over any screen (Space next, ? closes, Esc too outside fullscreen). M or Esc: the menu (actions and the key map). 1 to 4, Shift+1 to Shift+4, B: tallies.
 
 ### 6.6 Content file
 
@@ -327,7 +327,7 @@ Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Sp
 - Classes: Rogue hooded with daggers, Knight in plate with a shield, Bard with a lute and a coin purse, Wizard with a staff and a tome. Bosses as in section 4.2, drawn with chains, carved numerals and particle fog.
 - Assets: GitHub first, author pages second, every file's licence recorded in `CREDITS.md` before it is copied. The one sizeable licensed pixel-art repository on GitHub is `sparklinlabs/superpowers-asset-packs` (CC0); `Siilwyn/awesome-pixel-art` is the index for finding more. The dark-fantasy platformer packs that fit this brief (ansimuz's Gothicvania series, 0x72's Dungeon Tileset II, brullov's Oak Woods, LuizMelo's medieval packs) are published on itch.io under free-use licences and only mirrored on GitHub inside other people's game projects without their licences, so they are taken from the author's page with the licence text copied. Procedural bosses from tiles and particles remain the fallback.
 - Build with placeholder rectangles first; swap in sprites last. Sound is optional (CC0 from the same sources) and the first cut if time is short.
-- The phone page follows the anti-vibecode standard: plain sans, flat buttons, one accent, option colours as fills only on the four vote buttons and the four role buttons carry class icons, not colour.
+- The phone page follows the anti-vibecode standard: plain sans, flat buttons, one accent, option colours as fills only on the four vote buttons and the four role buttons carry class figures, not colour.
 
 ## 8. Risks and rehearsal
 
@@ -354,7 +354,7 @@ Schedule for a 5 November presentation. Build on 2 and 3 November in plan order,
 3. Round 4 option D: the tenant model (default) or an open "Something else, tell us" button scoring a flat 50?
 4. Role choice: free with counts shown (default), or should the join page also take a table number so the leaderboard can rank tables? The optional table name covers this if people fill it in.
 
-Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute segment; party of four stakeholder roles as classes chosen at join; one class leads each round's special attack; G42 folded into Microsoft and the fourth role is Local Businesses; dark-fantasy medieval art sourced from GitHub where a licensed copy exists.
+Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute segment (now 18, see the last note); party of four stakeholder roles as classes chosen at join; one class leads each round's special attack; G42 folded into Microsoft and the fourth role is Local Businesses; dark-fantasy medieval art sourced from GitHub where a licensed copy exists.
 
 ## 10. Calls I made
 
@@ -372,4 +372,4 @@ Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute 
 
 Amended on 3 Nov 2026 at Caleb's request: sections 4.3, 4.4 and 6.2 and the call-outs line in section 10 now carry the two-minute vote, the early lock and the four call-outs, one voice per option. The change is specified in `2026-11-03-olkaria-vote-window-and-callouts-design.md`.
 
-Amended again on 3 Nov 2026 at Caleb's request: sections 3.2, 4.1, 4.5, 5.6, 6.2 and 6.5 now carry the facilitator menu, the automatic walk, the class figures on the phone and the leaner lobby. The change is specified in `2026-11-03-olkaria-facilitator-menu-design.md`. Sections 1, 2, 3.1, 3.2, 6.2 and 8 also follow the vote-window change: up to four call-outs, and a run of show re-timed to 18 minutes for votes at their full two minutes.
+Amended again on 3 Nov 2026 at Caleb's request: sections 3.2, 3.3, 4.1, 4.5, 5.6, 6.2 and 6.5 now carry the facilitator menu, the automatic walk, the class figures on the phone, the leaner lobby and the leaner phone onboarding. The change is specified in `2026-11-03-olkaria-facilitator-menu-design.md`; section 6.5 also lists the ? key for How to play (`2026-11-03-olkaria-how-to-play-design.md`). Sections 1, 2, 3.1, 3.2, 6.2 and 8 also follow the vote-window change: up to four call-outs, and a run of show re-timed to 18 minutes for votes at their full two minutes.

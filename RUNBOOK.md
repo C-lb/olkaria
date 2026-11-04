@@ -51,7 +51,7 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 
 Travels 2 to 4: press N straight away unless you are running early. The party walks by itself either way.
 
-The times above assume every vote runs its full 2:00 and each round has one call-out. A vote that locks early pulls every later time in: with 30 s votes the table ends at 12:00. Each call-out after the first pushes every later time out by as long as it takes. Time it at the rehearsal.
+The times above assume every vote runs its full 2:00 and each round has one call-out. A vote that locks early pulls every later time in: if every vote locks at 30 s, the table ends at 12:00. Each call-out after the first pushes every later time out by as long as it takes. Time it at the rehearsal.
 
 ### Keys
 
@@ -67,7 +67,7 @@ The times above assume every vote runs its full 2:00 and each round has one call
 | Space on the ending | The leaderboard |
 | Space on the leaderboard | Nothing |
 | Arrows | Take over the walk in travel: run and jump |
-| A | Pause or resume the walk in travel |
+| A | Pause or resume the walk in travel. After an arrow takes over, the walk stays off until A resumes it. |
 | N | In travel: skip to the arena. With a call-out up: not convincing. |
 | C | Call a student out, once the vote is locked |
 | Y | Call-out convincing |
@@ -127,10 +127,12 @@ Each pickup in travel adds +5 to the next strike, three at most. N skips them.
 ## If something breaks
 
 **You need to redo a round, or get to one.**
-1. Press M. The menu opens over the screen. While it is open no other key does anything.
-2. Click what you want, or arrow to it: Restart round N, Back to the lobby, Reload the page, or a stage under Go to.
-3. The button turns pale and says Sure? Press it again within 3 s. Anything else calls it off.
+
+1. Press M. The menu opens over the screen. While it is open the game keys do nothing.
+2. Click what you want, or arrow to it, then press Enter or Space: Restart round N, Back to the lobby, Reload the page, or a stage under Go to.
+3. Restart round N, Back to the lobby and every Go to button turn pale and say Sure? Press the same one again within 3 s. Pressing another button, closing the menu or waiting calls it off. Reload the page fires at once while the projector is connected, asks twice while it is not, and is greyed out in offline mode.
 4. The menu closes and the screen moves: a road starts walking, the lobby comes back, or the ending shows. Phones follow by themselves.
+
 Rounds before the one you went to keep their votes, scores and damage. That round and the ones after it start over.
 Going to a stage from the lobby starts the game there.
 

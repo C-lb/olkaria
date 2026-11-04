@@ -48,7 +48,7 @@ Anti-goals
 - The menu is modal. While it is open no key reaches the room or the scenes: digits add no votes, Space advances nothing, N skips nothing. Browser chords (Cmd, Ctrl, Alt) are left to the browser. Key releases pass through, so an arrow held when the menu opened does not stick down.
 - A key typed into a form field never opens the menu (the same guard the hotkeys use).
 - The key map that Esc showed moves into the menu, under the actions, in its two-column form. Its row for Esc becomes "M or Esc: this menu".
-- The lobby's hint line becomes two keycaps with labels: Space "Start" and Esc "Shows hotkeys" (section 7).
+- The lobby's hint line becomes three keycaps with labels: Space "Start", Esc "Shows hotkeys" and ? "How to play" (section 7).
 
 ### 3.2 Items
 
@@ -123,7 +123,7 @@ The room code block goes. Nobody types a code: the QR and the address are the tw
 
 One panel across the top as today, the bottom third clear for the skyline and the avatars:
 
-- Header: the title on two lines in the pixel face: "Olkaria" at 16 canvas pixels (it was 7, on one line with the subtitle) and "the Deadlock" under it at the title size (7) in ink-2, each with a hard shadow in the background colour one step down and right (two canvas pixels under the name, one under the subtitle), no blur. No quote under it. On the right, in place of the sentence hint, two keycaps with labels: Space "Start" and Esc "Shows hotkeys", Caleb's labels (3 November, evening). A keycap is the key map's cap (surface-2, r-sm, weight 600, body size) with a 1 px line stroke and a hard one-canvas-pixel bottom edge in the background colour; its label follows in ink-2.
+- Header: the title on two lines in the pixel face: "Olkaria" at 16 canvas pixels (it was 7, on one line with the subtitle) and "the Deadlock" under it at the title size (7) in ink-2, each with a hard shadow in the background colour one step down and right (two canvas pixels under the name, one under the subtitle), no blur. No quote under it. On the right, in place of the sentence hint, three keycaps with labels: Space "Start", Esc "Shows hotkeys" and ? "How to play" (the first two are Caleb's labels, 3 November, evening; the third is the how-to's). A keycap is the key map's cap (surface-2, r-sm, weight 600, body size) with a 1 px line stroke and a hard one-canvas-pixel bottom edge in the background colour; its label follows in ink-2.
 - Body, three columns. The QR, a square 45% of the HUD's height as today. The join column: eyebrow "Scan, or go to", the address on two lines, the host on the first in ink-2 and the path "/j/ABCD" on the second in ink at weight 700; then "12 joined" with the number a hero in the pixel face (t-code) and the word at body size in ink-2; then a 2 by 2 grid of class tiles, each the class figure at one canvas pixel per pixel (12 by 16) beside its plural name in ink-2 and its count in ink. The "Just joined" list as today.
 - Footer: none. Both quotes leave the lobby (Caleb, 3 November, evening). Tanui's still opens round 2's narration; Smith's stays in `content/case.json` and is shown nowhere.
 - Offline, the square carries the offline notice as today and the join column shows only the count and the tiles. While connecting, the square says "Connecting to the room" and the join column shows only the count and the tiles.
