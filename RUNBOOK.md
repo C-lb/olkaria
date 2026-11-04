@@ -31,7 +31,8 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
    For the next boss: Space, B, then Space four times, then N, with a slow two-count between presses. The same again for each boss after it.
    Then Shift+R twice takes that tab back to its lobby, and Esc leaves fullscreen.
 7. Go back to the class tab and press F for fullscreen. That is the tab you run the game in.
-   If a key ever does nothing, click once on the game. A click gives the page the keyboard and does nothing else.
+   Click once on the game, so the keys work and the music starts.
+   If a key ever does nothing, click once on the game again. A click sends nothing to the room.
 8. Scan the QR from the back row with your phone, and read the lobby text from there too.
    The QR should open the join form for this room. You do not need to join.
 
@@ -77,8 +78,9 @@ The times above assume every vote runs its full 2:00 and each round has one call
 | B | Add 30 bot votes, weighted toward the evidence |
 | H | Hide or show names in the lobby list and on the leaderboard |
 | F | Fullscreen on or off |
+| S | Sound off or on |
 | ? | How to play, eight slides; Space next, ? closes (Esc too, outside fullscreen) |
-| M or Esc | Open or close the menu: restart the round, back to the lobby, reload, go to any stage or the ending, and every key. In fullscreen, Chrome takes Esc to leave fullscreen, so use M. |
+| M or Esc | Open or close the menu: restart the round, back to the lobby, reload, Sound off or on, go to any stage or the ending, and every key. In fullscreen, Chrome takes Esc to leave fullscreen, so use M. |
 | Shift+R twice | Within 3 s: back to the lobby. Players stay; votes and scores go. |
 | Cmd+R | Reload. Needs the network. The same room and screen come back, except that the narration comes back as the start of travel, and a strike in progress comes back as its debrief. |
 
@@ -202,6 +204,8 @@ Everything about a call-out still names the student: the banner, the line under 
 There is no kick on the projector, and none will be built. A rude name stays in the room.
 H keeps it off the lobby list and the leaderboard. If a call-out lands on it, press N straight away.
 The banner shows the name until you do, and the line under the cards keeps it until the debrief.
+
+**No sound.** Check the laptop's output and its volume, then press S twice. The browser plays nothing until the page has been clicked or a key pressed once.
 
 **Something is badly wrong.**
 Shift+R, then Shift+R again within 3 s, takes the room back to the lobby. The first press shows "Press Shift+R again to reset".

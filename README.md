@@ -53,6 +53,7 @@ A change reaches the live site only after `npm run deploy`.
 ## More
 
 - `RUNBOOK.md`: the day itself, from before class to the rehearsal checklist, keys included.
+- The host plays chiptune music for each phase, with pixel sound effects; S turns it off or on, and the menu has the same switch.
 - M on the host opens the menu: restart the round, back to the lobby, reload, go to a stage or the ending, and the key map. Every item that changes the room asks twice.
 - `CREDITS.md`: the licensed art and font. The class figures, tiles and bosses are drawn in code.
 - Design: `docs/superpowers/specs/2026-11-02-olkaria-deadlock-design.md`

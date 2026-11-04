@@ -36,3 +36,8 @@ it('join blips step up the scale and stop at the eighth', () => {
   expect(joinHz(7)).toBe(joinHz(20));
   expect(JOIN_GAP_MS).toBe(120);
 });
+it('the high tick is the tick a third up: E6 for C6, the same shape and length', () => {
+  expect(SFX.tick.map((s) => s.hz)).toEqual([noteHz('C6')]);
+  expect(SFX.tickHigh.map((s) => s.hz)).toEqual([noteHz('E6')]);
+  expect(SFX.tickHigh.map(({ hz: _hz, ...rest }) => rest)).toEqual(SFX.tick.map(({ hz: _hz, ...rest }) => rest));
+});

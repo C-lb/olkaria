@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import type { CaseContent } from '../../shared/content';
 import type { HostView, Role } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
+import type { Sound } from '../audio/sound';
 import { oncePerEvent } from '../hotkeys';
 import type { Hud, LobbyArgs } from '../hud/Hud';
 import type { RoomClient, RoomInfo } from '../net';
@@ -55,6 +56,8 @@ export class Lobby extends Phaser.Scene {
   private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
+  /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
+  private audio!: Sound;
   /** The room and its QR, once connect() has resolved and the QR is drawn (or has failed). */
   private room: (RoomInfo & { qr: string | null }) | null = null;
   private connected = false;
@@ -79,12 +82,14 @@ export class Lobby extends Phaser.Scene {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
+    this.audio = this.registry.get('sound') as Sound;
     this.room = null;
     this.connected = false;
     this.avatars = new Map();
     this.shown = '';
     const run = ++this.run;
 
+    this.audio.music('lobby');
     this.drawSkyline();
     this.registry.events.on('changedata-view', this.onView, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -157,14 +162,16 @@ export class Lobby extends Phaser.Scene {
     this.hud.showLobby(args);
   }
 
-  /** An avatar drops in for each new player and goes for each one no longer in the room. */
+  /** An avatar drops in for each new player, with the join blip, and goes for each one no longer in the room. */
   private syncAvatars(view: HostView): void {
     const here = new Set<string>();
     let dropped = 0;
     for (const p of Object.values(view.players).sort((a, b) => a.joinedAt - b.joinedAt)) {
       const key = `${p.id}@${p.joinedAt}@${p.role}`;
       here.add(key);
-      if (!this.avatars.has(key)) this.avatars.set(key, this.dropAvatar(p.role, dropped++));
+      if (this.avatars.has(key)) continue;
+      this.avatars.set(key, this.dropAvatar(p.role, dropped++));
+      this.audio.join();
     }
     for (const [key, avatar] of this.avatars) {
       if (here.has(key)) continue;

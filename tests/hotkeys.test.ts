@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import { installHotkeys, oncePerEvent } from '../host/hotkeys';
+import type { Sound } from '../host/audio/sound';
 import type { Hud } from '../host/hud/Hud';
 import type { RoomClient } from '../host/net';
 import type { Callout, HostView } from '../shared/types';
@@ -22,13 +23,21 @@ const hud = new Proxy({}, {
 }) as unknown as Hud;
 
 const game = { registry: { get: (key: string) => (key === 'view' ? view : undefined) }, scale: { toggleFullscreen } } as unknown as Phaser.Game;
-const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, hud);
+/** A stand-in for the sound facade: toggle() flips `soundOn` and returns it, as the real one does. */
+let soundOn = true;
+const sound = {
+  music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(),
+  toggle: vi.fn(() => { soundOn = !soundOn; return soundOn; }),
+  get enabled() { return soundOn; },
+} satisfies Sound;
+const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, hud, sound);
 let dispose: () => void = () => {};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   view = null;
+  soundOn = true;
   hudCalls.length = 0;
   dispose = install();
 });
@@ -140,6 +149,19 @@ it('leaves Escape alone', () => {
 it('toggles fullscreen with F', () => {
   press('KeyF', 'f');
   expect(toggleFullscreen).toHaveBeenCalledTimes(1);
+});
+
+it('S turns the sound off and on, with a toast that says which, and Shift+S does nothing', () => {
+  press('KeyS', 's');
+  expect(sound.toggle).toHaveBeenCalledTimes(1);
+  expect(showToast).toHaveBeenLastCalledWith('Sound off', 1500);
+  press('KeyS', 's');
+  expect(showToast).toHaveBeenLastCalledWith('Sound on', 1500);
+  press('KeyS', 'S', { shiftKey: true });
+  press('KeyS', 's', { repeat: true });
+  expect(sound.toggle).toHaveBeenCalledTimes(2);
+  expect(showToast).toHaveBeenCalledTimes(2);
+  expect(send).not.toHaveBeenCalled();
 });
 
 it('oncePerEvent runs a scene key handler once for each DOM event, however often Phaser hands the event over', () => {

@@ -1,15 +1,16 @@
 // The facilitator's menu (spec 3): M or Esc opens it over any screen, with the actions (restart the round, back to
-// the lobby, reload the page), a row of stages to go to, and the key map. menuItems() says what each item reads and
+// the lobby, reload the page, sound off or on), a row of stages to go to, and the key map. menuItems() says what each item reads and
 // does, from the view, the mode and the link; installMenu() owns the keys, the asking twice and the redraws; the HUD
 // only draws (Hud.showMenu). While the menu is open no key press reaches the room or the scenes.
 import type Phaser from 'phaser';
 import type { CaseContent } from '../shared/content';
 import type { HostCmd, HostView } from '../shared/types';
+import type { Sound } from './audio/sound';
 import { callOffReset, typing } from './hotkeys';
 import type { Hud, MenuButton } from './hud/Hud';
 import type { ConnectionStatus, RoomClient } from './net';
 
-export type MenuAct = { kind: 'cmd'; cmd: HostCmd } | { kind: 'reload' };
+export type MenuAct = { kind: 'cmd'; cmd: HostCmd } | { kind: 'reload' } | { kind: 'sound' };
 export interface MenuItem { id: string; label: string; hint: string; enabled: boolean; confirm: boolean; act: MenuAct }
 export interface MenuModel { actions: MenuItem[]; stages: MenuItem[]; stagesHint: string }
 
@@ -26,6 +27,7 @@ const LOBBY_HINT = 'Players stay; votes and scores go.';
 const RELOAD_HINT_UP = 'The same room and screen come back.';
 const RELOAD_HINT_DOWN = 'Needs the network. Without it the page is lost.';
 const RELOAD_HINT_OFFLINE = 'Offline mode starts over on a reload. Use Back to the lobby.';
+const SOUND_HINT = 'S does the same.';
 const STAGES_HINT = 'Earlier rounds stay. The one you go to, and the ones after it, start over. Ending shows what has been played.';
 
 /** The menu installed last, taken down when another install replaces it. */
@@ -38,10 +40,13 @@ const isToggle = (key: string): boolean => key === 'Escape' || key === 'm' || ke
  * What the menu offers (spec 3.2). The restart names the round it plays again and, like the way back to the lobby,
  * waits for the game to start. Every stage, then the ending, can be gone to once a view has come, from the lobby too.
  * The reload fires at once while the link is up and asks twice while it is down; offline it is off, because a reload
- * there loses the game. Until the first view only the reload is on. `link` is the client's latest ConnectionStatus
- * (host/net.ts), null before the first one.
+ * there loses the game. Until the first view only the reload and the sound are on. The sound item names what it does
+ * now, "Sound off" while it plays, and never asks twice. `link` is the client's latest ConnectionStatus (host/net.ts),
+ * null before the first one.
  */
-export function menuItems(content: CaseContent, view: HostView | null, mode: 'online' | 'offline', link: ConnectionStatus | null): MenuModel {
+export function menuItems(
+  content: CaseContent, view: HostView | null, mode: 'online' | 'offline', link: ConnectionStatus | null, sound: { enabled: boolean },
+): MenuModel {
   const round = view !== null && view.phase !== 'lobby' ? view.round : null;
   const goto = (stage: number): MenuAct => ({ kind: 'cmd', cmd: { k: 'goto', stage } });
   const stage = (index: number, label: string): MenuItem => ({ id: `stage-${index}`, label, hint: '', enabled: view !== null, confirm: true, act: goto(index) });
@@ -50,6 +55,7 @@ export function menuItems(content: CaseContent, view: HostView | null, mode: 'on
       { id: 'restart', label: round === null ? 'Restart the round' : `Restart round ${round + 1}`, hint: RESTART_HINT, enabled: round !== null, confirm: true, act: goto(round ?? 0) },
       { id: 'lobby', label: 'Back to the lobby', hint: LOBBY_HINT, enabled: round !== null, confirm: true, act: { kind: 'cmd', cmd: { k: 'reset' } } },
       { id: 'reload', label: 'Reload the page', ...reloadState(mode, link), act: { kind: 'reload' } },
+      { id: 'sound', label: sound.enabled ? 'Sound off' : 'Sound on', hint: SOUND_HINT, enabled: true, confirm: false, act: { kind: 'sound' } },
     ],
     stages: [...content.rounds.map((r, i) => stage(i, `${i + 1} ${r.boss}`)), stage(content.rounds.length, 'Ending')],
     stagesHint: STAGES_HINT,
@@ -71,11 +77,14 @@ function reloadState(mode: 'online' | 'offline', link: ConnectionStatus | null):
  * item again. A chord is stopped as well but never prevented, so Cmd+R still reloads. Key releases always pass, so a
  * key held as the menu opens does not stick down. An item that changes the room asks twice: the first press arms it
  * for ARM_MS, a second press on it fires it unless it comes within DEAD_MS of the first, and a press on another item
- * arms that one instead. Firing closes the menu. While open, the panel follows the view and the link, and is drawn
+ * arms that one instead. Firing closes the menu, except the sound item, which toggles the sound and leaves the menu
+ * up with the item relabelled. Opening and closing each play their blip (menuOpen, menuClose). While open, the panel follows the view and the link, and is drawn
  * again only when what it shows has changed, so the buttons under a pointer stay put through the room's broadcasts.
  * Returns the function that removes it all again; installing again removes the earlier install first.
  */
-export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, content: CaseContent, reload: () => void = () => location.reload()): () => void {
+export function installMenu(
+  game: Phaser.Game, client: RoomClient, hud: Hud, content: CaseContent, sound: Sound, reload: () => void = () => location.reload(),
+): () => void {
   uninstall?.();
   let open = false;
   let link: ConnectionStatus | null = null;
@@ -90,7 +99,7 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
   let drawn = '';
 
   function model(): MenuModel {
-    return menuItems(content, (game.registry.get('view') as HostView | null | undefined) ?? null, client.mode, link);
+    return menuItems(content, (game.registry.get('view') as HostView | null | undefined) ?? null, client.mode, link, sound);
   }
 
   function disarm(): void {
@@ -113,6 +122,7 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
   function show(): void {
     open = true;
     callOffReset();
+    sound.sfx('menuOpen');
     disarm();
     drawn = '';
     draw();
@@ -122,6 +132,7 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
   function close(): void {
     if (!open) return;
     open = false;
+    sound.sfx('menuClose');
     game.registry.events.off('changedata-view', draw);
     disarm();
     drawn = '';
@@ -149,6 +160,12 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
         draw();
         return;
       }
+    }
+    if (item.act.kind === 'sound') {
+      // The label is part of what the panel was drawn from, so the redraw shows the new state.
+      sound.toggle();
+      draw();
+      return;
     }
     if (item.act.kind === 'reload') reload();
     else client.send(item.act.cmd);

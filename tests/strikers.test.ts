@@ -17,7 +17,7 @@ import type { Callout, DamageResult, OptionId, Player, Role, RoomEvent, RoomStat
 import {
   alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, FRAME_MS,
   judgedNotes, judgeFlash, lockedByClock, lockedEarly, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS,
-  spaceAction, strikePlan, timerText, votedText,
+  clockCues, spaceAction, strikePlan, timerText, votedText,
   type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
 import { SPEAKERS } from '../host/quotes';
@@ -453,5 +453,36 @@ describe('lunges', () => {
     expect(lungeReach(stands, ['business'], 28, 2)).toBe(8);
     expect(lungeReach(stands, ['business'], 4, 2)).toBe(4);
     expect(lungeReach(stands, ['citizen'], 28, 2)).toBe(28);                               // nobody stands in front of the lead
+  });
+});
+
+describe('clockCues', () => {
+  it('crossing 10 s tightens the music to 1 and ticks; each whole second down to 1 ticks', () => {
+    expect(clockCues(10_100, 9_900)).toEqual({ tension: 1, tick: true, tickHigh: false, riser: false });
+    for (let s = 9; s >= 4; s -= 1) expect(clockCues(s * 1000 + 100, s * 1000 - 150), `${s} s`).toEqual({ tension: 1, tick: true, tickHigh: false, riser: false });
+    expect(clockCues(9_700, 9_450)).toEqual({ tension: 1, tick: false, tickHigh: false, riser: false });   // no second crossed
+  });
+  it('crossing 3 s tightens to 2, ticks and starts the riser; under 3 s the half seconds tick high', () => {
+    expect(clockCues(3_100, 2_900)).toEqual({ tension: 2, tick: true, tickHigh: false, riser: true });
+    expect(clockCues(2_600, 2_400)).toEqual({ tension: 2, tick: false, tickHigh: true, riser: false });
+    expect(clockCues(2_100, 1_900)).toEqual({ tension: 2, tick: true, tickHigh: false, riser: false });
+    expect(clockCues(1_600, 1_400)).toEqual({ tension: 2, tick: false, tickHigh: true, riser: false });
+    expect(clockCues(1_100, 900)).toEqual({ tension: 2, tick: true, tickHigh: false, riser: false });
+    expect(clockCues(600, 400)).toEqual({ tension: 2, tick: false, tickHigh: true, riser: false });
+    expect(clockCues(100, -150)).toEqual({ tension: 2, tick: false, tickHigh: false, riser: false });   // no tick at 0: the lock sounds
+    expect(clockCues(3_600, 3_400)).toEqual({ tension: 1, tick: false, tickHigh: false, riser: false });   // no half second above 3 s
+  });
+  it('the riser comes once, on the crossing, and nothing sounds above 10 s', () => {
+    const fromTop = [30_000, 20_000, 12_000, 10_250, 10_000, 9_000, 5_000, 3_250, 3_000, 2_750, 2_000, 1_000, 0];
+    let risers = 0;
+    for (let i = 1; i < fromTop.length; i += 1) if (clockCues(fromTop[i - 1], fromTop[i]).riser) risers += 1;
+    expect(risers).toBe(1);
+    expect(clockCues(25_000, 24_750)).toEqual({ tension: 0, tick: false, tickHigh: false, riser: false });
+    expect(clockCues(10_500, 10_250)).toEqual({ tension: 0, tick: false, tickHigh: false, riser: false });
+    expect(clockCues(Infinity, 29_750)).toEqual({ tension: 0, tick: false, tickHigh: false, riser: false });   // the first sample of a vote
+  });
+  it('a clock that jumps several seconds at once (a hidden tab) gives one tick and one high tick, not a backlog', () => {
+    expect(clockCues(9_500, 4_200)).toEqual({ tension: 1, tick: true, tickHigh: false, riser: false });
+    expect(clockCues(12_000, 1_200)).toEqual({ tension: 2, tick: true, tickHigh: true, riser: true });
   });
 });

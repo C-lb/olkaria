@@ -8,6 +8,7 @@ import {
   OPTION_IDS, ROLES,
   type Callout, type DamageResult, type HostCmd, type HostView, type OptionId, type Phase, type Player, type Role, type Tally,
 } from '../shared/types';
+import { tensionFor, type Tension } from './audio/score';
 import type { BannerArgs, DebriefArgs, NarrationArgs } from './hud/Hud';
 import { SPEAKERS } from './quotes';
 
@@ -338,6 +339,28 @@ export function optionsFooter(content: CaseContent, phase: Phase, callouts: read
   if (callouts.some((co) => co.status === 'pending')) return 'Y convincing, N not';
   if (callouts.length >= content.scoring.maxCallouts) return 'Space: the party strikes';
   return 'C calls a student out. Space: the party strikes';
+}
+
+/** The whole seconds the clock ticks on (10 down to 1) and the half seconds it ticks high on (under 3 s), in ms left. */
+const TICK_AT = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((s) => s * 1000);
+const TICK_HIGH_AT = [2500, 1500, 500];
+const RISER_AT = 3000;
+
+/**
+ * What the vote clock sounds between two samples of the time left (spec 3.3): the music's tension at `remainingMs`
+ * (tensionFor), a tick when a whole second from 10 down to 1 was crossed, a high tick when a half second under 3 s was
+ * crossed, and the riser when 3 s was crossed. A crossing is the previous sample above the mark and this one at or
+ * under it, so the tick lands as timerText's figure changes. A clock that jumps several marks at once (a hidden tab's
+ * timers held back) gives at most one of each, never a backlog. Pass Infinity as the first previous sample.
+ */
+export function clockCues(prevRemainingMs: number, remainingMs: number): { tension: Tension; tick: boolean; tickHigh: boolean; riser: boolean } {
+  const crossed = (mark: number): boolean => prevRemainingMs > mark && remainingMs <= mark;
+  return {
+    tension: tensionFor(remainingMs),
+    tick: TICK_AT.some(crossed),
+    tickHigh: TICK_HIGH_AT.some(crossed),
+    riser: crossed(RISER_AT),
+  };
 }
 
 /** The time left to `deadline` at `now` (the room's clock), "1:23": rounded up, through clockText (shared/clock.ts); empty with no deadline. */

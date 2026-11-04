@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import type { HostView, Role } from '../../shared/types';
+import type { Sound } from '../audio/sound';
 import { leaderboardArgs } from '../finale';
 import type { Hud } from '../hud/Hud';
 import type { SceneData } from '../router';
@@ -26,6 +27,8 @@ export class Leaderboard extends Phaser.Scene {
   private round = 0;
   private content!: CaseContent;
   private hud!: Hud;
+  /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
+  private audio!: Sound;
   /** What the HUD shows now, so a view that changes nothing it shows redraws nothing. */
   private shown = '';
 
@@ -41,7 +44,9 @@ export class Leaderboard extends Phaser.Scene {
   create(): void {
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
+    this.audio = this.registry.get('sound') as Sound;
     this.hud.clear();
+    this.audio.music('leaderboard');
     this.shown = '';
 
     this.drawArena();

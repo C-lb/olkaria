@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import raw from '../content/case.json';
+import type { Sound } from '../host/audio/sound';
 import { installHotkeys } from '../host/hotkeys';
 import { howtoSlides, installHowTo } from '../host/howto';
 import { Hud } from '../host/hud/Hud';
@@ -13,6 +14,8 @@ import type { RoomClient } from '../host/net';
 import { loadContent } from '../shared/content';
 
 const c = loadContent(raw);
+/** The sound facade, silent: the menu and the keys take one. */
+const sound: Sound = { music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(), toggle: vi.fn(() => true), enabled: true };
 
 it('eight slides from the case: the first boss, its question and options, the lead class, the constants', () => {
   const s = howtoSlides(c);
@@ -169,7 +172,7 @@ it('? does nothing while typing, while the menu is up, or when held; dispose tak
 it('installed before the menu, as main.ts does: Esc closes the how-to and leaves the menu shut, a walk key is prevented, and M opens the menu on the same press', () => {
   const game = { registry: { get: () => null, events: { on: () => {}, off: () => {} } } } as unknown as Phaser.Game;
   const client = { send: vi.fn(), mode: 'offline', onStatus: () => () => {} } as unknown as RoomClient;
-  const disposeMenu = installMenu(game, client, hud, c);
+  const disposeMenu = installMenu(game, client, hud, c, sound);
   press('?', { shiftKey: true });
   press('Escape');
   expect(root.querySelector('.hud-howto')).toBeNull();
@@ -189,7 +192,7 @@ it('installed before the menu, as main.ts does: Esc closes the how-to and leaves
 it('opening the how-to calls off a Shift+R that waits for its second press, as any other key does', () => {
   const send = vi.fn();
   const game = { registry: { get: () => null } } as unknown as Phaser.Game;
-  const offHotkeys = installHotkeys(game, { send } as unknown as RoomClient, hud);
+  const offHotkeys = installHotkeys(game, { send } as unknown as RoomClient, hud, sound);
   const shiftR = (): void => press('R', { code: 'KeyR', shiftKey: true });
   shiftR();
   press('?', { shiftKey: true });

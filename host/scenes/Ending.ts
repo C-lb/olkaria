@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import type { HostView, Role } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
+import type { Sound } from '../audio/sound';
 import { endingArgs, outcomeOf } from '../finale';
 import { oncePerEvent } from '../hotkeys';
 import type { Hud } from '../hud/Hud';
@@ -42,6 +43,8 @@ export class Ending extends Phaser.Scene {
   private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
+  /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
+  private audio!: Sound;
   private core!: Phaser.GameObjects.Image;
   /** The latest view of the ending: Space sends nothing before one has come. */
   private view: HostView | null = null;
@@ -76,6 +79,7 @@ export class Ending extends Phaser.Scene {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
+    this.audio = this.registry.get('sound') as Sound;
     this.hud.clear();
     this.view = null;
     this.shown = '';
@@ -105,9 +109,18 @@ export class Ending extends Phaser.Scene {
     support.forEach((role, i) => stand(role, SUPPORT_X[i] ?? SUPPORT_X[0]));
   }
 
-  /** Redraws the HUD when what it shows has changed, and cracks the core the first time a view names an option's ending. */
+  /**
+   * Sounds the outcome on the first view, redraws the HUD when what it shows has changed, and cracks the core the first
+   * time a view names an option's ending.
+   */
   private onView(_parent: unknown, view: HostView | null): void {
     if (view === null || view.phase !== 'ending') return;   // the router is about to move on
+    if (this.view === null) {
+      // The first view this scene draws: the outcome's stinger, then its theme, by the same name.
+      const ending = outcomeOf(this.content, view).ending === 'holds' ? 'endingHolds' : 'endingWon';
+      this.audio.sfx(ending);
+      this.audio.music(ending);
+    }
     this.view = view;
     const args = endingArgs(this.content, view);
     const sig = JSON.stringify(args);

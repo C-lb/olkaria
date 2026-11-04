@@ -29,6 +29,7 @@ beforeEach(() => {
   values.set('client', { mode: 'online', send: (cmd: HostCmd) => { sent.push(cmd); }, connect: () => new Promise(() => {}) });
   values.set('content', { roles: [] });
   values.set('hud', { showLobby: vi.fn(), showToast: vi.fn() });
+  values.set('sound', { music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(), toggle: vi.fn(() => true), enabled: true });
   values.set('view', null);
   const registry = { get: (key: string) => values.get(key), set: (key: string, value: unknown) => values.set(key, value), events: { on: vi.fn(), off: vi.fn() } };
   const keyboard = { on: (name: string, fn: (event: KeyboardEvent) => void) => { if (name === 'keydown-SPACE') space = fn; } };

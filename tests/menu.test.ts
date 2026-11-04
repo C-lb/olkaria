@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import raw from '../content/case.json';
+import type { Sound } from '../host/audio/sound';
 import { installHotkeys } from '../host/hotkeys';
 import { Hud } from '../host/hud/Hud';
 import { ARM_MS, DEAD_MS, installMenu, menuItems } from '../host/menu';
@@ -33,6 +34,13 @@ const send = vi.fn();
 const offStatus = vi.fn();
 const client = { send, mode: 'online', onStatus: vi.fn((cb: (s: ConnectionStatus) => void) => { status = cb; return offStatus; }) } as unknown as RoomClient;
 const reload = vi.fn();
+/** A stand-in for the sound facade: toggle() flips `soundOn` and returns it, as the real one does. */
+let soundOn = true;
+const sound = {
+  music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(),
+  toggle: vi.fn(() => { soundOn = !soundOn; return soundOn; }),
+  get enabled() { return soundOn; },
+} satisfies Sound;
 let root: HTMLElement;
 let dispose: () => void = () => {};
 
@@ -40,9 +48,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   view = lobbyView;
+  soundOn = true;
   root = document.createElement('div');
   document.body.append(root);
-  dispose = installMenu(game, client, new Hud(root), c, reload);
+  dispose = installMenu(game, client, new Hud(root), c, sound, reload);
   status('open');
 });
 afterEach(() => {
@@ -56,28 +65,52 @@ function press(key: string, init: KeyboardEventInit = {}): void {
 }
 
 it('lists the actions and the stages for the lobby online', () => {
-  const m = menuItems(c, lobbyView, 'online', 'open');
+  const m = menuItems(c, lobbyView, 'online', 'open', { enabled: true });
   expect(m.actions.map((a) => [a.id, a.label, a.enabled, a.confirm])).toEqual([
-    ['restart', 'Restart the round', false, true], ['lobby', 'Back to the lobby', false, true], ['reload', 'Reload the page', true, false]]);
+    ['restart', 'Restart the round', false, true], ['lobby', 'Back to the lobby', false, true], ['reload', 'Reload the page', true, false],
+    ['sound', 'Sound off', true, false]]);
   expect(m.actions[2].hint).toBe('The same room and screen come back.');
   expect(m.stages.map((s) => s.label)).toEqual(['1 Grid Wyrm', '2 Debt Golem', '3 Fog of Demand', '4 The core', 'Ending']);
   expect(m.stages.map((s) => s.act)).toEqual([0, 1, 2, 3, 4].map((stage) => ({ kind: 'cmd', cmd: { k: 'goto', stage } })));
   expect(m.stages.every((s) => s.enabled && s.confirm)).toBe(true);
 });
 it('names the round to restart and sends goto for it; offline the reload is disabled and says why', () => {
-  const m = menuItems(c, { ...lobbyView, phase: 'reveal', round: 2 }, 'offline', 'open');
+  const m = menuItems(c, { ...lobbyView, phase: 'reveal', round: 2 }, 'offline', 'open', { enabled: true });
   expect(m.actions[0]).toMatchObject({ label: 'Restart round 3', enabled: true, act: { kind: 'cmd', cmd: { k: 'goto', stage: 2 } } });
   expect(m.actions[1]).toMatchObject({ enabled: true, act: { kind: 'cmd', cmd: { k: 'reset' } } });
   expect(m.actions[2]).toMatchObject({ enabled: false, hint: 'Offline mode starts over on a reload. Use Back to the lobby.', act: { kind: 'reload' } });
 });
 it('online with the link down, the reload asks twice and says it needs the network', () => {
   for (const link of ['closed', 'gone', null] as const) {
-    expect(menuItems(c, lobbyView, 'online', link).actions[2]).toMatchObject({ enabled: true, confirm: true, hint: 'Needs the network. Without it the page is lost.' });
+    expect(menuItems(c, lobbyView, 'online', link, { enabled: true }).actions[2]).toMatchObject({ enabled: true, confirm: true, hint: 'Needs the network. Without it the page is lost.' });
   }
 });
 it('with no view yet only the reload is enabled', () => {
-  const m = menuItems(c, null, 'online', 'open');
-  expect([...m.actions, ...m.stages].filter((i) => i.enabled).map((i) => i.id)).toEqual(['reload']);
+  const m = menuItems(c, null, 'online', 'open', { enabled: true });
+  expect([...m.actions, ...m.stages].filter((i) => i.enabled).map((i) => i.id)).toEqual(['reload', 'sound']);
+});
+it('the fourth action turns the sound off or on, by its state, and never asks twice', () => {
+  expect(menuItems(c, lobbyView, 'online', 'open', { enabled: true }).actions[3]).toEqual(
+    { id: 'sound', label: 'Sound off', hint: 'S does the same.', enabled: true, confirm: false, act: { kind: 'sound' } });
+  expect(menuItems(c, null, 'offline', null, { enabled: false }).actions[3]).toMatchObject({ label: 'Sound on', enabled: true, confirm: false });
+});
+it('picking Sound toggles it and keeps the menu open, relabelled; opening and closing each play their blip', () => {
+  press('m');
+  expect(sound.sfx.mock.calls).toEqual([['menuOpen']]);
+  const item = (): HTMLButtonElement => root.querySelector('[data-menu-item=sound]') as HTMLButtonElement;
+  expect(item().textContent).toContain('Sound off');
+  item().click();
+  expect(sound.toggle).toHaveBeenCalledTimes(1);
+  expect(root.querySelector('[role=dialog]')).not.toBeNull();
+  expect(item().textContent).toContain('Sound on');
+  item().click();
+  expect(sound.toggle).toHaveBeenCalledTimes(2);
+  expect(item().textContent).toContain('Sound off');
+  expect(send).not.toHaveBeenCalled();
+  expect(reload).not.toHaveBeenCalled();
+  press('Escape');
+  expect(root.querySelector('[role=dialog]')).toBeNull();
+  expect(sound.sfx.mock.calls).toEqual([['menuOpen'], ['menuClose']]);
 });
 it('M opens with nothing focused, Esc closes, and M typed into a field does nothing', () => {
   press('m');
@@ -179,7 +212,7 @@ it('the arrows walk the enabled buttons, wrapping, and Enter presses the focused
   press('ArrowRight');
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('reload');
   press('ArrowDown');
-  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-0');
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('sound');
   press('ArrowLeft'); press('ArrowUp');
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');
   press('Enter');
@@ -212,7 +245,7 @@ it('Tab and Shift+Tab walk the focus like the arrows, so it never leaves the pag
   expect(tab(false).defaultPrevented).toBe(true);
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('reload');
   tab(false);
-  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-0');
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('sound');
   expect(tab(true).defaultPrevented).toBe(true);
   tab(true);
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');   // back past the first, to the last
@@ -262,7 +295,7 @@ it('a held key does not repeat: M held down leaves the menu open, and Enter held
 it('replaces an earlier install, so one press opens one menu, and its disposer takes an open menu down', () => {
   const second = document.createElement('div');
   document.body.append(second);
-  const again = installMenu(game, client, new Hud(second), c, reload);
+  const again = installMenu(game, client, new Hud(second), c, sound, reload);
   press('m');
   expect(root.querySelector('[role=dialog]')).toBeNull();
   expect(second.querySelector('[role=dialog]')).not.toBeNull();
@@ -273,7 +306,7 @@ it('replaces an earlier install, so one press opens one menu, and its disposer t
   second.remove();
 });
 it('opening the menu calls off a Shift+R that waits for its second press, as any other key does', () => {
-  const offHotkeys = installHotkeys(game, client, new Hud(document.createElement('div')));
+  const offHotkeys = installHotkeys(game, client, new Hud(document.createElement('div')), sound);
   const shiftR = (): void => press('R', { code: 'KeyR', shiftKey: true });
   shiftR();   // the first press: the reset waits for the second
   press('m');

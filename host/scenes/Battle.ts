@@ -3,19 +3,22 @@
 // Locked: two bars per card, the call-out banner, the judged call-outs. Reveal: the special attack, whose numbers add up
 // to what the HP drains, then the debrief. Space opens the vote, locks it, reveals, skips the strike, and moves on.
 // Started with resume (a reload mid-round) it shows the phase as it stands, and a reveal as its debrief, never
-// replaying the strike (spec 6.3).
+// replaying the strike (spec 6.3). The music follows the phase, and the vote's theme tightens as its clock runs down
+// (clockCues in strikers.ts), with a tick each second from 10 s.
 import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
 import { shares } from '../../shared/scoring';
 import type { Callout, DamageResult, HostView, Phase, Role } from '../../shared/types';
 import { buildBoss, type Boss, type BossId } from '../art/bosses';
 import { PALETTE } from '../art/placeholders';
+import type { Tension } from '../audio/score';
+import type { Sound } from '../audio/sound';
 import { oncePerEvent } from '../hotkeys';
 import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../hud/Hud';
 import type { RoomClient } from '../net';
 import { tripOf, type SceneData } from '../router';
 import {
-  bannerFor, beatsFor, classFor, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, judgedNotes, judgeFlash,
+  bannerFor, beatsFor, classFor, clockCues, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, judgedNotes, judgeFlash,
   labelFor, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, SKIP_LOCK_MS, SPACE_LOCK_KEY,
   spaceAction, strikePlan, timerText, votedText,
   type Stand, type StrikePlan,
@@ -75,6 +78,8 @@ export class Battle extends Phaser.Scene {
   private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
+  /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
+  private audio!: Sound;
 
   private boss!: Boss;
   private sprites = new Map<Role, Phaser.GameObjects.Image>();
@@ -103,6 +108,14 @@ export class Battle extends Phaser.Scene {
   private judged: Callout['status'][] | null = null;
   /** The class standing forward for a pending call-out. */
   private stepped: Role | null = null;
+  /**
+   * The vote clock's sounds: the deadline they count to, the time left at the last tick (Infinity before the first), the
+   * music's tension and whether the riser has played. All start over when a vote opens or its clock restarts.
+   */
+  private clockDeadline: number | null = null;
+  private clockMs = Infinity;
+  private tension: Tension = 0;
+  private rose = false;
 
   constructor() {
     super('Battle');
@@ -132,6 +145,7 @@ export class Battle extends Phaser.Scene {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
+    this.audio = this.registry.get('sound') as Sound;
     this.hud.clear();
     this.stage = 'live';
     this.busy = false;
@@ -144,6 +158,10 @@ export class Battle extends Phaser.Scene {
     this.shownBanner = 'null';
     this.judged = null;
     this.stepped = null;
+    this.clockDeadline = null;
+    this.clockMs = Infinity;
+    this.tension = 0;
+    this.rose = false;
     this.sprites = new Map();
     this.homes = new Map();
     this.numbers = new Set();
@@ -237,6 +255,7 @@ export class Battle extends Phaser.Scene {
       else this.strike(view, d);
       return;
     }
+    this.cuePhase(was, view);
     const callouts = view.callouts[this.round] ?? [];
     this.flashJudgements(callouts);
     this.stepForward(this.calledRole(view, callouts), !first);
@@ -250,19 +269,48 @@ export class Battle extends Phaser.Scene {
     this.banner(bannerFor(this.content, this.round, callouts, view.players));   // still up in a vote reopened over it
   }
 
+  /**
+   * The music for the phase, on the view that moves into it: the narration in travel; in vote the opening fanfare and
+   * the vote's theme, untightened (the first view of the vote, or a reopen from locked); the thud and the locked theme
+   * on the lock. A reopen inside an open vote (R) restarts the clock, so the theme loosens again as well. A resumed
+   * scene's first view sets the phase's theme, with the fanfare for a vote but no thud for a lock it did not see.
+   */
+  private cuePhase(was: Phase | null, view: HostView): void {
+    if (view.phase === 'travel' && was !== 'travel') this.audio.music('narration');
+    if (view.phase === 'vote' && (was !== 'vote' || view.voteDeadline !== this.clockDeadline)) {
+      this.clockDeadline = view.voteDeadline;
+      this.clockMs = Infinity;
+      this.tension = 0;
+      this.rose = false;
+      if (was !== 'vote') {
+        this.audio.sfx('voteOpen');
+        this.audio.music('vote');
+      }
+      this.audio.tension(0);
+    }
+    if (view.phase === 'locked' && was === 'vote') this.audio.sfx('lock');
+    if (view.phase === 'locked' && was !== 'locked') this.audio.music('locked');
+  }
+
   /** The class of the student a pending call-out names, if they are still in the room. */
   private calledRole(view: HostView, callouts: readonly Callout[]): Role | null {
     const id = callouts.find((co) => co.status === 'pending')?.playerId ?? null;
     return id !== null && Object.hasOwn(view.players, id) ? view.players[id].role : null;
   }
 
-  /** "+10 rally" or "no bonus" for each call-out judged since the last view. Nothing for the ones judged before this scene. */
+  /**
+   * "+10 rally" or "no bonus", with its jingle, for each call-out judged since the last view, and the call-out fanfare
+   * for each one made since. Nothing for the ones made or judged before this scene.
+   */
   private flashJudgements(callouts: readonly Callout[]): void {
     const was = this.judged;
     this.judged = callouts.map((co) => co.status);
     if (was === null) return;
     callouts.forEach((co, i) => {
-      if (was[i] === 'pending' && co.status !== 'pending') this.hud.flashRally(judgeFlash(this.content, co.status === 'awarded'));
+      if (was[i] !== 'pending' && co.status === 'pending') this.audio.sfx('callout');
+      if (was[i] !== 'pending' || co.status === 'pending') return;
+      this.hud.flashRally(judgeFlash(this.content, co.status === 'awarded'));
+      this.audio.sfx(co.status === 'awarded' ? 'rallyYes' : 'rallyNo');
     });
   }
 
@@ -320,16 +368,38 @@ export class Battle extends Phaser.Scene {
     return votedText(view.tally, players, view.synthetic[this.round], { offline: this.client.mode === 'offline', open: view.phase === 'vote' });
   }
 
-  /** Counts the clock down between views, which come only when something changes. */
+  /** Counts the clock down between views, which come only when something changes, and sounds it (cueClock). */
   private tickClock(): void {
     const view = this.view;
     if (this.stage !== 'live' || view === null || view.phase !== 'vote') return;
+    this.cueClock(view);
     const timer = this.clock(view);
     const voted = this.voted(view);
     const status = JSON.stringify([timer, voted]);
     if (status === this.shownStatus) return;
     this.shownStatus = status;
     this.hud.updateOptionsStatus({ timerText: timer, votedText: voted });
+  }
+
+  /**
+   * The clock's sounds since the last tick (clockCues): the theme tightens when the tension level rises, a tick on each
+   * second from 10 down to 1, a high tick between the last three, and the riser once a vote as 3 s is crossed.
+   */
+  private cueClock(view: HostView): void {
+    if (view.voteDeadline === null) return;
+    const remaining = view.voteDeadline - (Date.now() + this.offset);
+    const cues = clockCues(this.clockMs, remaining);
+    this.clockMs = remaining;
+    if (cues.tension > this.tension) {
+      this.tension = cues.tension;
+      this.audio.tension(cues.tension);
+    }
+    if (cues.tick) this.audio.sfx('tick');
+    if (cues.tickHigh) this.audio.sfx('tickHigh');
+    if (cues.riser && !this.rose) {
+      this.rose = true;
+      this.audio.sfx('riser');
+    }
   }
 
   // ---- Space ----------------------------------------------------------------------------------------------
@@ -366,6 +436,7 @@ export class Battle extends Phaser.Scene {
     this.stage = 'strike';
     this.busy = true;
     this.striking = { view, d };
+    this.audio.music('strike');
     this.banner(null);
     this.showCards(view);
     this.rest();
@@ -377,15 +448,18 @@ export class Battle extends Phaser.Scene {
     this.tweens.chain({
       targets: this.beat,
       tweens: [
-        ...plan.map((step, i) => ({ t: { from: 0, to: 1 }, duration: beats[i], onStart: () => this.play(step, beats[i], i, untilStrikesEnd[i]) })),
+        ...plan.map((step, i) => ({ t: { from: 0, to: 1 }, duration: beats[i], onStart: () => this.play(step, beats[i], i, untilStrikesEnd[i], d.total) })),
         { t: { from: 0, to: 1 }, duration: DRAIN_MS, onStart: () => this.drain(view, d) },
       ],
       onComplete: () => this.debrief(view, d, true),
     });
   }
 
-  /** One beat: a toast for a strike that does not happen, else its strikers move, the boss is hit and its number rises. */
-  private play(step: StrikePlan[number], ms: number, i: number, toastMs: number): void {
+  /**
+   * One beat: a toast for a strike that does not happen, else its strikers move, the boss is hit and its number rises
+   * with a hit sound, pitched by its amount against the round's total, `biggest`.
+   */
+  private play(step: StrikePlan[number], ms: number, i: number, toastMs: number, biggest: number): void {
     if (step.kind === 'skip') {
       this.hud.showToast(step.toast, toastMs);
       return;
@@ -396,6 +470,7 @@ export class Battle extends Phaser.Scene {
     const impact = (): void => {
       if (colour !== null) for (const sprite of strikers) sprite.setTintFill(colour);
       this.hitBoss();
+      this.audio.hit(step.amount, biggest);
       this.pop(step.figure, colour ?? hex(PALETTE.amber), i, step.kind === 'lead' ? 3 : 2);
     };
     switch (step.kind) {
@@ -473,12 +548,17 @@ export class Battle extends Phaser.Scene {
     if (d.total > 0) this.cameras.main.shake(SHAKE_MS, 0.01);
   }
 
-  /** The debrief, with the HP drained at once if the strike did not get there. After a strike, Space rests a moment. */
+  /**
+   * The debrief, with the HP drained at once if the strike did not get there, and its theme. After a strike (played out
+   * or skipped) the strike's closing chord sounds first and Space rests a moment.
+   */
   private debrief(view: HostView, d: DamageResult, struck: boolean): void {
     this.stage = 'debrief';
     this.busy = false;
     this.striking = null;
     if (struck) this.lockedUntil = Math.max(this.lockedUntil, this.time.now + SKIP_LOCK_MS);
+    if (struck) this.audio.sfx('strikeEnd');
+    this.audio.music('debrief');
     this.hp.set(this.content.scoring.roundHp - d.total, view.bossHp);
     const args = debriefFor(d, this.content, this.round, view.callouts[this.round] ?? [], view.players);
     this.screen(JSON.stringify(['debrief', args]), () => this.hud.showDebrief(args));

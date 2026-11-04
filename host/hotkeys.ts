@@ -5,6 +5,7 @@
 // through oncePerEvent, so a press reaches each handler once.
 import type Phaser from 'phaser';
 import { OPTION_IDS, type HostView } from '../shared/types';
+import type { Sound } from './audio/sound';
 import type { Hud } from './hud/Hud';
 import type { RoomClient } from './net';
 
@@ -16,6 +17,8 @@ const BOTS = 30;
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 /** How long the toasts that answer Shift+R ("Room reset", "Reset called off") stay. */
 const RESET_NOTE_MS = 1500;
+/** How long "Sound off" or "Sound on" stays after S. */
+const SOUND_NOTE_MS = 1500;
 
 /** The listener installed last, removed when another install replaces it. */
 let uninstall: (() => void) | null = null;
@@ -66,12 +69,12 @@ function pendingCallout(view: HostView | null): boolean {
 /**
  * 1 to 4 add a vote to A to D and Shift+1 to 4 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
  * pending call-out (only while one is pending in `locked`, otherwise N is the Travel scene's skip); R reopens; H hides
- * or shows names; F toggles fullscreen; Shift+R twice within 3 s resets to the lobby, and any other key in between
+ * or shows names; F toggles fullscreen; S turns the sound off or on (Shift+S does nothing); Shift+R twice within 3 s resets to the lobby, and any other key in between
  * calls the reset off, as opening the menu or the how-to does (callOffReset). Escape is the menu's (menu.ts), not one
  * of these. Held keys do not repeat, and Ctrl, Alt or Cmd chords (a reload) are left to the browser. Returns the
  * function that removes the keys again; installing again removes the earlier install first, so a key never sends twice.
  */
-export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): () => void {
+export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud, sound: Sound): () => void {
   uninstall?.();
   let resetUntil = 0;
 
@@ -118,6 +121,9 @@ export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud):
         break;
       case 'r':
         client.send({ k: 'reopen' });
+        break;
+      case 's':
+        if (!event.shiftKey) hud.showToast(sound.toggle() ? 'Sound on' : 'Sound off', SOUND_NOTE_MS);
         break;
       default:
         break;

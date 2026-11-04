@@ -12,6 +12,7 @@ import type { CaseContent } from '../../shared/content';
 import type { HostView } from '../../shared/types';
 import { addBackdrop } from '../art/backdrop';
 import { PALETTE } from '../art/placeholders';
+import type { Sound } from '../audio/sound';
 import { oncePerEvent } from '../hotkeys';
 import type { Hud } from '../hud/Hud';
 import { standAt, Trail } from '../levels/party';
@@ -54,6 +55,8 @@ export class Travel extends Phaser.Scene {
   private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
+  /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
+  private audio!: Sound;
   private segment!: Segment;
   private lead!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   /** The three support classes, in role order, nearest the lead first, and the height each one stands at or is making for. */
@@ -94,7 +97,9 @@ export class Travel extends Phaser.Scene {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
+    this.audio = this.registry.get('sound') as Sound;
     this.hud.clear();
+    this.audio.music('travel');
     this.roundIndex = Math.min(SEGMENTS.length - 1, Math.max(0, this.round));
     this.segment = SEGMENTS[this.roundIndex];
     this.party = [];
@@ -198,6 +203,7 @@ export class Travel extends Phaser.Scene {
   private collect(exhibit: Exhibit): void {
     if (this.leaving || !this.exhibits.has(exhibit.id)) return;
     this.removeExhibit(exhibit.id);
+    this.audio.sfx('exhibit');
     this.client.send({ k: 'exhibit', exhibitId: exhibit.id });
     this.hud.showToast(`${exhibit.text} (${exhibit.source})`);
     if (this.auto) this.restOwed = true;
@@ -216,6 +222,7 @@ export class Travel extends Phaser.Scene {
   private enterArena(): void {
     if (this.leaving) return;
     this.leaving = true;
+    this.audio.sfx('gate');
     this.registry.set(SPACE_LOCK_KEY, this.time.now + SEND_LOCK_MS);
     this.scene.start('Battle', { round: this.round, resume: false, trip: this.trip } satisfies SceneData);
   }

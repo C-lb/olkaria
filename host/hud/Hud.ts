@@ -114,6 +114,7 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['R', 'Reopen a locked vote, or extend an open one'],
   ['H', 'Hide or show names'],
   ['F', 'Fullscreen'],
+  ['S', 'Sound off or on'],
   ['Arrows', 'Take over the walk: run and jump; Space jumps too'],
   ['A', 'Pause or resume the walk'],
   ['N', 'Skip to the arena in travel'],

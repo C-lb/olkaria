@@ -469,7 +469,8 @@ describe('menu', () => {
     expect(text(root, '.menu-group + .menu-group > p.hint.menu-note')).toBe(stagesHint);
 
     const keys = [...root.querySelectorAll('.menu > .sep + ul.keys > .key-row')].map((row) => [...row.children].map((cell) => cell.textContent));
-    expect(keys).toHaveLength(15);
+    expect(keys).toHaveLength(16);
+    expect(keys).toContainEqual(['S', 'Sound off or on']);
     expect(keys).toContainEqual(['Shift+R twice', 'Reset to the lobby']);
     expect(keys).toContainEqual(['?', 'How to play']);
     expect(keys.at(-1)).toEqual(['M or Esc', 'This menu']);
