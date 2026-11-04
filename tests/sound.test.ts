@@ -11,14 +11,16 @@ let clock = 0;
 let chips: FakeChip[] = [];
 const stubContext = {} as AudioContext;
 
-function setup(makeContext: () => AudioContext | null = () => stubContext) {
+type FakeDocument = EventTarget & { visibilityState: DocumentVisibilityState };
+
+function setup(makeContext: () => AudioContext | null = () => stubContext, doc?: FakeDocument) {
   const makeContextSpy = vi.fn(makeContext);
   const makeChip = vi.fn((): Chip => {
     const chip: FakeChip = { play: vi.fn(), setTension: vi.fn(), stop: vi.fn(), sfx: vi.fn(), hit: vi.fn(), steps: vi.fn(), playing: null };
     chips.push(chip);
     return chip as unknown as Chip;
   });
-  const sound = createSound({ target: window, storage: window.localStorage, makeContext: makeContextSpy, makeChip, now: () => clock });
+  const sound = createSound({ target: window, storage: window.localStorage, makeContext: makeContextSpy, makeChip, now: () => clock, ...(doc ? { document: doc } : {}) });
   return { sound, makeContext: makeContextSpy, makeChip };
 }
 
@@ -250,4 +252,41 @@ it('a first key the how-to or the menu swallows still unlocks: the listeners are
     window.removeEventListener('keydown', swallow, true);
     document.body.removeEventListener('pointerdown', swallow);
   }
+});
+
+it('a hidden tab goes quiet and comes back on the theme and tension of the moment', () => {
+  const doc: FakeDocument = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
+  const show = (state: DocumentVisibilityState) => {
+    doc.visibilityState = state;
+    doc.dispatchEvent(new Event('visibilitychange'));
+  };
+  const { sound, makeContext } = setup(undefined, doc);
+  sound.music('vote');
+  show('hidden'); // before the first gesture: nothing to stop, nothing made
+  show('visible');
+  expect(makeContext).not.toHaveBeenCalled();
+
+  press();
+  const chip = chips[0];
+  sound.tension(1);
+  show('hidden');
+  expect(chip.stop).toHaveBeenCalledTimes(1);
+  sound.tension(2); // the room goes on while the tab is hidden; nothing reaches the chip
+  sound.sfx('tick');
+  sound.join();
+  expect(chip.setTension).toHaveBeenCalledTimes(1);
+  expect(chip.sfx).not.toHaveBeenCalled();
+  expect(chip.steps).not.toHaveBeenCalled();
+  const plays = chip.play.mock.calls.length;
+  show('visible');
+  expect(chip.play).toHaveBeenCalledTimes(plays + 1);
+  expect(chip.play).toHaveBeenLastCalledWith('vote', 2);
+
+  // Off: hiding and showing the tab plays nothing.
+  sound.toggle();
+  const stops = chip.stop.mock.calls.length;
+  show('hidden');
+  show('visible');
+  expect(chip.play).toHaveBeenCalledTimes(plays + 1);
+  expect(chip.stop).toHaveBeenCalledTimes(stops);
 });

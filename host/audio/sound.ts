@@ -1,6 +1,6 @@
 // The facade the scenes use: owns the lazy audio context, the first-gesture unlock, the stored on/off
-// choice and the join-burst limiter. Sound never blocks the game: while off, before the first gesture, or
-// when the browser refuses a context, every method is a quiet no-op.
+// choice, the join-burst limiter and the hidden tab. Sound never blocks the game: while off, before the first
+// gesture, while the tab is hidden, or when the browser refuses a context, every method is a quiet no-op.
 import { Chip, WebAudioVoicer } from './chip';
 import type { Tension, ThemeId } from './score';
 import { JOIN_GAP_MS, joinHz, SFX, type SfxId } from './sfx';
@@ -38,10 +38,13 @@ export function createSound(deps: {
   /** Tests inject a Chip over a recording voicer. */
   makeChip?: (ctx: AudioContext) => Chip;
   now?: () => number;
+  /** Whose visibilitychange hides and shows the tab; the page's document by default. */
+  document?: Pick<Document, 'addEventListener' | 'removeEventListener' | 'visibilityState'> | null;
 }): Sound {
   const { target, storage } = deps;
   const makeChip = deps.makeChip ?? ((ctx: AudioContext) => new Chip(new WebAudioVoicer(ctx)));
   const now = deps.now ?? (() => performance.now());
+  const doc = deps.document !== undefined ? deps.document : typeof document === 'undefined' ? null : document;
 
   // Storage can be blocked (private windows, strict settings). Sound still works for the life of the tab.
   const readStore = (): string | null => {
@@ -67,10 +70,12 @@ export function createSound(deps: {
   let lastJoinAt: number | null = null;
   let lastBlipAt: number | null = null;
   let burstIndex = 0;
+  /** A hidden tab is silent: a second host tab (the offline walk-through) would otherwise play under the class tab. */
+  let hidden = doc?.visibilityState === 'hidden';
 
-  /** Runs fn against the chip only while sound is on and the chip exists; an audio error never reaches the game. */
+  /** Runs fn against the chip only while sound is on, the tab shown and the chip made; an audio error never reaches the game. */
   const withChip = (fn: (c: Chip) => void): void => {
-    if (!enabled || chip === null) return;
+    if (!enabled || hidden || chip === null) return;
     try {
       fn(chip);
     } catch {
@@ -113,6 +118,25 @@ export function createSound(deps: {
   };
   for (const type of GESTURES) target.addEventListener(type, unlock, CAPTURE);
 
+  // Hidden: the music and its scheduling stop (Chip.stop), while the theme and tension are kept. Shown again with
+  // sound on: the theme of the moment starts again, at the tension of the moment.
+  doc?.addEventListener('visibilitychange', () => {
+    const nowHidden = doc.visibilityState === 'hidden';
+    if (nowHidden === hidden) return;
+    hidden = nowHidden;
+    if (hidden) {
+      if (enabled && chip !== null) {
+        try {
+          chip.stop();
+        } catch {
+          // already quiet enough
+        }
+      }
+      return;
+    }
+    if (pending !== null) withChip((c) => c.play(pending as ThemeId, kept));
+  });
+
   return {
     music(theme) {
       if (theme !== pending) kept = 0; // a new theme starts untightened, as in Chip.play
@@ -130,7 +154,7 @@ export function createSound(deps: {
       withChip((c) => c.hit(damage, biggest));
     },
     join() {
-      if (!enabled || chip === null) return;
+      if (!enabled || hidden || chip === null) return;
       const t = now();
       if (lastJoinAt === null || t - lastJoinAt >= BURST_END_MS) burstIndex = 0;
       lastJoinAt = t;
@@ -155,7 +179,7 @@ export function createSound(deps: {
       try {
         if (!enabled) {
           live.stop();
-        } else {
+        } else if (!hidden) {
           live.sfx('soundOn');
           if (pending !== null) live.play(pending, kept);
         }
