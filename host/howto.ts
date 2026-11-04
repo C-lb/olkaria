@@ -6,7 +6,7 @@
 // installHowTo() puts the slides on ? and walks them.
 import type { CaseContent } from '../shared/content';
 import { ROLES, type OptionId, type Role } from '../shared/types';
-import { typing } from './hotkeys';
+import { callOffReset, typing } from './hotkeys';
 import type { Hud } from './hud/Hud';
 import { clockText } from './strikers';
 
@@ -163,7 +163,9 @@ export function installHowTo(hud: Hud, content: CaseContent): { open: () => void
     hud.showHowTo({ slide: slides[index], index, count: slides.length, onNext: next });
   }
 
+  /** At the first slide. The hotkeys never hear the ? that opened it, so a Shift+R waiting for its second press is off. */
   function open(): void {
+    callOffReset();
     index = 0;
     draw();
   }

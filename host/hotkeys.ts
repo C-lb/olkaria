@@ -18,6 +18,16 @@ const RESET_NOTE_MS = 1500;
 
 /** The listener installed last, removed when another install replaces it. */
 let uninstall: (() => void) | null = null;
+/** Calls off the installed keys' waiting Shift+R, if one is waiting; null with no keys installed. */
+let callOff: (() => void) | null = null;
+
+/**
+ * Calls off a Shift+R that waits for its second press, the way any other key does, toast and all. The menu and the
+ * how-to call it as they open: they keep their opening key from these keys, which would otherwise never hear it.
+ */
+export function callOffReset(): void {
+  callOff?.();
+}
 
 /** 1 to 4 on the top row or the number pad, read by position so Shift (which turns "1" into "!") does not hide it; else 0. */
 function digitOf(code: string): number {
@@ -40,9 +50,9 @@ function pendingCallout(view: HostView | null): boolean {
  * 1 to 4 add a vote to A to D and Shift+1 to 4 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
  * pending call-out (only while one is pending in `locked`, otherwise N is the Travel scene's skip); R reopens; H hides
  * or shows names; F toggles fullscreen; Shift+R twice within 3 s resets to the lobby, and any other key in between
- * calls the reset off. Escape is the menu's (menu.ts), not one of these. Held keys do not repeat, and Ctrl, Alt or Cmd
- * chords (a reload) are left to the browser. Returns the function that removes the keys again; installing again
- * removes the earlier install first, so a key never sends twice.
+ * calls the reset off, as opening the menu or the how-to does (callOffReset). Escape is the menu's (menu.ts), not one
+ * of these. Held keys do not repeat, and Ctrl, Alt or Cmd chords (a reload) are left to the browser. Returns the
+ * function that removes the keys again; installing again removes the earlier install first, so a key never sends twice.
  */
 export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud): () => void {
   uninstall?.();
@@ -97,9 +107,16 @@ export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud):
     }
   };
 
+  const callOffArmed = (): void => {
+    if (Date.now() <= resetUntil) hud.showToast('Reset called off', RESET_NOTE_MS);
+    resetUntil = 0;
+  };
+
   window.addEventListener('keydown', onKeyDown);
+  callOff = callOffArmed;
   const dispose = (): void => {
     window.removeEventListener('keydown', onKeyDown);
+    if (callOff === callOffArmed) callOff = null;
     if (uninstall === dispose) uninstall = null;
   };
   uninstall = dispose;

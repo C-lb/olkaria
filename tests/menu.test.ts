@@ -3,8 +3,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import raw from '../content/case.json';
+import { installHotkeys } from '../host/hotkeys';
 import { Hud } from '../host/hud/Hud';
-import { ARM_MS, installMenu, menuItems } from '../host/menu';
+import { ARM_MS, DEAD_MS, installMenu, menuItems } from '../host/menu';
 import type { ConnectionStatus, RoomClient } from '../host/net';
 import { loadContent } from '../shared/content';
 import { hostView, initialState } from '../shared/room-logic';
@@ -28,7 +29,9 @@ const game = {
 } as unknown as Phaser.Game;
 let status: (s: ConnectionStatus) => void = () => {};
 const send = vi.fn();
-const client = { send, mode: 'online', onStatus: vi.fn((cb: (s: ConnectionStatus) => void) => { status = cb; return () => {}; }) } as unknown as RoomClient;
+/** What the client's onStatus hands back: the menu calls it to stop listening. */
+const offStatus = vi.fn();
+const client = { send, mode: 'online', onStatus: vi.fn((cb: (s: ConnectionStatus) => void) => { status = cb; return offStatus; }) } as unknown as RoomClient;
 const reload = vi.fn();
 let root: HTMLElement;
 let dispose: () => void = () => {};
@@ -104,6 +107,7 @@ it('swallows key presses while open, chords too but left to the browser, and let
   const passed = seen.mock.calls[1][0] as KeyboardEvent;
   expect([passed.type, passed.key, passed.ctrlKey, passed.defaultPrevented]).toEqual(['keydown', ' ', true, false]);
   expect(send).not.toHaveBeenCalled();
+  window.removeEventListener('keydown', seen); window.removeEventListener('keyup', seen);
 });
 it('arms a room-changing item on the first press and fires it on the second within 3 s', () => {
   view = { ...lobbyView, phase: 'reveal', round: 1 };
@@ -115,9 +119,49 @@ it('arms a room-changing item on the first press and fires it on the second with
   vi.advanceTimersByTime(ARM_MS + 1);
   expect(root.querySelector('[data-menu-item=lobby]')!.textContent).toContain('Back to the lobby');
   (root.querySelector('[data-menu-item=lobby]') as HTMLButtonElement).click();
+  vi.advanceTimersByTime(DEAD_MS);
   (root.querySelector('[data-menu-item=lobby]') as HTMLButtonElement).click();
   expect(send).toHaveBeenCalledWith({ k: 'reset' });
   expect(root.querySelector('[role=dialog]')).toBeNull();
+});
+it('a second press within 300 ms of the one that armed an item is the same press: it stays armed and sends nothing', () => {
+  view = { ...lobbyView, phase: 'reveal', round: 1 };
+  press('m');
+  const lobby = () => root.querySelector('[data-menu-item=lobby]') as HTMLButtonElement;
+  lobby().click();
+  vi.advanceTimersByTime(100);
+  lobby().click();   // a double-click, or a bounce of the key
+  expect(send).not.toHaveBeenCalled();
+  expect(lobby().hasAttribute('data-armed')).toBe(true);
+  // The ignored press leaves the arming's time alone: it still lapses 3 s after the press that armed it.
+  vi.advanceTimersByTime(ARM_MS - 100 - 1);
+  expect(lobby().hasAttribute('data-armed')).toBe(true);
+  vi.advanceTimersByTime(2);
+  expect(lobby().hasAttribute('data-armed')).toBe(false);
+  expect(send).not.toHaveBeenCalled();
+});
+it('a second press 400 ms after the arming one fires it, once', () => {
+  view = { ...lobbyView, phase: 'reveal', round: 1 };
+  press('m');
+  (root.querySelector('[data-menu-item=stage-3]') as HTMLButtonElement).click();
+  vi.advanceTimersByTime(400);
+  (root.querySelector('[data-menu-item=stage-3]') as HTMLButtonElement).click();
+  expect(send.mock.calls).toEqual([[{ k: 'goto', stage: 3 }]]);
+  expect(root.querySelector('[role=dialog]')).toBeNull();
+});
+it('draws the panel again only when a view changes what it shows, so a click that spans a broadcast is not lost', () => {
+  const vote: HostView = { ...lobbyView, phase: 'vote', round: 0 };
+  view = vote;
+  press('m');
+  const panel = root.querySelector('.hud-menu');
+  const joiner = { id: 'p9', name: 'Ann', role: 'citizen' as const, table: null, joinedAt: T0, score: 0, lastPoints: 0, votes: {} };
+  view = { ...vote, updatedAt: vote.updatedAt + 1, players: { p9: joiner } };   // a join: nothing the menu shows changes
+  for (const fn of viewListeners) fn();
+  expect(root.querySelector('.hud-menu')).toBe(panel);
+  view = { ...vote, updatedAt: vote.updatedAt + 2, round: 1 };
+  for (const fn of viewListeners) fn();
+  expect(root.querySelector('.hud-menu')).not.toBe(panel);
+  expect(root.querySelector('[data-menu-item=restart]')!.textContent).toContain('Restart round 2');
 });
 it('a press on another item moves the arming', () => {
   view = { ...lobbyView, phase: 'reveal', round: 1 };
@@ -126,6 +170,7 @@ it('a press on another item moves the arming', () => {
   (root.querySelector('[data-menu-item=stage-2]') as HTMLButtonElement).click();
   expect(root.querySelector('[data-menu-item=restart]')!.hasAttribute('data-armed')).toBe(false);
   expect(root.querySelector('[data-menu-item=stage-2]')!.hasAttribute('data-armed')).toBe(true);
+  vi.advanceTimersByTime(DEAD_MS);
   (root.querySelector('[data-menu-item=stage-2]') as HTMLButtonElement).click();
   expect(send).toHaveBeenCalledWith({ k: 'goto', stage: 2 });
 });
@@ -137,7 +182,9 @@ it('the arrows walk the enabled buttons, wrapping, and Enter presses the focused
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-0');
   press('ArrowLeft'); press('ArrowUp');
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');
-  press('Enter'); press('Enter');
+  press('Enter');
+  vi.advanceTimersByTime(DEAD_MS);
+  press('Enter');
   expect(send).toHaveBeenCalledWith({ k: 'goto', stage: 4 });
 });
 it('reload fires at once while the link is up, asks twice once it drops, and a click on the scrim closes', () => {
@@ -153,7 +200,7 @@ it('reload fires at once while the link is up, asks twice once it drops, and a c
   expect(root.querySelector('[role=dialog]')).toBeNull();
 });
 
-// ---- Beyond the brief: the tests above are its code, the chords one amended in review ------------------------
+// ---- Tab, closing, redraws, held keys, chords, installs and the link -----------------------------------------
 
 it('Tab and Shift+Tab walk the focus like the arrows, so it never leaves the page', () => {
   press('m');   // lobby: the first enabled is reload, the last the ending
@@ -224,4 +271,45 @@ it('replaces an earlier install, so one press opens one menu, and its disposer t
   press('m');
   expect(second.querySelector('[role=dialog]')).toBeNull();
   second.remove();
+});
+it('opening the menu calls off a Shift+R that waits for its second press, as any other key does', () => {
+  const offHotkeys = installHotkeys(game, client, new Hud(document.createElement('div')));
+  const shiftR = (): void => press('R', { code: 'KeyR', shiftKey: true });
+  shiftR();   // the first press: the reset waits for the second
+  press('m');
+  press('Escape');
+  shiftR();   // a first press again, not the second
+  expect(send).not.toHaveBeenCalled();
+  shiftR();
+  expect(send).toHaveBeenCalledWith({ k: 'reset' });
+  offHotkeys();
+});
+it('a Ctrl, Cmd or Alt chord on M never opens the menu, and while it is open a chord is stopped but never prevented', () => {
+  const heard = vi.fn();
+  window.addEventListener('keydown', heard);
+  const chord = (key: string, flag: 'ctrlKey' | 'metaKey' | 'altKey'): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { key, [flag]: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(event);
+    return event;
+  };
+  for (const flag of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+    expect(chord('m', flag).defaultPrevented).toBe(false);
+    expect(root.querySelector('[role=dialog]')).toBeNull();
+  }
+  expect(heard).toHaveBeenCalledTimes(3);   // shut, a chord passes untouched
+  press('m');
+  for (const flag of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+    expect(chord('Escape', flag).defaultPrevented).toBe(false);
+    expect(root.querySelector('[role=dialog]')).not.toBeNull();   // a chorded Esc does not close it
+  }
+  expect(heard).toHaveBeenCalledTimes(3);   // open, every chord stops at the menu
+  window.removeEventListener('keydown', heard);
+});
+it('a change of link while the menu is shut draws nothing, and dispose stops listening to the link', () => {
+  status('closed');
+  status('open');
+  expect(root.querySelector('.hud-menu')).toBeNull();
+  expect(offStatus).not.toHaveBeenCalled();
+  dispose();
+  expect(offStatus).toHaveBeenCalledTimes(1);
 });

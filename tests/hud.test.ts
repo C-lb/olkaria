@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
 // tests/hud.test.ts
-import { it, expect } from 'vitest';
-import { Hud, OPTION_COLORS } from '../host/hud/Hud';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import raw from '../content/case.json';
+import { howtoSlides } from '../host/howto';
+import { capitalise, Hud, OPTION_COLORS, type LobbyArgs, type MenuArgs, type MenuButton } from '../host/hud/Hud';
+import { loadContent } from '../shared/content';
 const sh = (A: number, B: number, C: number, D: number) => ({ A, B, C, D });
 it('draws four cards in letter order with letter colours and two bars each', () => {
   const root = document.createElement('div'); document.body.appendChild(root);
@@ -32,8 +35,6 @@ it('shows the lobby counts, the banner and the debrief lines', () => {
 });
 
 // ---- Beyond the brief: the tests above are its code unchanged ----------------------------------------------
-import { afterEach, describe, vi } from 'vitest';
-import { capitalise, type LobbyArgs } from '../host/hud/Hud';
 
 const lobby = (over: Partial<LobbyArgs> = {}): LobbyArgs => ({
   qrDataUrl: null, joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
@@ -418,7 +419,6 @@ describe('timed toast', () => {
 });
 
 // ---- Facilitator menu: the panel, its buttons and the key map under them, and the focus ------------------------
-import type { MenuArgs, MenuButton } from '../host/hud/Hud';
 
 describe('menu', () => {
   const button = (id: string, label: string, over: Partial<MenuButton> = {}): MenuButton => ({ id, label, enabled: true, armed: false, ...over });
@@ -532,9 +532,6 @@ describe('menu', () => {
 });
 
 // ---- How to play: one slide at a time on a full-bleed dialog, and whether the menu is up -------------------------
-import raw from '../content/case.json';
-import { howtoSlides } from '../host/howto';
-import { loadContent } from '../shared/content';
 
 const c = loadContent(raw);
 

@@ -5,7 +5,7 @@
 import type Phaser from 'phaser';
 import type { CaseContent } from '../shared/content';
 import type { HostCmd, HostView } from '../shared/types';
-import { typing } from './hotkeys';
+import { callOffReset, typing } from './hotkeys';
 import type { Hud, MenuButton } from './hud/Hud';
 import type { ConnectionStatus, RoomClient } from './net';
 
@@ -15,6 +15,11 @@ export interface MenuModel { actions: MenuItem[]; stages: MenuItem[]; stagesHint
 
 /** How long an armed item waits for its second press. */
 export const ARM_MS = 3000;
+/**
+ * A second press this soon after the one that armed an item is the same press, a double-click or a bounce of the key,
+ * not the answer to "Sure?": the item stays armed and nothing is sent.
+ */
+export const DEAD_MS = 300;
 
 const RESTART_HINT = 'This round again from its road. Its votes go; earlier rounds stay.';
 const LOBBY_HINT = 'Players stay; votes and scores go.';
@@ -59,13 +64,16 @@ function reloadState(mode: 'online' | 'offline', link: ConnectionStatus | null):
 /**
  * Puts the menu on M and Esc (spec 3.1 and 3.3) with one keydown listener on window in the capture phase, so the menu
  * hears a key before the hotkeys and Phaser, which listen on window in the bubble phase. Closed, M or Esc opens the
- * menu, unless the key is held down or typed into a field, and browser chords (Ctrl, Alt, Cmd) pass untouched. Open,
+ * menu, unless the key is held down or typed into a field, and browser chords (Ctrl, Alt, Cmd) pass untouched; the
+ * hotkeys never hear the key that opened it, so opening calls off a Shift+R that waits for its second press. Open,
  * the menu stops every key press: M or Esc closes it, the arrows and Tab (back with Shift) walk the focus, Enter or
  * Space presses the focused item, any other key does nothing, and a held key neither closes the menu nor presses an
  * item again. A chord is stopped as well but never prevented, so Cmd+R still reloads. Key releases always pass, so a
  * key held as the menu opens does not stick down. An item that changes the room asks twice: the first press arms it
- * for ARM_MS, a second press on it fires it, and a press on another item arms that one instead. Firing closes the
- * menu. Returns the function that removes it all again; installing again removes the earlier install first.
+ * for ARM_MS, a second press on it fires it unless it comes within DEAD_MS of the first, and a press on another item
+ * arms that one instead. Firing closes the menu. While open, the panel follows the view and the link, and is drawn
+ * again only when what it shows has changed, so the buttons under a pointer stay put through the room's broadcasts.
+ * Returns the function that removes it all again; installing again removes the earlier install first.
  */
 export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, content: CaseContent, reload: () => void = () => location.reload()): () => void {
   uninstall?.();
@@ -74,6 +82,12 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
   /** The item waiting for its second press and when it was armed, and the timer that disarms it. */
   let armed: { id: string; at: number } | null = null;
   let lapse: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * What the open panel was drawn from. The room sends a view on every join and vote, and a panel drawn afresh for one
+   * that changes nothing it shows would swallow a click that spans it: the press lands on the old button, the release
+   * on the new.
+   */
+  let drawn = '';
 
   function model(): MenuModel {
     return menuItems(content, (game.registry.get('view') as HostView | null | undefined) ?? null, client.mode, link);
@@ -89,13 +103,18 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
     const m = model();
     // An armed item that a new view or link has turned off, or that no longer asks twice, is armed no more.
     if (armed !== null && ![...m.actions, ...m.stages].some((i) => i.id === armed?.id && i.enabled && i.confirm)) disarm();
+    const signature = JSON.stringify([m, armed?.id ?? null]);
+    if (signature === drawn) return;
+    drawn = signature;
     const button = (i: MenuItem): MenuButton => ({ id: i.id, label: i.label, hint: i.hint, enabled: i.enabled, armed: i.id === armed?.id });
     hud.showMenu({ actions: m.actions.map(button), stages: m.stages.map(button), stagesHint: m.stagesHint, onPick: pick, onClose: close });
   }
 
   function show(): void {
     open = true;
+    callOffReset();
     disarm();
+    drawn = '';
     draw();
     game.registry.events.on('changedata-view', draw);
   }
@@ -105,6 +124,7 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
     open = false;
     game.registry.events.off('changedata-view', draw);
     disarm();
+    drawn = '';
     // The focus goes with the panel, so that a later Space or Enter cannot land on a button that is no longer there.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     hud.showMenu(null);
@@ -115,16 +135,20 @@ export function installMenu(game: Phaser.Game, client: RoomClient, hud: Hud, con
     const m = model();
     const item = [...m.actions, ...m.stages].find((i) => i.id === id);
     if (item === undefined || !item.enabled) return;
-    if (item.confirm && !(armed !== null && armed.id === id && Date.now() - armed.at < ARM_MS)) {
-      disarm();
-      armed = { id, at: Date.now() };
-      lapse = setTimeout(() => {
-        lapse = null;
-        armed = null;
+    if (item.confirm) {
+      const since = armed !== null && armed.id === id ? Date.now() - armed.at : Infinity;
+      if (since < DEAD_MS) return;   // the press that armed it, again: it stays armed, and its lapse runs on
+      if (!(since < ARM_MS)) {
+        disarm();
+        armed = { id, at: Date.now() };
+        lapse = setTimeout(() => {
+          lapse = null;
+          armed = null;
+          draw();
+        }, ARM_MS);
         draw();
-      }, ARM_MS);
-      draw();
-      return;
+        return;
+      }
     }
     if (item.act.kind === 'reload') reload();
     else client.send(item.act.cmd);

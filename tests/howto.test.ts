@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
 import raw from '../content/case.json';
+import { installHotkeys } from '../host/hotkeys';
 import { howtoSlides, installHowTo } from '../host/howto';
 import { Hud } from '../host/hud/Hud';
 import { installMenu } from '../host/menu';
@@ -166,4 +167,18 @@ it('installed before the menu, as main.ts does: Esc closes the how-to and leaves
   expect(root.querySelector('.hud-howto')).toBeNull();
   expect(client.send).not.toHaveBeenCalled();
   disposeMenu();
+});
+it('opening the how-to calls off a Shift+R that waits for its second press, as any other key does', () => {
+  const send = vi.fn();
+  const game = { registry: { get: () => null } } as unknown as Phaser.Game;
+  const offHotkeys = installHotkeys(game, { send } as unknown as RoomClient, hud);
+  const shiftR = (): void => press('R', { code: 'KeyR', shiftKey: true });
+  shiftR();
+  press('?', { shiftKey: true });
+  press('?', { shiftKey: true });
+  shiftR();
+  expect(send).not.toHaveBeenCalled();
+  shiftR();
+  expect(send).toHaveBeenCalledWith({ k: 'reset' });
+  offHotkeys();
 });
