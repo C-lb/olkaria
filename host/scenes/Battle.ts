@@ -19,7 +19,7 @@ import type { RoomClient } from '../net';
 import { tripOf, type SceneData } from '../router';
 import {
   bannerFor, beatsFor, classFor, clockCues, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, judgedNotes, judgeFlash,
-  labelFor, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, SKIP_LOCK_MS, SPACE_LOCK_KEY,
+  labelFor, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, phaseCues, SKIP_LOCK_MS, SPACE_LOCK_KEY,
   spaceAction, strikePlan, timerText, votedText,
   type Stand, type StrikePlan,
 } from '../strikers';
@@ -270,26 +270,20 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * The music for the phase, on the view that moves into it: the narration in travel; in vote the opening fanfare and
-   * the vote's theme, untightened (the first view of the vote, or a reopen from locked); the thud and the locked theme
-   * on the lock. A reopen inside an open vote (R) restarts the clock, so the theme loosens again as well. A resumed
-   * scene's first view sets the phase's theme, with the fanfare for a vote but no thud for a lock it did not see.
+   * The music for the phase, on the view that moves into it (phaseCues). When the vote's clock starts again (the vote
+   * opens, or R reopens it) the theme loosens, and the ticks and the riser are due again.
    */
   private cuePhase(was: Phase | null, view: HostView): void {
-    if (view.phase === 'travel' && was !== 'travel') this.audio.music('narration');
-    if (view.phase === 'vote' && (was !== 'vote' || view.voteDeadline !== this.clockDeadline)) {
+    const cue = phaseCues(was, view.phase, view.voteDeadline !== this.clockDeadline);
+    if (cue.clock) {
       this.clockDeadline = view.voteDeadline;
       this.clockMs = Infinity;
       this.tension = 0;
       this.rose = false;
-      if (was !== 'vote') {
-        this.audio.sfx('voteOpen');
-        this.audio.music('vote');
-      }
-      this.audio.tension(0);
     }
-    if (view.phase === 'locked' && was === 'vote') this.audio.sfx('lock');
-    if (view.phase === 'locked' && was !== 'locked') this.audio.music('locked');
+    if (cue.sfx !== null) this.audio.sfx(cue.sfx);
+    if (cue.music !== null) this.audio.music(cue.music);
+    if (cue.clock) this.audio.tension(0);
   }
 
   /** The class of the student a pending call-out names, if they are still in the room. */

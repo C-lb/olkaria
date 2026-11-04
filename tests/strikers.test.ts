@@ -17,7 +17,7 @@ import type { Callout, DamageResult, OptionId, Player, Role, RoomEvent, RoomStat
 import {
   alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, FRAME_MS,
   judgedNotes, judgeFlash, lockedByClock, lockedEarly, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS,
-  clockCues, spaceAction, strikePlan, timerText, votedText,
+  clockCues, phaseCues, spaceAction, strikePlan, timerText, votedText,
   type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
 import { SPEAKERS } from '../host/quotes';
@@ -484,5 +484,25 @@ describe('clockCues', () => {
   it('a clock that jumps several seconds at once (a hidden tab) gives one tick and one high tick, not a backlog', () => {
     expect(clockCues(9_500, 4_200)).toEqual({ tension: 1, tick: true, tickHigh: false, riser: false });
     expect(clockCues(12_000, 1_200)).toEqual({ tension: 2, tick: true, tickHigh: true, riser: true });
+  });
+});
+
+describe('phaseCues', () => {
+  it('a vote that opens while the scene watches gets the fanfare and the theme; a reload mid-vote only the theme', () => {
+    expect(phaseCues('travel', 'vote', true)).toEqual({ sfx: 'voteOpen', music: 'vote', clock: true });
+    expect(phaseCues('locked', 'vote', true)).toEqual({ sfx: 'voteOpen', music: 'vote', clock: true });   // reopened from locked
+    expect(phaseCues(null, 'vote', true)).toEqual({ sfx: null, music: 'vote', clock: true });   // the vote opened before the reload
+  });
+  it('a reopen inside an open vote restarts the clock only; the same deadline changes nothing', () => {
+    expect(phaseCues('vote', 'vote', true)).toEqual({ sfx: null, music: null, clock: true });
+    expect(phaseCues('vote', 'vote', false)).toEqual({ sfx: null, music: null, clock: false });
+  });
+  it('the lock thuds only from an open vote; travel and locked set their theme once', () => {
+    expect(phaseCues('vote', 'locked', false)).toEqual({ sfx: 'lock', music: 'locked', clock: false });
+    expect(phaseCues(null, 'locked', false)).toEqual({ sfx: null, music: 'locked', clock: false });
+    expect(phaseCues('locked', 'locked', false)).toEqual({ sfx: null, music: null, clock: false });
+    expect(phaseCues(null, 'travel', false)).toEqual({ sfx: null, music: 'narration', clock: false });
+    expect(phaseCues('travel', 'travel', false)).toEqual({ sfx: null, music: null, clock: false });
+    expect(phaseCues('locked', 'reveal', false)).toEqual({ sfx: null, music: null, clock: false });
   });
 });

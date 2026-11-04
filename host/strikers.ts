@@ -8,7 +8,7 @@ import {
   OPTION_IDS, ROLES,
   type Callout, type DamageResult, type HostCmd, type HostView, type OptionId, type Phase, type Player, type Role, type Tally,
 } from '../shared/types';
-import { tensionFor, type Tension } from './audio/score';
+import { tensionFor, type Tension, type ThemeId } from './audio/score';
 import type { BannerArgs, DebriefArgs, NarrationArgs } from './hud/Hud';
 import { SPEAKERS } from './quotes';
 
@@ -339,6 +339,24 @@ export function optionsFooter(content: CaseContent, phase: Phase, callouts: read
   if (callouts.some((co) => co.status === 'pending')) return 'Y convincing, N not';
   if (callouts.length >= content.scoring.maxCallouts) return 'Space: the party strikes';
   return 'C calls a student out. Space: the party strikes';
+}
+
+/**
+ * The music and the sting on the view that moves into a phase (Battle.cuePhase), from the phase before it (`was`, null
+ * on a scene's first view) and whether the vote's deadline is new. Travel: the narration. Vote: the vote's theme and
+ * its clock back at the top (`clock`), with the opening fanfare if this scene saw it open. A reopen inside an open vote (R) only restarts the
+ * clock. Locked: the locked theme, with the thud when the lock came from an open vote.
+ */
+export function phaseCues(was: Phase | null, phase: Phase, newDeadline: boolean): { sfx: 'voteOpen' | 'lock' | null; music: ThemeId | null; clock: boolean } {
+  if (phase === 'travel') return { sfx: null, music: was === 'travel' ? null : 'narration', clock: false };
+  if (phase === 'vote') {
+    if (was === 'vote') return { sfx: null, music: null, clock: newDeadline };
+    // A scene's first view of a vote is a reload mid-vote (a round always enters the vote from travel or locked):
+    // the vote opened minutes ago, so no fanfare, only its theme.
+    return { sfx: was === null ? null : 'voteOpen', music: 'vote', clock: true };
+  }
+  if (phase === 'locked') return { sfx: was === 'vote' ? 'lock' : null, music: was === 'locked' ? null : 'locked', clock: false };
+  return { sfx: null, music: null, clock: false };
 }
 
 /** The whole seconds the clock ticks on (10 down to 1) and the half seconds it ticks high on (under 3 s), in ms left. */
