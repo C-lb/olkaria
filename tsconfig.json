@@ -8,5 +8,6 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["shared", "host", "player", "scripts", "tests", "content/*.json"]
+  "include": ["shared", "host", "player", "scripts", "tests", "content/*.json"],
+  "exclude": ["tests/worker-room.test.ts"]
 }

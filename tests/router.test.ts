@@ -48,6 +48,14 @@ it('fits the lobby and the leaderboard by key whatever the trip, and a battle on
   expect(sceneFor({ phase: 'leaderboard', round: 3, trips: 9 }, { key: 'Leaderboard', round: 3, trip: 4 })).toBeNull();
   expect(sceneFor({ phase: 'reveal', round: 1, trips: 3 }, { key: 'Battle', round: 1, trip: 2 })).toEqual({ key: 'Battle', data: { round: 1, resume: true, trip: 3 } });
 });
+it('reads a view without a usable trip count as trip 0, so a room server from an earlier build cannot restart the road on every view', () => {
+  for (const trips of [undefined, null, Number.NaN]) {
+    const travel = { phase: 'travel', round: 1, trips } as unknown as Parameters<typeof sceneFor>[0];
+    expect(sceneFor(travel, { key: 'Travel', round: 1, trip: 0 })).toBeNull();
+    expect(sceneFor(travel, { key: 'Battle', round: 1, trip: 0 })).toBeNull();
+    expect(sceneFor(travel, null)).toEqual({ key: 'Travel', data: { round: 1, resume: false, trip: 0 } });
+  }
+});
 
 // ---- Applying the route: makeRouter with a stand-in for Phaser's scene manager -----------------------------
 import type Phaser from 'phaser';

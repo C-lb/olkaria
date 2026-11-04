@@ -9,7 +9,7 @@ import { z } from 'zod';
 import raw from '../content/case.json';
 import { isValidCode } from '../shared/codes';
 import { loadContent } from '../shared/content';
-import { hostView, initialState, playerView, reduce } from '../shared/room-logic';
+import { hostView, initialState, playerView, reduce, sanitizeState } from '../shared/room-logic';
 import {
   KICKED_CLOSE_CODE, KICKED_CLOSE_REASON, OPTION_IDS, ROLES,
   type ClientMsg, type Effect, type HostCmd, type OptionId, type Role, type RoomEvent, type RoomState, type ServerMsg,
@@ -233,12 +233,18 @@ export class Room extends DurableObject<Env> {
     return new Response(null, { status: 201 });
   }
 
+  /**
+   * The room from storage, the first time an instance needs it. A room saved by an earlier build may lack a field or hold
+   * a value this build never writes, so it goes through sanitizeState before anything reads it, and an activity time
+   * that is not a finite number falls back as a missing one does: the idle alarm is set from it.
+   */
   private async load(): Promise<RoomState | undefined> {
     if (this.state === undefined) {
       const stored = await this.ctx.storage.get<unknown>(['state', 'lastActivity']);
-      this.state = stored.get('state') as RoomState | undefined;
+      const state = stored.get('state') as RoomState | undefined;
+      this.state = state === undefined ? undefined : sanitizeState(state, this.content);
       const last = stored.get('lastActivity');
-      this.lastActivity = typeof last === 'number' ? last : (this.state?.updatedAt ?? Date.now());
+      this.lastActivity = typeof last === 'number' && Number.isFinite(last) ? last : (this.state?.updatedAt ?? Date.now());
     }
     return this.state;
   }
@@ -270,7 +276,10 @@ export class Room extends DurableObject<Env> {
   private async run(effect: Effect): Promise<void> {
     switch (effect.type) {
       case 'setAlarm':
-        await this.ctx.storage.setAlarm(effect.at);
+        // setAlarm throws on a time that is not finite, which would stop the effects after this one, and in alarm() the
+        // idle cleanup; with no time to set, the alarm goes instead.
+        if (Number.isFinite(effect.at)) await this.ctx.storage.setAlarm(effect.at);
+        else await this.ctx.storage.deleteAlarm();
         break;
       case 'clearAlarm':
         await this.ctx.storage.deleteAlarm();

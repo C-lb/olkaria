@@ -6,6 +6,7 @@
 // mutated and every result state is a new object: a change copies what it touches and shares the rest,
 // a refusal or a no-op returns a copy of the state it was given.
 // `goto` jumps to a stage, undoing the points and damage of the rounds it clears; `trips` counts roads set off on.
+// sanitizeState makes a room saved by an earlier build safe for this one; the Durable Object loads every room through it.
 import type { CaseContent } from './content';
 import { sanitizeName, sanitizeTable } from './names';
 import { computeDamage, pointsFor } from './scoring';
@@ -70,6 +71,39 @@ export function initialState(code: string, hostKey: string, now: number, content
     phase: 'lobby', round: -1, voteOpenedAt: null, voteDeadline: null, voteWindowMs: windowMsFor(undefined, content),
     players: {}, banned: [], synthetic: {}, exhibits: {}, callouts: {},
     bossHp: content.rounds.length * content.scoring.roundHp, damageLog: [], majorities: [], hideNames: false, trips: 0,
+  };
+}
+
+/**
+ * A stored room made safe to load. A room saved by an earlier build can lack a field added since (`trips`) or hold a
+ * value this build never writes (an infinite vote deadline, from before openVote's seconds were capped), and either one
+ * wedges it: setAlarm refuses a time that is not finite, so every alarm throws and is retried, and `trips + 1` of
+ * nothing is NaN, which matches no scene's trip. This is hardening, not the migration spec 4.3 does without: a field
+ * of the right shape keeps its value, any other takes the value a new room starts with, and a deadline or an opening
+ * time that is not a finite number becomes none. Earlier builds revealed every round in order, so the damage log and
+ * the majorities of such a room already hold one entry per revealed round, as goto expects.
+ */
+export function sanitizeState(stored: RoomState, content: CaseContent): RoomState {
+  const s: Partial<Record<keyof RoomState, unknown>> = stored;
+  const fresh = initialState(stored.code, stored.hostKey, stored.createdAt, content);
+  const time = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const record = <T>(v: unknown, fallback: T): T => (typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as T) : fallback);
+  const list = <T>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+  const windowMs = time(s.voteWindowMs);
+  return {
+    ...stored,
+    voteOpenedAt: time(s.voteOpenedAt),
+    voteDeadline: time(s.voteDeadline),
+    voteWindowMs: windowMs !== null && windowMs > 0 ? windowMs : fresh.voteWindowMs,
+    players: record(s.players, fresh.players),
+    banned: list(s.banned, fresh.banned),
+    synthetic: record(s.synthetic, fresh.synthetic),
+    exhibits: record(s.exhibits, fresh.exhibits),
+    callouts: record(s.callouts, fresh.callouts),
+    damageLog: list(s.damageLog, fresh.damageLog),
+    majorities: list(s.majorities, fresh.majorities),
+    hideNames: typeof s.hideNames === 'boolean' ? s.hideNames : fresh.hideNames,
+    trips: time(s.trips) ?? fresh.trips,
   };
 }
 
@@ -160,15 +194,17 @@ function castVote(state: RoomState, ev: VoteEvent): Result {
 const lock = (state: RoomState, now: number): Result => update(state, now, { phase: 'locked' }, [{ type: 'clearAlarm' }]);
 
 /**
- * A tick at or after the deadline of an open vote locks it. An early tick (an alarm that fired ahead
- * of the deadline, or a stale one from before a reopen) changes nothing but arms the alarm again for
- * the real deadline, so an open vote is never left with nothing scheduled to close it. In any other
+ * A tick at or after the deadline of an open vote locks it, and so does any tick of an open vote whose deadline is not
+ * a finite time (a room saved by an earlier build, see sanitizeState), because no alarm can be set for one. An early
+ * tick (an alarm that fired ahead of the deadline, or a stale one from before a reopen) changes nothing but arms the
+ * alarm again for the real deadline, so an open vote is never left with nothing scheduled to close it. In any other
  * phase a tick does nothing, even in locked where the old deadline is still stored.
  */
 function tick(state: RoomState, now: number): Result {
-  if (state.phase !== 'vote' || state.voteDeadline === null) return nothing(state);
-  if (now >= state.voteDeadline) return lock(state, now);
-  return { state: { ...state }, effects: [{ type: 'setAlarm', at: state.voteDeadline }] };
+  if (state.phase !== 'vote') return nothing(state);
+  const deadline = state.voteDeadline;
+  if (deadline === null || !Number.isFinite(deadline) || now >= deadline) return lock(state, now);
+  return { state: { ...state }, effects: [{ type: 'setAlarm', at: deadline }] };
 }
 
 function runCmd(state: RoomState, cmd: HostCmd, now: number, content: CaseContent): Result {

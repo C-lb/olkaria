@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import raw from '../content/case.json';
 import { loadContent } from '../shared/content';
-import { initialState, reduce, tallyFor, leadTallyFor, supportTallyFor, hostView, playerView } from '../shared/room-logic';
+import { initialState, reduce, sanitizeState, tallyFor, leadTallyFor, supportTallyFor, hostView, playerView } from '../shared/room-logic';
 import type { RoomState, RoomEvent, HostCmd } from '../shared/types';
 const c = loadContent(raw);
 const KEY = 'host-secret';
@@ -416,6 +416,14 @@ describe('vote window details', () => {
         expect(out.effects).toEqual([]);
         expect(out.state).toEqual(s);
       }
+    }
+  });
+  it('locks an open vote whose deadline is not a finite time on its next tick, instead of arming an alarm for it', () => {
+    // setAlarm refuses such a time, so arming it would make every alarm throw and be retried, and the vote never close.
+    for (const voteDeadline of [Infinity, Number.NaN, null]) {
+      const out = reduce({ ...toVote(), voteDeadline }, { type: 'tick', now: t0 + 1000 }, c);
+      expect(out.state.phase).toBe('locked');
+      expect(out.effects).toEqual([{ type: 'clearAlarm' }]);
     }
   });
 });
@@ -883,5 +891,42 @@ describe('goto', () => {
     expect(Object.values(ending.players).every((p) => Object.keys(p.votes).length === 0)).toBe(true);
     expect(tallyFor(ending, 0)).toEqual({ A: 0, B: 0, C: 0, D: 0 });
     expect(ending.damageLog).toEqual([]);
+  });
+});
+
+describe('rooms saved by an earlier build', () => {
+  /** A state as an earlier build stored it: this one with the given changes, and without the trip count. */
+  const earlier = (state: RoomState, changes: Record<string, unknown> = {}): RoomState => {
+    const { trips: _trips, ...old } = { ...state, ...changes };
+    return old as unknown as RoomState;
+  };
+  it('gives a room without trips, or with a trip count that is not a number, a count of 0, so a start sets off on trip 1', () => {
+    const safe = sanitizeState(earlier(run(mk(), [join('p1', 'Ann', 'citizen')]).state), c);
+    expect(safe.trips).toBe(0);
+    expect(cmd(safe, { k: 'start' }).state.trips).toBe(1);
+    for (const trips of [Number.NaN, Infinity, null, '2']) expect(sanitizeState({ ...mk(), trips } as unknown as RoomState, c).trips).toBe(0);
+  });
+  it('turns a deadline that is not a finite time into none, and the next tick locks that vote', () => {
+    const safe = sanitizeState(earlier(toVote(), { voteDeadline: Infinity }), c);
+    expect(safe).toMatchObject({ phase: 'vote', voteDeadline: null, trips: 0 });
+    const ticked = reduce(safe, { type: 'tick', now: t0 + 1000 }, c);
+    expect(ticked.state.phase).toBe('locked');
+    expect(ticked.effects).toEqual([{ type: 'clearAlarm' }]);
+  });
+  it('gives every other field the reducer reads a usable value when it has none', () => {
+    const fresh = mk();
+    const safe = sanitizeState(earlier(toVote(), {
+      voteOpenedAt: Number.NaN, voteWindowMs: Infinity, players: undefined, banned: null, synthetic: [], exhibits: 7,
+      callouts: undefined, damageLog: 'x', majorities: null, hideNames: 'yes',
+    }), c);
+    const fields = ['voteOpenedAt', 'voteWindowMs', 'players', 'banned', 'synthetic', 'exhibits', 'callouts', 'damageLog', 'majorities', 'hideNames'] as const;
+    expect(Object.fromEntries(fields.map((f) => [f, safe[f]]))).toEqual(Object.fromEntries(fields.map((f) => [f, fresh[f]])));
+    for (const voteWindowMs of [0, -5, Number.NaN, '120000']) {
+      expect(sanitizeState(earlier(toVote(), { voteWindowMs }), c).voteWindowMs).toBe(120_000);
+    }
+  });
+  it('leaves a room saved by this build as it was', () => {
+    const { reveal, leaderboard } = finished();
+    for (const s of [mk(), toVote(), cmd(toVote(), { k: 'reopen' }, t0 + 9000).state, reveal, leaderboard]) expect(sanitizeState(s, c)).toEqual(s);
   });
 });

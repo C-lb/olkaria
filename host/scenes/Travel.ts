@@ -18,7 +18,7 @@ import {
   autoStep, gateColumn, GROUND_Y, JUMP_SPEED, PICKUP_PAUSE_MS, RUN_SPEED, SEGMENTS, SETOFF_MS, START_X, stopAhead, TILE, type Segment,
 } from '../levels/road';
 import type { RoomClient } from '../net';
-import type { SceneData } from '../router';
+import { tripOf, type SceneData } from '../router';
 import { classFor, labelFor, SEND_LOCK_MS, SPACE_LOCK_KEY } from '../strikers';
 
 const hex = (colour: string): number => Number.parseInt(colour.slice(1), 16);
@@ -224,7 +224,7 @@ export class Travel extends Phaser.Scene {
   /** Puts the label back if "Reconnecting to the room" took its slot, and takes away exhibits the room counted meanwhile. */
   private onView(_parent: unknown, view: HostView | null): void {
     // No view, or another phase, round or trip: the router is about to move on.
-    if (view === null || view.phase !== 'travel' || view.round !== this.round || view.trips !== this.trip) return;
+    if (view === null || view.phase !== 'travel' || view.round !== this.round || tripOf(view) !== this.trip) return;
     this.hud.showToast(this.label, 0);
     for (const id of this.counted(view)) this.removeExhibit(id);
   }

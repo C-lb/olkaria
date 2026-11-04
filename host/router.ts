@@ -16,6 +16,13 @@ export interface ActiveScene { key: string; round: number; trip: number }
 type RoutedView = { phase: Phase; round: number; trips: number };
 
 /**
+ * The view's trip count, or 0 when it carries none that is a finite number, as a room server from an earlier build
+ * sends: 0 is what the lobby starts on, so such a room routes as one trip instead of restarting a road on every view.
+ */
+export const tripOf = (view: { readonly trips?: unknown }): number =>
+  (typeof view.trips === 'number' && Number.isFinite(view.trips) ? view.trips : 0);
+
+/**
  * The scene to start for `view`, or null when `active` already fits it. Travel's gate starts the Battle while the room
  * is still in `travel`, so a Battle for that round and trip fits `travel` too. `trips` counts the roads the room has
  * set off on: a Travel or a Battle fits only when key, round and trip all match, so the same round on a new trip starts
@@ -26,7 +33,8 @@ export function sceneFor(
   view: RoutedView,
   active: ActiveScene | null,
 ): { key: string; data: SceneData } | null {
-  const { phase, round, trips } = view;
+  const { phase, round } = view;
+  const trips = tripOf(view);
   const at = (key: string): boolean =>
     active !== null && active.key === key && active.round === round && active.trip === trips;
   const start = (key: string, resume = false) => ({ key, data: { round, resume, trip: trips } });
