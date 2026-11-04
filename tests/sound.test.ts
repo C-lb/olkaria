@@ -209,3 +209,21 @@ it('the tension is kept while off or before the first gesture, and comes back wi
   sound.toggle();
   expect(chip.play).toHaveBeenLastCalledWith('locked', 0);
 });
+
+it('a suspended context is resumed on the unlock gesture and on every turn on; a running one never', () => {
+  const suspended = { state: 'suspended', resume: vi.fn(() => Promise.reject(new Error('not allowed'))) };
+  const { sound } = setup(() => suspended as unknown as AudioContext);
+  press();
+  expect(suspended.resume).toHaveBeenCalledTimes(1);
+  sound.toggle();
+  expect(suspended.resume).toHaveBeenCalledTimes(1); // turning off asks nothing of the context
+  sound.toggle();
+  expect(suspended.resume).toHaveBeenCalledTimes(2);
+
+  const running = { state: 'running', resume: vi.fn(() => Promise.resolve()) };
+  const live = setup(() => running as unknown as AudioContext);
+  press();
+  live.sound.toggle();
+  live.sound.toggle();
+  expect(running.resume).not.toHaveBeenCalled();
+});

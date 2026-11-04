@@ -73,13 +73,28 @@ export function createSound(deps: {
     }
   };
 
+  let ctx: AudioContext | null = null;
+
+  /**
+   * Asks a context that is not running to resume. Called on a gesture only (the unlock, a turn on), where the browser
+   * allows it; a refusal leaves it suspended and silent, and the next turn on asks again.
+   */
+  const wake = (): void => {
+    if (ctx === null || ctx.state === 'running' || typeof ctx.resume !== 'function') return;
+    try {
+      ctx.resume().catch(() => {});
+    } catch {
+      // still suspended: silent, and the game goes on
+    }
+  };
+
   /** Makes the context and the chip, once a gesture allows it; the one-time listeners go either way. */
   const start = (): Chip | null => {
     for (const type of GESTURES) target.removeEventListener(type, unlock);
     try {
-      const ctx = deps.makeContext();
+      ctx = deps.makeContext();
       if (ctx === null) return null;
-      if (typeof ctx.resume === 'function') ctx.resume().catch(() => {});
+      wake();
       chip = makeChip(ctx);
     } catch {
       chip = null;
@@ -126,7 +141,11 @@ export function createSound(deps: {
       enabled = !enabled;
       writeStore(enabled ? 'on' : 'off');
       // toggle() is only called from a key or a click, so it is itself a gesture: turning on can unlock.
-      const live = chip ?? (enabled ? start() : null);
+      let live = chip;
+      if (enabled) {
+        if (live === null) live = start();
+        else wake();
+      }
       if (live === null) return enabled;
       try {
         if (!enabled) {
