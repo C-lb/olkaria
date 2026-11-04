@@ -108,6 +108,16 @@ it('lets a newer view replace a waiting switch, and does nothing when that view 
   expect(log).toHaveLength(2);
 });
 
+it('stops the battle and starts its road again when a goto sets the round of that battle off on a new trip', async () => {
+  const log: string[] = [];
+  const route = makeRouter(fakeGame('Lobby', log));
+  route({ phase: 'vote', round: 1, trips: 2 });
+  await Promise.resolve();
+  route({ phase: 'travel', round: 1, trips: 3 });   // Restart round 2 while its vote is open
+  await Promise.resolve();
+  expect(log).toEqual(['stop Lobby', 'start Battle round 1 trip 2 resume', 'stop Battle', 'start Travel round 1 trip 3']);
+});
+
 it('starts the road again when a goto sets the same round off on a new trip', async () => {
   const log: string[] = [];
   const route = makeRouter(fakeGame('Lobby', log));

@@ -151,7 +151,7 @@ export function reduce(state: RoomState, ev: RoomEvent, content: CaseContent): {
 
 /**
  * A new phone joins. A known one rejoins: once the game has started that keeps everything the player had, because
- * roles are fixed for the session (spec 4.1); in the lobby it takes the name, role and table again, so a mis-tapped
+ * roles are fixed once the game starts (spec 4.1); in the lobby it takes the name, role and table again, so a mis-tapped
  * role can be put right. Even the same details count as a change then, so the phone always hears back.
  */
 function join(state: RoomState, ev: JoinEvent): Result {
@@ -185,9 +185,8 @@ function castVote(state: RoomState, ev: VoteEvent): Result {
   const voted: Player = { ...player, votes: { ...player.votes, [ev.round]: { option: ev.option, at: ev.now } } };
   const players = { ...state.players, [id]: voted };
   const everyone = Object.values(players);
-  if (everyone.length > 0 && everyone.every((p) => p.votes[ev.round])) {
-    return update(state, ev.now, { players, phase: 'locked' }, [{ type: 'clearAlarm' }]);
-  }
+  // The early lock is lock() itself, closeVote's transition, on the state with this vote in.
+  if (everyone.length > 0 && everyone.every((p) => p.votes[ev.round])) return lock({ ...state, players }, ev.now);
   return update(state, ev.now, { players });
 }
 
@@ -319,11 +318,12 @@ const pad = <T>(list: readonly T[], n: number, fill: (i: number) => T): T[] =>
 
 /**
  * Jumps the room to a stage (spec 4.1): 0 to 3 is the road of that round and 4, the number of rounds, is the ending.
- * A round is settled once it is revealed, so the settled rounds are the first damageLog.length. A jump to a road keeps
- * the settled rounds before it whole and clears every round from there on: their votes, synthetic votes, exhibits and
- * call-outs go, each score falls back to the points on the votes kept, and the boss gets their damage back. Rounds
- * jumped over without being settled get no majority and a round of zero damage, so the next reveal lands at its own
- * index. A jump to the ending clears only an unsettled current round and leaves every settled one as it was.
+ * A round is settled once it is revealed or jumped over, so the settled rounds are the first damageLog.length. A jump to
+ * a road keeps the settled rounds before it whole and clears every round from there on: their votes, synthetic votes,
+ * exhibits and call-outs go, each score falls back to the points on the votes kept, lastPoints to the points of the
+ * round before the stage (0 when that round was jumped over, since it paid nobody), and the boss gets their damage
+ * back. Rounds jumped over without being settled get no majority and a round of zero damage, so the next reveal lands
+ * at its own index. A jump to the ending clears only an unsettled current round and leaves every settled one as it was.
  */
 function goto(state: RoomState, now: number, stage: number, content: CaseContent): Result {
   const rounds = content.rounds.length;
@@ -333,12 +333,14 @@ function goto(state: RoomState, now: number, stage: number, content: CaseContent
   // and only in travel, vote or locked.
   const settled = state.damageLog.length;
   const cut = stage === rounds ? settled : Math.min(stage, settled);
+  // The round whose points stay as lastPoints: the one before a road, the last settled one at the ending.
+  const last = (stage === rounds ? cut : stage) - 1;
   const keep = <T>(entries: Record<number, T>): Record<number, T> =>
     Object.fromEntries(Object.entries(entries).filter(([r]) => Number(r) < cut));
   const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => {
     const votes = keep(p.votes);
     const score = Object.values(votes).reduce((sum, v) => sum + (v.points ?? 0), 0);
-    return [id, { ...p, votes, score, lastPoints: votes[cut - 1]?.points ?? 0 }];
+    return [id, { ...p, votes, score, lastPoints: votes[last]?.points ?? 0 }];
   }));
   const kept = { players, synthetic: keep(state.synthetic), exhibits: keep(state.exhibits), callouts: keep(state.callouts) };
   if (stage === rounds) {

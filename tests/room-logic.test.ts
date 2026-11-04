@@ -27,8 +27,8 @@ describe('lobby and joins', () => {
     expect(s.players.p2.name.split(' ')).toHaveLength(2);
     expect(s.players.p2.table).toBe('Table 3');
   });
-  // Spec 4.1 fixes roles for the session, which the ruling reads as from the start of the game: in the lobby a phone
-  // that tapped the wrong role joins again with the right one.
+  // Spec 4.1 fixes roles once the game starts: in the lobby a phone that tapped the wrong role joins again with the
+  // right one.
   it('lets a known player change name, role and table in the lobby, and keeps when they joined and what they have', () => {
     const lobby = run(mk(), [join('p1', 'Ann', 'citizen', t0, 'Table 1'), join('p2', 'Bo', 'government', t0 + 1000)]).state;
     // Nothing is earned in the lobby (a reset clears it), but a change must not touch it either way.
@@ -140,6 +140,8 @@ describe('two-minute votes that lock when everyone has voted', () => {
     expect(all.state.players.p3.votes[0]).toMatchObject({ option: 'C', at: t0 + 7000 });
     expect(tallyFor(all.state, 0)).toEqual({ A: 1, B: 1, C: 1, D: 0 });
     expect(reduce(all.state, vote('p3', 0, 'D'), c).effects).toContainEqual({ type: 'error', clientId: 'p3', msg: 'not accepting votes' });
+    // The early lock is closeVote's transition exactly, on the state with the last vote in.
+    expect(all).toEqual(cmd({ ...two.state, players: all.state.players }, { k: 'closeVote' }, t0 + 7000));
   });
   it('synthetic votes never lock it, a joiner during the vote holds it open, and an empty room never locks on a key vote', () => {
     expect(cmd(toVote(), { k: 'injectVotes', counts: { A: 30 } }).state.phase).toBe('vote');
@@ -173,6 +175,9 @@ describe('call-outs: one voice per option, four a round', () => {
     expect(first.callouts[0][0]).toMatchObject({ playerId: 'p1', option: 'B' });
     const second = cmd(cmd(first, { k: 'judge', awarded: true }).state, { k: 'callout', pick: 0.9 }).state;   // B is heard: p2 alone is preferred, whatever the pick
     expect(second.callouts[0][1]).toMatchObject({ playerId: 'p2', option: 'A' });
+    // A named voter wins over that preference: p4's B has been heard, and p4 is called all the same.
+    const named = cmd(cmd(first, { k: 'judge', awarded: true }).state, { k: 'callout', playerId: 'p4', pick: 0.9 }).state;
+    expect(named.callouts[0][1]).toMatchObject({ playerId: 'p4', option: 'B' });
     const third = cmd(cmd(second, { k: 'judge', awarded: false }).state, { k: 'callout', pick: 0.5 }).state;   // every voted option heard: any uncalled voter
     expect(third.callouts[0][2]).toMatchObject({ playerId: 'p4', option: 'B' });
     const fourth = cmd(cmd(third, { k: 'judge', awarded: false }).state, { k: 'callout', pick: 0.5 }).state;   // nobody left: by hand
@@ -313,9 +318,9 @@ describe('purity', () => {
     return x;
   };
   // One scripted class night through every phase: a change of details in the lobby, a bad role, a rejoin after the
-  // start, exhibits, injected votes, a tick that changes nothing and one that locks, a reopen with a late voter whose
-  // vote, the last in the room, locks it again, two call-outs (one judged, one left pending), the ending, the
-  // leaderboard, a kick, a banned rejoin, hideNames and a reset.
+  // start, exhibits, injected votes, a tick that changes nothing and one that locks, a reopen that a late voter's vote,
+  // the last in the room, locks again in even rounds and Space (closeVote) locks in odd ones, two call-outs (one judged,
+  // one left pending), the ending, the leaderboard, a kick, a banned rejoin, hideNames and a reset.
   const night = (): RoomEvent[] => {
     const evs: RoomEvent[] = [
       join('p1', 'Ann', 'citizen'), join('p2', undefined, 'government'), join('p3', 'Cy', 'microsoft'),
@@ -330,7 +335,7 @@ describe('purity', () => {
         vote('p1', r, 'C', at + 9500), vote('ghost', r, 'B', at + 9600),
         K({ k: 'injectVotes', counts: { D: 2 } }, at + 10000),
         { type: 'tick', now: at + 5000 }, { type: 'tick', now: at + 120000 },
-        K({ k: 'reopen' }, at + 121000), vote('p4', r, 'D', at + 121500),
+        K({ k: 'reopen' }, at + 121000), r % 2 === 0 ? vote('p4', r, 'D', at + 121500) : K({ k: 'closeVote' }, at + 121500),
         K({ k: 'callout', pick: 0.4 }, at + 123000), K({ k: 'judge', awarded: true }, at + 124000),
         K({ k: 'callout', pick: 0.9 }, at + 125000), K({ k: 'reveal' }, at + 126000), K({ k: 'next' }, at + 127000),
       );
@@ -821,6 +826,23 @@ describe('goto', () => {
     expect(revealed.majorities).toHaveLength(3);
     // padding after a settled round numbers each zero round by its own index too
     expect(cmd(closeAndReveal(toVote()), { k: 'goto', stage: 3 }).state.damageLog.map((d) => d.round)).toEqual([0, 1, 2]);
+    // lastPoints are the points of the round before the stage (spec 4.1), and a padded round paid nobody: a jump from a
+    // paid round 0 to stage 3 leaves 0 there, while the score keeps round 0's points
+    const paid = closeAndReveal(run(toVote(), [vote('p1', 0, 'B')]).state);
+    expect(paid.players.p1.lastPoints).toBeGreaterThan(0);
+    expect(cmd(paid, { k: 'goto', stage: 3 }).state.players.p1).toMatchObject({ lastPoints: 0, score: paid.players.p1.score });
+  });
+
+  it('goes back to a road from a travel, the ending or the leaderboard, keeping the rounds before it', () => {
+    const { ending, leaderboard } = finished();
+    const travel = cmd(closeAndReveal(run(toVote(), [vote('p1', 0, 'B'), vote('p2', 0, 'A')]).state), { k: 'next' }).state;
+    for (const s of [travel, ending, leaderboard]) {
+      const r = cmd(s, { k: 'goto', stage: 1 }).state;
+      expect(r).toMatchObject({ phase: 'travel', round: 1, trips: s.trips + 1 });
+      expect(r.damageLog).toEqual([s.damageLog[0]]);
+      for (const [id, p] of Object.entries(r.players)) expect(p.score).toBe(s.players[id].votes[0]?.points ?? 0);
+    }
+    expect(cmd(leaderboard, { k: 'goto', stage: 1 }).state.trips).toBe(5);
   });
 
   it('clears the alarm only when a vote was open', () => {

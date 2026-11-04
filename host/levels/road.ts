@@ -1,5 +1,5 @@
 // The four roads the party travels between battles (spec 4.5), one per round, with the gate's trigger, how the
-// auto-runner (A) reads a road's baked path, and what the followers stand on. Pure data and arithmetic, no Phaser, so
+// walk reads a road's baked path, and what the followers stand on. Pure data and arithmetic, no Phaser, so
 // tests/road.test.ts can run every path.
 //
 // Every surface the party can stand on is a platform one tile deep: the road itself is the platforms whose top is at

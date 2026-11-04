@@ -2,7 +2,7 @@
 // running if an asset fails to load. The class figures are painted from shared/figures.ts, which the phone draws
 // too. Everything is whole pixels, so the textures stay crisp at any zoom.
 import Phaser from 'phaser';
-import { FIGURES } from '../../shared/figures';
+import { FIGURES, type FigureRect } from '../../shared/figures';
 import { PALETTE } from '../../shared/palette';
 
 // The palette lives in shared/ so the phone paints from it too; host files go on importing it from here.
@@ -15,7 +15,8 @@ export { PALETTE };
  */
 export const DIGIT_CHARS = '0123456789+-.%/ HPMW';
 
-type Rect = readonly [x: number, y: number, w: number, h: number, colour: string];
+/** A rectangle of colour, as the class figures are drawn from (shared/figures.ts). */
+type Rect = FigureRect;
 
 /** Draws whole-pixel shapes on a texture's canvas. */
 export class Painter {

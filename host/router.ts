@@ -96,12 +96,14 @@ export function makeRouter(game: Phaser.Game): (view: RoutedView) => void {
     const next = waiting;
     waiting = null;
     if (next === null) return;
-    if (sceneFor(next.view, running()) === null) return;
+    // Asked again about the scene up now, and what the answer names is what starts, so the fit rule lives in sceneFor.
+    const target = sceneFor(next.view, running());
+    if (target === null) return;
     for (const scene of game.scene.getScenes(false)) {
       const { key, active } = scene.sys.settings;
-      if (active && key !== next.key) game.scene.stop(key);
+      if (active && key !== target.key) game.scene.stop(key);
     }
-    game.scene.start(next.key, next.data);
+    game.scene.start(target.key, target.data);
   };
 
   return (view) => {

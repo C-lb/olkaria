@@ -2,6 +2,7 @@
 // what Space does, and the words around the vote and the debrief. Every number comes from the round's DamageResult
 // and every bonus amount from content.scoring, so what the special attack shows adds up to what it drains (spec 3.2).
 // No Phaser and no DOM, so all of it is tested.
+import { clockText } from '../shared/clock';
 import type { CaseContent } from '../shared/content';
 import {
   OPTION_IDS, ROLES,
@@ -223,6 +224,16 @@ export function lockedEarly(prev: Phase | null, view: Pick<HostView, 'phase' | '
     && players.length > 0 && players.every((p) => p.votes[view.round] !== undefined);
 }
 
+/**
+ * The note for a view that locks the vote (spec 2.5): the clock's when the clock ran out, the everyone-voted one when the
+ * last vote locked it, and none when Space locked it or the view locks nothing.
+ */
+export function lockNoteFor(prev: Phase | null, view: Pick<HostView, 'phase' | 'updatedAt' | 'voteDeadline' | 'players' | 'round'>): string | null {
+  if (lockedByClock(prev, view)) return CLOCK_LOCK_NOTE;
+  if (lockedEarly(prev, view)) return EVERYONE_LOCK_NOTE;
+  return null;
+}
+
 /** Where a class sprite stands: the centre of its feet, and its width. */
 export interface Stand { role: Role; x: number; w: number }
 
@@ -308,9 +319,10 @@ export function narrationFor(content: CaseContent, roundIndex: number): Narratio
  * The count on the status line. While the vote is `open` it says who is still to vote: "5 still to vote" (the players
  * without a vote), "Everyone has voted", or "No players yet" in an empty room. Once it is locked, "12 of 40 voted": every
  * vote of the round against everyone who could vote, the phones in the room plus the bot and key votes (`synthetic`, each
- * a voter of its own). Offline there is no room, open or locked: "12 voted".
+ * a voter of its own). Offline there is no room, open or locked: "12 voted". The two flags travel by name, so the one
+ * call site cannot swap them.
  */
-export function votedText(tally: Tally, playerCount: number, synthetic: Tally | undefined, offline: boolean, open: boolean): string {
+export function votedText(tally: Tally, playerCount: number, synthetic: Tally | undefined, { offline, open }: { offline: boolean; open: boolean }): string {
   const count = (t: Tally | undefined): number => (t === undefined ? 0 : OPTION_IDS.reduce((sum, o) => sum + t[o], 0));
   if (offline) return `${count(tally)} voted`;
   if (!open) return `${count(tally)} of ${playerCount + count(synthetic)} voted`;
@@ -328,13 +340,7 @@ export function optionsFooter(content: CaseContent, phase: Phase, callouts: read
   return 'C calls a student out. Space: the party strikes';
 }
 
-/** Whole seconds as "m:ss": 120 is "2:00", 9 is "0:09", 0 and below "0:00", 600 "10:00". The phone keeps its own copy (player/render.ts). */
-export function clockText(seconds: number): string {
-  const left = Math.max(0, seconds);
-  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-}
-
-/** The time left to `deadline` at `now` (the room's clock), "1:23": rounded up, through clockText; empty with no deadline. */
+/** The time left to `deadline` at `now` (the room's clock), "1:23": rounded up, through clockText (shared/clock.ts); empty with no deadline. */
 export function timerText(deadline: number | null, now: number): string {
   if (deadline === null) return '';
   return clockText(Math.ceil((deadline - now) / 1000));

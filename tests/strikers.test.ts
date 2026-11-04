@@ -12,10 +12,11 @@ it('names the lead class and the three support classes of a round', () => {
 // ---- Beyond the brief: the test above is its code unchanged ----------------------------------------------
 import { describe } from 'vitest';
 import { computeDamage } from '../shared/scoring';
-import type { Callout, DamageResult, OptionId, Player, Role, Tally } from '../shared/types';
+import { hostView, initialState, reduce } from '../shared/room-logic';
+import type { Callout, DamageResult, OptionId, Player, Role, RoomEvent, RoomState, Tally } from '../shared/types';
 import {
-  alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, clockText, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, FRAME_MS,
-  judgedNotes, judgeFlash, lockedByClock, lockedEarly, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS,
+  alignmentText, AUTO_LOCK_MS, bannerFor, BEAT_MS, beatsFor, CLOCK_LOCK_NOTE, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, FRAME_MS,
+  judgedNotes, judgeFlash, lockedByClock, lockedEarly, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, REVEAL_MS, SEND_LOCK_MS,
   spaceAction, strikePlan, timerText, votedText,
   type SpaceState, type Strike, type StrikePlan,
 } from '../host/strikers';
@@ -209,24 +210,24 @@ describe('the debrief', () => {
 
 describe('the words around the vote', () => {
   it('counts the votes against the room online, each bot vote counted as a voter, and the votes alone offline', () => {
-    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, false)).toBe('3 of 5 voted');
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, { offline: false, open: false })).toBe('3 of 5 voted');
     // Two phones voted, one did not, and three bot votes came in: 5 of the 6 who could vote.
-    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, false)).toBe('5 of 6 voted');
-    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, false)).toBe('12 voted');
-    expect(votedText(Z, 0, undefined, false, false)).toBe('0 of 0 voted');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), { offline: false, open: false })).toBe('5 of 6 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), { offline: true, open: false })).toBe('12 voted');
+    expect(votedText(Z, 0, undefined, { offline: false, open: false })).toBe('0 of 0 voted');
   });
 
   it('the count says who is still to vote while the vote is open, and who voted once it is locked', () => {
-    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, true)).toBe('2 still to vote');
-    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, true)).toBe('1 still to vote');
-    expect(votedText(T(1, 2, 0, 0), 3, undefined, false, true)).toBe('Everyone has voted');
-    expect(votedText(T(5, 0, 0, 0), 2, T(5, 0, 0, 0), false, true)).toBe('2 still to vote');
-    expect(votedText(T(5, 0, 0, 0), 2, undefined, false, true)).toBe('Everyone has voted');   // more votes than players: none to go
-    expect(votedText(Z, 0, undefined, false, true)).toBe('No players yet');
-    expect(votedText(T(1, 2, 0, 0), 5, undefined, false, false)).toBe('3 of 5 voted');
-    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), false, false)).toBe('5 of 6 voted');
-    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, true)).toBe('12 voted');
-    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), true, false)).toBe('12 voted');
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, { offline: false, open: true })).toBe('2 still to vote');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), { offline: false, open: true })).toBe('1 still to vote');
+    expect(votedText(T(1, 2, 0, 0), 3, undefined, { offline: false, open: true })).toBe('Everyone has voted');
+    expect(votedText(T(5, 0, 0, 0), 2, T(5, 0, 0, 0), { offline: false, open: true })).toBe('2 still to vote');
+    expect(votedText(T(5, 0, 0, 0), 2, undefined, { offline: false, open: true })).toBe('Everyone has voted');   // more votes than players: none to go
+    expect(votedText(Z, 0, undefined, { offline: false, open: true })).toBe('No players yet');
+    expect(votedText(T(1, 2, 0, 0), 5, undefined, { offline: false, open: false })).toBe('3 of 5 voted');
+    expect(votedText(T(1, 4, 0, 0), 3, T(0, 3, 0, 0), { offline: false, open: false })).toBe('5 of 6 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), { offline: true, open: true })).toBe('12 voted');
+    expect(votedText(T(2, 10, 0, 0), 0, T(2, 10, 0, 0), { offline: true, open: false })).toBe('12 voted');
   });
 
   it('counts the clock down in whole seconds, rounding up, never below zero', () => {
@@ -238,12 +239,7 @@ describe('the words around the vote', () => {
     expect(timerText(null, 0)).toBe('');
   });
 
-  it('the clock reads minutes and seconds, rounded up', () => {
-    expect(clockText(120)).toBe('2:00');
-    expect(clockText(9)).toBe('0:09');
-    expect(clockText(0)).toBe('0:00');
-    expect(clockText(-3)).toBe('0:00');
-    expect(clockText(600)).toBe('10:00');
+  it('the timer reads the time left as minutes and seconds, rounded up', () => {
     expect(timerText(121_000, 1_000)).toBe('2:00');
     expect(timerText(121_000, 1_001)).toBe('2:00');
     expect(timerText(121_000, 61_500)).toBe('1:00');
@@ -251,6 +247,29 @@ describe('the words around the vote', () => {
     expect(timerText(121_000, 121_000)).toBe('0:00');
     expect(timerText(121_000, 150_000)).toBe('0:00');
     expect(timerText(null, 0)).toBe('');
+  });
+
+  it('lockNoteFor picks the note from views the reducer builds: the clock, the last vote, or none for Space', () => {
+    const key = 'host';
+    const t0 = 1_000_000;
+    const step = (st: RoomState, ev: RoomEvent): RoomState => reduce(st, ev, c).state;
+    const vote = (id: string, now: number): RoomEvent => ({ type: 'vote', clientId: id, round: 0, option: 'B', now });
+    const open = [
+      { type: 'join', clientId: 'p1', name: 'Ann', role: 'citizen', now: t0 },
+      { type: 'join', clientId: 'p2', name: 'Bo', role: 'government', now: t0 },
+      { type: 'cmd', key, cmd: { k: 'start' }, now: t0 },
+      { type: 'cmd', key, cmd: { k: 'openVote' }, now: t0 },
+    ].reduce((st, ev) => step(st, ev as RoomEvent), initialState('ABCD', key, t0, c));
+    const view = (st: RoomState) => hostView(st, st.updatedAt, c);
+    const byClock = step(open, { type: 'tick', now: open.voteDeadline! });
+    const byLastVote = step(step(open, vote('p1', t0 + 5000)), vote('p2', t0 + 6000));
+    const bySpace = step(step(open, vote('p1', t0 + 5000)), { type: 'cmd', key, cmd: { k: 'closeVote' }, now: t0 + 7000 });
+    expect([byClock, byLastVote, bySpace].map((st) => st.phase)).toEqual(['locked', 'locked', 'locked']);
+    expect(lockNoteFor('vote', view(byClock))).toBe(CLOCK_LOCK_NOTE);
+    expect(lockNoteFor('vote', view(byLastVote))).toBe(EVERYONE_LOCK_NOTE);
+    expect(lockNoteFor('vote', view(bySpace))).toBeNull();
+    expect(lockNoteFor('vote', view(open))).toBeNull();      // still open
+    expect(lockNoteFor(null, view(byClock))).toBeNull();     // a reload into a locked vote
   });
 
   it('puts the called student and their choice on the banner, or a hand call-out when there is no student', () => {

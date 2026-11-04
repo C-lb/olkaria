@@ -4,11 +4,11 @@
 // (section 3), verbatim. As on the character sheet, nothing gives away an option's score by its letter, a debrief
 // line, or an ending title other than "The Deadlock holds". host/hud/HowTo.ts draws a slide; Hud.showHowTo shows it;
 // installHowTo() puts the slides on ? and walks them.
+import { clockText } from '../shared/clock';
 import type { CaseContent } from '../shared/content';
 import { ROLES, type OptionId, type Role } from '../shared/types';
 import { callOffReset, typing } from './hotkeys';
 import type { Hud } from './hud/Hud';
-import { clockText } from './strikers';
 
 /** The four classes, each with its class name ("Rogue") and its stakeholder ("Citizen"). */
 export type Party = { role: Role; className: string; stakeholder: string }[];   // ROLES order

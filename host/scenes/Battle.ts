@@ -13,10 +13,10 @@ import { PALETTE } from '../art/placeholders';
 import { oncePerEvent } from '../hotkeys';
 import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../hud/Hud';
 import type { RoomClient } from '../net';
-import type { SceneData } from '../router';
+import { tripOf, type SceneData } from '../router';
 import {
-  bannerFor, beatsFor, classFor, CLOCK_LOCK_NOTE, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, EVERYONE_LOCK_NOTE, judgedNotes, judgeFlash,
-  labelFor, lockedByClock, lockedEarly, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, SKIP_LOCK_MS, SPACE_LOCK_KEY,
+  bannerFor, beatsFor, classFor, CLOCK_LOCK_NOTE_MS, debriefFor, DRAIN_MS, judgedNotes, judgeFlash,
+  labelFor, lockNoteFor, lockoutAfterLock, lungeReach, narrationFor, optionsFooter, SKIP_LOCK_MS, SPACE_LOCK_KEY,
   spaceAction, strikePlan, timerText, votedText,
   type Stand, type StrikePlan,
 } from '../strikers';
@@ -70,6 +70,8 @@ type Stage = 'live' | 'strike' | 'debrief';
 export class Battle extends Phaser.Scene {
   private round = 0;
   private resume = false;
+  /** The trip the room was on when this battle started (router.ts): views of a later trip belong to the next road. */
+  private trip = 0;
   private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
@@ -109,6 +111,7 @@ export class Battle extends Phaser.Scene {
   init(data: Partial<SceneData>): void {
     this.round = data.round ?? 0;
     this.resume = data.resume ?? false;
+    this.trip = data.trip ?? 0;
   }
 
   /**
@@ -212,7 +215,8 @@ export class Battle extends Phaser.Scene {
   // ---- Views ----------------------------------------------------------------------------------------------
 
   private onView(_parent: unknown, view: HostView | null): void {
-    if (view === null || view.round !== this.round || !PHASES.includes(view.phase)) return;   // the router is about to move on
+    // No view, or another round, phase or trip: the router is about to move on. A goto to this same round is a new trip.
+    if (view === null || view.round !== this.round || !PHASES.includes(view.phase) || tripOf(view) !== this.trip) return;
     const was = this.view?.phase ?? null;
     this.view = view;
     // The room locks the vote at 0:00, or the moment the last player votes, maybe just before a Space meant to lock it:
@@ -220,8 +224,8 @@ export class Battle extends Phaser.Scene {
     // a note says why the next press does nothing.
     const until = lockoutAfterLock(was, view.phase, this.lockedUntil, this.time.now);
     if (until !== this.lockedUntil) this.lockedUntil = until;
-    if (lockedByClock(was, view)) this.hud.showToast(CLOCK_LOCK_NOTE, CLOCK_LOCK_NOTE_MS);
-    else if (lockedEarly(was, view)) this.hud.showToast(EVERYONE_LOCK_NOTE, CLOCK_LOCK_NOTE_MS);
+    const note = lockNoteFor(was, view);
+    if (note !== null) this.hud.showToast(note, CLOCK_LOCK_NOTE_MS);
     this.offset = view.serverNow - Date.now();
     const first = this.first;
     this.first = false;
@@ -313,7 +317,7 @@ export class Battle extends Phaser.Scene {
   /** Who is still to vote while the vote is open, who voted once it is locked. */
   private voted(view: HostView): string {
     const players = Object.keys(view.players).length;
-    return votedText(view.tally, players, view.synthetic[this.round], this.client.mode === 'offline', view.phase === 'vote');
+    return votedText(view.tally, players, view.synthetic[this.round], { offline: this.client.mode === 'offline', open: view.phase === 'vote' });
   }
 
   /** Counts the clock down between views, which come only when something changes. */

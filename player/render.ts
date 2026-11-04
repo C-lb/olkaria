@@ -1,6 +1,7 @@
 // The phone page. Every screen is plain DOM built from the latest PlayerView, one function per screen, no framework.
 // render() swaps the page only when a screen's markup actually changed: the room sends every phone a view after
 // every vote, and replacing a button in the middle of a press would swallow the tap.
+import { clockText } from '../shared/clock';
 import type { CaseContent } from '../shared/content';
 import { figureSvg } from '../shared/figures';
 import { synergyHits } from '../shared/scoring';
@@ -90,9 +91,7 @@ const roundName = (view: PlayerView, content: CaseContent): string => `Round ${v
 /** "1:23" from the room's clock: the deadline minus the time the view said it was, minus the time since the view arrived. */
 export function formatCountdown(deadline: number, serverNow: number, localNow: number, localAtServerNow: number): string {
   const remainingMs = deadline - serverNow - (localNow - localAtServerNow);
-  // The m:ss of clockText in host/strikers.ts, copied: the phone page must not import host code.
-  const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  return clockText(Math.ceil(remainingMs / 1000));   // the projector's m:ss (shared/clock.ts), rounded up as it is
 }
 
 /** Rewrites the clock on the mounted vote screen in place, so a tick never rebuilds the buttons. */

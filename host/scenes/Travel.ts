@@ -66,8 +66,8 @@ export class Travel extends Phaser.Scene {
   /** "Travel 1: Grid Wyrm ahead. Rogues lead.", kept in the HUD's sticky toast slot. */
   private label = '';
   /**
-   * Whether the party is walking by itself (on from the start, until A pauses it or an arrow takes over), and the first
-   * stop of the path it has not reached yet.
+   * Whether the party is walking by itself, and the first stop of the path it has not reached yet. create() turns the
+   * walk on; A pauses or resumes it, and an arrow takes over from it.
    */
   private auto = false;
   private nextStop = 0;

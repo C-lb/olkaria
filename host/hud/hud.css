@@ -50,7 +50,7 @@
   --lh-title: 1.22; --lh-lead: 1.42; --lh-body: 1.3; --lh-flat: 1;
   --tr-title: -.01em; --tr-eyebrow: .012em;
 
-  --z-base: 0; --z-sticky: 40; --z-scrim: 60; --z-overlay: 70; --z-toast: 80;
+  --z-base: 0; --z-sticky: 40; --z-overlay: 70; --z-toast: 80;
 }
 
 /* ---- Page: the stage holds the canvas and, laid over it by applyZoom, the HUD --------------------------- */
