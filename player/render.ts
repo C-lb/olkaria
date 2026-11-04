@@ -15,7 +15,10 @@ export type UiState = {
   table: string;
   /** What the room last refused, for example "already voted". Shown under the screen until the next view. */
   error?: string | null;
-  /** The room code, set while the room cannot be reached and this tab has never been in. The offline screen and the join form name it. */
+  /**
+   * The room code, set while the room cannot be reached and this tab has never been in. The offline screen and the join
+   * form then carry the unreachable note. The note does not print the code; it only tells one note from another.
+   */
   unreachable?: string | null;
 };
 
@@ -79,7 +82,6 @@ const sentence = (text: string): string => {
   return /[.!?]$/.test(s) ? s : `${s}.`;
 };
 
-const classNameOf = (content: CaseContent, role: Role): string => content.roles.find((r) => r.id === role)?.className ?? role;
 const phoneLabel = (content: CaseContent, round: number, option: OptionId): string =>
   content.rounds[round]?.options.find((o) => o.id === option)?.phone ?? '';
 const roundName = (view: PlayerView, content: CaseContent): string => `Round ${view.round + 1} of ${content.rounds.length}`;
@@ -113,17 +115,16 @@ function field(id: string, label: string, input: HTMLInputElement): HTMLElement 
 function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
   let chosen: Role | null = ui.role;
   const nickname = h('input', {
-    id: 'nickname', name: 'nickname', type: 'text', maxlength: '16', required: true, placeholder: 'Name',
+    id: 'nickname', name: 'nickname', type: 'text', maxlength: '16', required: true,
     autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', enterkeyhint: 'done',
   });
   nickname.value = ui.name;
   const table = h('input', {
-    id: 'table', name: 'table', type: 'text', maxlength: '16', placeholder: 'Table (optional)',
+    id: 'table', name: 'table', type: 'text', maxlength: '16', placeholder: 'Optional',
     autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', enterkeyhint: 'done',
   });
   table.value = ui.table;
   const submit = h('button', { type: 'submit', class: 'btn btn-accent btn-block' }, 'Join');
-  const why = h('p', { class: 'hint' }, 'Add a name and pick a role to join.');
 
   const roleButtons = content.roles.map((r) =>
     h('button', { type: 'button', class: 'role', 'data-role': r.id, 'aria-pressed': String(r.id === chosen) },
@@ -132,7 +133,6 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
   const refresh = (): void => {
     const ready = nickname.value.trim() !== '' && chosen !== null;
     submit.disabled = !ready;
-    why.hidden = ready;
   };
   roleButtons.forEach((button, i) => button.addEventListener('click', () => {
     chosen = content.roles[i].id;
@@ -142,14 +142,13 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
   nickname.addEventListener('input', refresh);
 
   const form = h('form', { class: 'screen', 'data-screen': 'join', novalidate: true },
-    h('header', { class: 'text-stack is-jump' }, h('span', { class: 'eyebrow' }, content.title), h('h1', { class: 'title is-lg' }, 'Join the game')),
-    field('nickname', 'Your name', nickname),
+    h('header', {}, h('h1', { class: 'title is-lg' }, 'Join the game')),
+    field('nickname', 'Name', nickname),
     h('div', { class: 'field', role: 'group', 'aria-labelledby': 'role-label' },
-      h('span', { class: 'eyebrow', id: 'role-label' }, 'Your role'),
-      h('div', { class: 'roles' }, ...roleButtons),
-      h('p', { class: 'cap' }, 'Try for one of each role at your table.')),
+      h('span', { class: 'eyebrow', id: 'role-label' }, 'Role'),
+      h('div', { class: 'roles' }, ...roleButtons)),
     field('table', 'Table', table),
-    h('div', { class: 'actions' }, submit, why));
+    submit);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const who = nickname.value.trim();
@@ -164,8 +163,9 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
 }
 
 /**
- * Who you are while you wait, in the lobby and between rounds. In the lobby a flat Change button under the card opens
- * the join form again, because roles are fixed only once the game has started.
+ * Who you are while you wait, in the lobby and between rounds: your class figure, your name, your class and stakeholder,
+ * and your table when you gave one. In the lobby a flat Change button under the card opens the join form again,
+ * because roles are fixed only once the game has started.
  */
 function waiting(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement {
   const role = content.roles.find((r) => r.id === view.role);
@@ -177,8 +177,8 @@ function waiting(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement 
   return screen('waiting', [
     h('div', { class: 'card card-lifted' },
       h('span', { class: 'glyph' }, figure(view.role, 5)),
-      h('h1', { class: 'title' }, `You're in as ${view.name}, ${classNameOf(content, view.role)}. Watch the screen.`),
-      h('p', { class: 'cap' }, role?.stakeholder ?? ''),
+      h('h1', { class: 'title' }, view.name),
+      h('p', { class: 'cap' }, role ? `${role.className}, ${role.stakeholder}` : view.role),
       view.table ? h('p', { class: 'cap' }, `Table: ${view.table}`) : null),
     change,
   ], true);
@@ -311,10 +311,14 @@ function waitingOn(kind: string, text: string): HTMLElement {
 }
 const connecting = (): HTMLElement => waitingOn('connecting', 'Connecting…');
 
-/** "Can't reach room ABCD. Check the code on the screen." One sentence per line, with the space kept between them so the text still reads as one. */
+/**
+ * "Can't reach this room. Scan the QR on the screen again." One sentence per line, with the space kept between them so
+ * the text still reads as one. The code is not in the words; it rides on data-unreachable so syncUnreachable can tell
+ * whether the form already carries this note.
+ */
 function unreachableNote(code: string): HTMLElement {
   return h('p', { class: 'cap', role: 'status', 'data-unreachable': code },
-    h('span', { class: 'line' }, `Can't reach room ${code}.`), ' ', h('span', { class: 'line' }, 'Check the code on the screen.'));
+    h('span', { class: 'line' }, "Can't reach this room."), ' ', h('span', { class: 'line' }, 'Scan the QR on the screen again.'));
 }
 
 function offline(unreachable: string | null | undefined): HTMLElement {

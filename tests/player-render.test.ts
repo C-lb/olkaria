@@ -183,11 +183,10 @@ describe('the other screens', () => {
   it('say who you are while you wait, in the lobby and between rounds', () => {
     const el = mount();
     render(el, { ...base, phase: 'lobby', round: -1, role: 'government', table: 'Red' }, c, joined, noop);
-    expect(el.textContent).toContain("You're in as Ann, Knight. Watch the screen.");
-    expect(el.textContent).toContain('Kenyan Government');
+    expect(el.textContent).toContain('Knight, Kenyan Government');
     expect(el.textContent).toContain('Table: Red');
     render(el, { ...base, phase: 'travel' }, c, joined, noop);
-    expect(el.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    expect(el.textContent).toContain('Rogue, Citizen');
     expect(el.textContent).not.toContain('Table:');
   });
   it('offer a Change button in the lobby only, which asks to change the details', () => {
@@ -270,14 +269,14 @@ describe('the other screens', () => {
     expect(el.textContent).toContain('Reconnecting…');
     expect(el.querySelectorAll('button')).toHaveLength(0);
   });
-  it('name the room on the offline screen when it cannot be reached, and on no other screen but the join form', () => {
+  it('say the room cannot be reached on the offline screen, and on no other screen but the join form', () => {
     const el = mount();
     render(el, null, c, { ...joining, status: 'offline' }, noop);
     expect(el.textContent).toContain('Reconnecting…');
     expect(el.textContent).not.toContain("Can't reach");
     render(el, null, c, { ...joining, status: 'offline', unreachable: 'KFBN' }, noop);
     expect(el.textContent).toContain('Reconnecting…');
-    expect(el.textContent).toContain("Can't reach room KFBN. Check the code on the screen.");
+    expect(el.textContent).toContain("Can't reach this room. Scan the QR on the screen again.");
     render(el, null, c, { ...joining, status: 'connecting', unreachable: 'KFBN' }, noop);
     expect(el.textContent).not.toContain("Can't reach");
   });
@@ -293,7 +292,7 @@ describe('the other screens', () => {
     expect(nameInput(el)).toBe(input);
     expect(input.value).toBe('Mo');
     expect(joinButton(el).disabled).toBe(false);
-    expect(form.textContent).toContain("Can't reach room KFBN. Check the code on the screen.");
+    expect(form.textContent).toContain("Can't reach this room. Scan the QR on the screen again.");
     render(el, null, c, { ...joining, unreachable: 'KFBN' }, noop);
     expect(form.querySelectorAll('[data-unreachable]')).toHaveLength(1);
     render(el, null, c, joining, noop);
@@ -360,4 +359,43 @@ it('draws the class figure on the role buttons, the waiting card and the lead no
   render(el, base, c, joined, noop);
   expect(el.querySelector('.note svg.figure')?.getAttribute('width')).toBe('24');
   expect(el.querySelector('svg.figure rect')?.getAttribute('fill')).toMatch(/^#[0-9a-f]{6}$/);
+});
+
+it('onboards with the fewest words: name, role, table, join, nothing else', () => {
+  const el = mount();
+  render(el, null, c, { status: 'joining', name: '', role: null, table: '' }, noop);
+  const form = el.querySelector('form[data-screen=join]')!;
+  expect(form.querySelector('h1')!.textContent).toBe('Join the game');
+  expect(form.querySelector('label[for=nickname]')!.textContent).toBe('Name');
+  expect(form.querySelector('#role-label')!.textContent).toBe('Role');
+  expect(form.querySelector('label[for=table]')!.textContent).toBe('Table');
+  expect((form.querySelector('input[name=nickname]') as HTMLInputElement).placeholder).toBe('');
+  expect((form.querySelector('input[name=table]') as HTMLInputElement).placeholder).toBe('Optional');
+  expect(form.textContent).not.toContain(c.title);
+  expect(form.textContent).not.toContain('Try for one of each role');
+  expect(form.textContent).not.toContain('Add a name and pick a role');
+  expect(form.querySelector('p.hint, p.cap, header .eyebrow')).toBeNull();
+  expect((form.querySelector('button[type=submit]') as HTMLButtonElement).disabled).toBe(true);
+});
+it('the waiting card is the figure, the name, the class and stakeholder, and the table', () => {
+  const el = mount();
+  render(el, { ...base, phase: 'lobby', table: '3' }, c, joined, noop);
+  const card = el.querySelector('[data-screen=waiting] .card')!;
+  expect(card.querySelector('svg.figure')?.getAttribute('width')).toBe('60');
+  expect(card.querySelector('h1')!.textContent).toBe('Ann');
+  expect([...card.querySelectorAll('p.cap')].map((p) => p.textContent)).toEqual(['Rogue, Citizen', 'Table: 3']);
+  expect(card.textContent).not.toContain("You're in as");
+  expect(card.textContent).not.toContain('Watch the screen');
+  expect(el.querySelector('[data-change]')).not.toBeNull();
+  render(el, { ...base, phase: 'travel', table: null }, c, joined, noop);
+  expect([...el.querySelectorAll('[data-screen=waiting] .card p.cap')].map((p) => p.textContent)).toEqual(['Rogue, Citizen']);
+  expect(el.querySelector('[data-change]')).toBeNull();
+});
+it('the unreachable note no longer points at a code', () => {
+  const el = mount();
+  render(el, null, c, { status: 'joining', name: '', role: null, table: '', unreachable: 'ABCD' }, noop);
+  expect(el.querySelector('[data-unreachable]')!.textContent).toBe("Can't reach this room. Scan the QR on the screen again.");
+  render(el, null, c, { status: 'offline', name: 'Ann', role: 'citizen', table: '', unreachable: 'ABCD' }, noop);
+  expect(el.textContent).toContain("Can't reach this room.");
+  expect(el.textContent).not.toContain('ABCD');
 });

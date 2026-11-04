@@ -39,6 +39,9 @@ const typeAndPick = (app: HTMLElement, name: string) => {
   nameInput(app).dispatchEvent(new Event('input'));
   (app.querySelector('button[data-role=citizen]') as HTMLButtonElement).click();
 };
+/** The waiting card line by line: the name, then the class and stakeholder, then the table when one was given. */
+const waitingLines = (app: HTMLElement) =>
+  [...app.querySelectorAll('[data-screen=waiting] .card h1, [data-screen=waiting] .card p.cap')].map((n) => n.textContent);
 
 beforeEach(() => {
   FakeSocket.all = [];
@@ -83,7 +86,7 @@ describe('player page wiring', () => {
     expect(last().sent.map((s) => JSON.parse(s))).toEqual([{ t: 'join', clientId: expect.any(String), name: 'Mo', role: 'citizen', table: '' }]);
   });
 
-  it('names the room under the form after three failed opens, keeps the form, and clears the note once a connection opens', async () => {
+  it('says the room cannot be reached under the form after three failed opens, keeps the form, and clears the note once a connection opens', async () => {
     const app = await boot('/j/WXYZ');
     const form = app.querySelector('form')!;
     const name = nameInput(app);
@@ -96,7 +99,7 @@ describe('player page wiring', () => {
     last().drop();
     expect(app.querySelector('form')).toBe(form);
     expect(name.value).toBe('Mo');
-    expect(form.textContent).toContain("Can't reach room WXYZ. Check the code on the screen.");
+    expect(form.textContent).toContain("Can't reach this room. Scan the QR on the screen again.");
     vi.advanceTimersByTime(4000);
     last().open();
     expect(app.querySelector('form')).toBe(form);
@@ -115,7 +118,7 @@ describe('player page wiring', () => {
     vi.advanceTimersByTime(1000);
     last().open();
     last().say({ t: 'you', view: lobby });
-    expect(app.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    expect(waitingLines(app)).toEqual(['Ann', 'Rogue, Citizen']);
     last().drop();
     for (const wait of [1000, 2000, 4000]) {
       vi.advanceTimersByTime(wait);
@@ -130,7 +133,7 @@ describe('player page wiring', () => {
     const app = await boot();
     last().open();
     last().say({ t: 'you', view: { ...lobby, table: 'Red' } });
-    expect(app.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    expect(waitingLines(app)).toEqual(['Ann', 'Rogue, Citizen', 'Table: Red']);
     (app.querySelector('button[data-change]') as HTMLButtonElement).click();
     const form = app.querySelector('form')!;
     expect(form).not.toBeNull();
@@ -146,7 +149,7 @@ describe('player page wiring', () => {
     expect(joinButton(app).classList.contains('is-loading')).toBe(true);
     last().say({ t: 'you', view: { ...lobby, role: 'business', isLead: false, table: 'Red', playerCount: 2 } });
     expect(app.querySelector('form')).toBeNull();
-    expect(app.textContent).toContain("You're in as Ann, Bard. Watch the screen.");
+    expect(waitingLines(app)).toEqual(['Ann', 'Bard, Local Businesses', 'Table: Red']);
     expect(JSON.parse(localStorage.getItem('olkaria.join')!)).toEqual({ code: 'ABCD', name: 'Ann', role: 'business', table: 'Red' });
   });
 
@@ -159,7 +162,7 @@ describe('player page wiring', () => {
     expect(app.querySelector('form')).not.toBeNull();
     last().say({ t: 'you', view: { ...lobby, phase: 'travel', round: 0 } });
     expect(app.querySelector('form')).toBeNull();
-    expect(app.textContent).toContain("You're in as Ann, Rogue. Watch the screen.");
+    expect(waitingLines(app)).toEqual(['Ann', 'Rogue, Citizen']);
     expect(app.querySelector('button[data-change]')).toBeNull();
     last().say({ t: 'you', view: lobby });   // back in the lobby after a reset: the form does not come back by itself
     expect(app.querySelector('form')).toBeNull();

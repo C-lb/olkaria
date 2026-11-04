@@ -108,8 +108,6 @@ svg { max-width: 100%; }
 .cap { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 /* Sentence case, never uppercase. Block, so an eyebrow can never share a line with the control it names. */
 .eyebrow { display: block; font-size: var(--t-cap); font-weight: 600; line-height: var(--lh-tight); letter-spacing: var(--tr-eyebrow); color: var(--ink-2); }
-.text-stack { display: flex; flex-direction: column; gap: var(--s2); }
-.text-stack.is-jump { gap: var(--s3); }   /* when the size jump between the two lines is past 1.5x */
 
 /* ---- Icons and class figures -------------------------------------------------------------------------- */
 
@@ -173,8 +171,6 @@ svg { max-width: 100%; }
 }
 .field input::placeholder { color: var(--ink-3); }
 .field .control:focus-within { box-shadow: var(--raise), 0 0 0 2px var(--accent); }
-.actions { display: flex; flex-direction: column; gap: var(--s3); }
-.hint { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 
 /* ---- Role buttons: a 2 x 2 grid, class figure and names, no option colour ------------------------------- */
 
@@ -192,11 +188,11 @@ svg { max-width: 100%; }
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: background .18s ease, transform .12s ease, box-shadow .2s ease, opacity .2s ease;
 }
-.role .figure { margin-top: var(--s1); }
+.role .figure { margin-top: var(--s2); }
 .role-name, .role-sub { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .role-sub { font-size: var(--t-sub); font-weight: 500; line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 .role:active { transform: translateY(1px) scale(.985); background: var(--surface-3); box-shadow: none; }
-.role[aria-pressed="true"] { background: var(--surface-3); box-shadow: inset 0 0 0 2px var(--accent); }
+.role[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
 .role:disabled { opacity: .4; pointer-events: none; }
 .role:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -276,8 +272,6 @@ svg { max-width: 100%; }
   .btn:hover:not(:active) { background: var(--surface-2); }
   .btn-accent:hover:not(:active) { background: var(--accent-2); }
   .field .control:hover { background: var(--surface-2); }
-  .role:hover:not(:active) { background: var(--surface-2); }
-  .role[aria-pressed="true"]:hover:not(:active) { background: var(--surface-3); }
   .vote:hover:not(:active) { filter: brightness(1.08); }
   .vote:disabled:hover { filter: grayscale(1); }
 }
