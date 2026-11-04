@@ -93,10 +93,10 @@ ICONS = {
 # (Caleb, 3 November): the citizens' Rogue rallies the community, the Government's Knight holds a sovereign wall,
 # the businesses' Bard sings up trade, Microsoft's Wizard throws an Azure fireball.
 STATS = {
-    "citizen": {"health": 88, "attack": 94, "defense": 82, "special": ("Community", "community", 97)},
-    "government": {"health": 96, "attack": 84, "defense": 98, "special": ("Sovereign wall", "wall", 95)},
-    "business": {"health": 86, "attack": 90, "defense": 84, "special": ("Trade song", "song", 96)},
-    "microsoft": {"health": 84, "attack": 99, "defense": 80, "special": ("Azure fireball", "fireball", 99)},
+    "citizen": {"health": 90, "attack": 95, "defense": 80, "special": ("Community", "community", 95)},
+    "government": {"health": 95, "attack": 85, "defense": 100, "special": ("Sovereign wall", "wall", 95)},
+    "business": {"health": 85, "attack": 90, "defense": 85, "special": ("Trade song", "song", 95)},
+    "microsoft": {"health": 85, "attack": 100, "defense": 80, "special": ("Azure fireball", "fireball", 100)},
 }
 
 
@@ -282,24 +282,22 @@ h3{ font-size:var(--t-h3); font-weight:600; line-height:var(--lh-h3); letter-spa
 section{ margin-bottom:var(--s5); }
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s3); }
 .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--card-pad); break-inside:avoid; }
-.role{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s3); }
+.role{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s3); align-content:start; }
 .role .tile{ grid-row:1 / span 2; width:48px; height:48px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
 .role .tile svg{ width:30px; height:40px; shape-rendering:crispEdges; display:block; }
-.role .sub{ margin-bottom:2px; }
+.role .sub{ margin-bottom:2px; min-height:calc(2em * var(--lh-tight)); display:flex; align-items:flex-end; }
 .role .body{ grid-column:1 / -1; margin-top:var(--s2); }
 .role .who{ color:var(--ink-2); }
 .role .strike{ margin-top:var(--s2); }
-/* Three stat cells under the blurb, the icon on a dark tile over the number and its label, then the special as a bar:
-   the icon, "Special" over the trait's name, the number at the right. */
+/* Three stat cells under the blurb, each an icon on a dark tile with its number beside it, then the special as a bar:
+   the icon, the number, the move's title. */
 .role .stats{ margin-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
-.stat{ display:grid; gap:var(--s1); padding:var(--s2); border-radius:var(--r-sm); background:var(--surface-2); min-width:0; }
+.stat{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:var(--s2); padding:var(--s2); border-radius:var(--r-sm); background:var(--surface-2); min-width:0; }
 .stat .ico{ width:24px; height:24px; border-radius:6px; background:var(--tile-dark); display:grid; place-items:center; }
 .stat .ico svg{ width:16px; height:16px; shape-rendering:crispEdges; display:block; }
-.stat-k{ font-size:var(--t-cap); line-height:var(--lh-tight); letter-spacing:var(--tr-cap); color:var(--ink-2); }
 .stat-v, .stat-n{ font-size:var(--t-h3); line-height:var(--lh-tight); letter-spacing:var(--tr-h3); font-weight:700; font-variant-numeric:tabular-nums; }
-.stat.special{ grid-column:1 / -1; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:var(--s2); }
-.stat.special .txt{ display:grid; gap:2px; min-width:0; }
-.stat.special .stat-v{ font-size:var(--t-body); letter-spacing:0; }
+.stat.special{ grid-column:1 / -1; grid-template-columns:auto auto minmax(0,1fr); }
+.stat.special .stat-title{ font-size:var(--t-body); line-height:var(--lh-tight); font-weight:700; }
 .measure{ max-width:var(--measure); }
 .rules{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s5); break-inside:avoid; }
 .steps{ margin:0; padding-left:var(--s4); }
@@ -437,21 +435,18 @@ section{ margin-bottom:var(--s5); }
     });
     return svg;
   }
-  /** One stat cell: the icon on its dark tile, the number, the label under it. */
+  /** One stat cell: the icon on its dark tile with the number beside it. The label is for screen readers only. */
   function stat(name, kPath, vPath) {
-    return h('div', { 'class': 'stat' },
+    return h('div', { 'class': 'stat', role: 'group', 'aria-label': String(get(kPath)) },
       h('span', { 'class': 'ico' }, icon(name)),
-      t('b', { 'class': 'stat-v' }, vPath),
-      t('span', { 'class': 'stat-k' }, kPath));
+      t('b', { 'class': 'stat-v' }, vPath));
   }
-  /** The special, a bar under the three stats: the icon, "Special" over the trait's name, the number at the right. */
+  /** The special, a bar under the three stats: the icon, the number beside it, then the move's title. */
   function special(s, p) {
-    return h('div', { 'class': 'stat special' },
+    return h('div', { 'class': 'stat special', role: 'group', 'aria-label': String(get(p + 'special.k')) },
       h('span', { 'class': 'ico' }, icon(s.icon)),
-      h('div', { 'class': 'txt' },
-        t('span', { 'class': 'stat-k' }, p + 'special.k'),
-        t('b', { 'class': 'stat-v' }, p + 'special.name')),
-      t('b', { 'class': 'stat-n' }, p + 'special.v'));
+      t('b', { 'class': 'stat-n' }, p + 'special.v'),
+      t('b', { 'class': 'stat-title' }, p + 'special.name'));
   }
 
   function render() {
