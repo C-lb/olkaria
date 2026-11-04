@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 // tests/hud.test.ts
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import raw from '../content/case.json';
 import { howtoSlides } from '../host/howto';
@@ -604,5 +605,25 @@ describe('how to play', () => {
     expect(hud.menuOpen()).toBe(true);
     hud.showMenu(null);
     expect(hud.menuOpen()).toBe(false);
+  });
+});
+
+// ---- The pixel face: no ligatures anywhere it is set ---------------------------------------------------------
+
+describe('the pixel face', () => {
+  const css = (path: string): string => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  it('turns ligatures off in every rule that sets it, after the font, since Pixelify Sans lacks the glyph its "fi" stands for', () => {
+    // "Households first" read "Households Arst" on the call-out banner. The font shorthand resets ligatures, so the
+    // rule must turn them off after it.
+    const rules = [...css('../host/hud/hud.css').matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , body]) => body.includes('var(--font-title)'));
+    expect(rules.length).toBeGreaterThanOrEqual(10);
+    for (const [, selector, body] of rules) {
+      const at = body.indexOf('var(--font-title)');
+      expect({ selector: selector.trim(), off: body.indexOf('font-variant-ligatures: none') > at && body.indexOf('font-feature-settings: "liga" 0') > at })
+        .toEqual({ selector: selector.trim(), off: true });
+    }
+  });
+  it('is not on the phone', () => {
+    expect(css('../player/styles.css')).not.toMatch(/Pixelify|--font-title/);
   });
 });
