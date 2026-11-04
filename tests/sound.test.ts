@@ -75,8 +75,11 @@ it('a context the browser refuses leaves the game silent and running', () => {
     sound.join();
   }).not.toThrow();
   expect(sound.toggle()).toBe(false);
-  expect(sound.toggle()).toBe(true);
+  expect(() => expect(sound.toggle()).toBe(true)).not.toThrow(); // turning on tries again, and is refused again
+  expect(makeContext).toHaveBeenCalledTimes(2);
+  expect(makeChip).not.toHaveBeenCalled();
   expect(sound.enabled).toBe(true);
+  expect(window.localStorage.getItem(SOUND_KEY)).toBe('on');
 
   // A constructor that throws is the same as a refusal.
   const thrower = setup(() => { throw new Error('no audio'); });
@@ -106,17 +109,28 @@ it('toggle stops and restarts and remembers', () => {
 
   sound.toggle();
   expect(window.localStorage.getItem(SOUND_KEY)).toBe('off');
+  const idle = setup();
+  expect(idle.sound.enabled).toBe(false);
+  press();
+  expect(idle.makeContext).not.toHaveBeenCalled(); // off: a gesture makes no context
+
+  // Off stored, no gesture yet: S is itself a gesture, so turning on makes the context and plays at once.
   const again = setup();
   expect(again.sound.enabled).toBe(false);
   again.sound.music('lobby');
-  press();
-  expect(again.makeContext).not.toHaveBeenCalled(); // off: the gesture makes no context
-  expect(again.sound.toggle()).toBe(true); // no context yet: only the choice is stored
   expect(again.makeContext).not.toHaveBeenCalled();
-  expect(window.localStorage.getItem(SOUND_KEY)).toBe('on');
-  press();
+  expect(again.sound.toggle()).toBe(true);
   expect(again.makeContext).toHaveBeenCalledTimes(1);
-  expect(chips[1].play).toHaveBeenCalledWith('lobby');
+  expect(again.makeChip).toHaveBeenCalledTimes(1);
+  const fresh = chips[chips.length - 1];
+  expect(fresh.sfx).toHaveBeenCalledWith('soundOn');
+  expect(fresh.play).toHaveBeenCalledTimes(1);
+  expect(fresh.play).toHaveBeenCalledWith('lobby');
+  expect(window.localStorage.getItem(SOUND_KEY)).toBe('on');
+  press(); // the one-time listeners are gone: nothing new is made
+  window.dispatchEvent(new Event('pointerdown'));
+  expect(again.makeContext).toHaveBeenCalledTimes(1);
+  expect(fresh.play).toHaveBeenCalledTimes(1);
 });
 
 it('joins in a burst play at most one blip per gap and step up in pitch', () => {

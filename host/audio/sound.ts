@@ -71,20 +71,23 @@ export function createSound(deps: {
     }
   };
 
-  const unlock = (): void => {
-    if (!enabled) return; // off: keep listening, a later gesture after S unlocks
+  /** Makes the context and the chip, once a gesture allows it; the one-time listeners go either way. */
+  const start = (): Chip | null => {
     for (const type of GESTURES) target.removeEventListener(type, unlock);
-    let ctx: AudioContext | null = null;
     try {
-      ctx = deps.makeContext();
-      if (ctx === null) return;
+      const ctx = deps.makeContext();
+      if (ctx === null) return null;
       if (typeof ctx.resume === 'function') ctx.resume().catch(() => {});
       chip = makeChip(ctx);
     } catch {
       chip = null;
-      return;
     }
-    if (pending !== null) withChip((c) => c.play(pending as ThemeId));
+    return chip;
+  };
+
+  const unlock = (): void => {
+    if (!enabled) return; // off: keep listening; toggle() makes the context itself when sound goes on
+    if (start() !== null && pending !== null) withChip((c) => c.play(pending as ThemeId));
   };
   for (const type of GESTURES) target.addEventListener(type, unlock);
 
@@ -118,13 +121,15 @@ export function createSound(deps: {
     toggle() {
       enabled = !enabled;
       writeStore(enabled ? 'on' : 'off');
-      if (chip === null) return enabled;
+      // toggle() is only called from a key or a click, so it is itself a gesture: turning on can unlock.
+      const live = chip ?? (enabled ? start() : null);
+      if (live === null) return enabled;
       try {
         if (!enabled) {
-          chip.stop();
+          live.stop();
         } else {
-          chip.sfx('soundOn');
-          if (pending !== null) chip.play(pending);
+          live.sfx('soundOn');
+          if (pending !== null) live.play(pending);
         }
       } catch {
         // the choice is stored either way
