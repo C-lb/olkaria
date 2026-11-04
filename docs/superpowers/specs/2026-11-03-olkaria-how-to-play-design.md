@@ -25,7 +25,7 @@ Content comes from `content/case.json`; the words below are the copy, verbatim; 
 7. **ending.** Eyebrow "The last boss and the ending". Lines: "Microsoft decides." and "Its options score by how well they fit what the party chose before." A gauge from 0 to 400 with marks at 180 "Fragile" and 260 "Decisive", filling up to 260. Line: "Under 180, the Deadlock holds."
 8. **awards.** Eyebrow "At the end". Three lines popping in: "Top five players", "Most consistent strategist", "Top table".
 
-Footer on every slide: eight dots with the current one bright, then the keycaps "Space  Next" ("Space  Close" on the last slide) and "Esc  Close".
+Footer on every slide: eight dots with the current one bright, then the keycaps "Space  Next" ("Space  Close" on the last slide) and "?  Close". The second keycap names ? rather than Esc because the projector runs in fullscreen, where Chrome takes Esc to leave fullscreen before the page sees it (amended 3 Nov after the Task 2 review); Esc still closes outside fullscreen.
 
 ## 4. Look and motion
 
@@ -35,7 +35,7 @@ Footer on every slide: eight dots with the current one bright, then the keycaps 
 
 ## 5. Docs
 
-RUNBOOK.md: one line before the run of show ("? opens How to play: eight slides, Space next, Esc closes. Show it while the phones join.") and a row in the key table. The facilitator-menu plan's Task 7 lobby test expects three keycaps.
+RUNBOOK.md: one line before the run of show ("? opens How to play: eight slides, Space next, ? closes (Esc too, outside fullscreen). Show it while the phones join.") and a row in the key table with the same wording. The facilitator-menu plan's Task 7 lobby test expects three keycaps.
 
 ## 6. Non-goals
 
