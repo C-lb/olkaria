@@ -66,6 +66,8 @@ async function main(): Promise<void> {
       fullscreenTarget: 'stage',
     },
     physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 600 } } },
+    // Nothing uses Phaser's sound: without this it makes a second AudioContext of its own. Ours is in audio/sound.ts.
+    audio: { noAudio: true },
     scene: [Boot, Lobby, Travel, Battle, Ending, Leaderboard],
   });
   game.registry.set('client', client);
