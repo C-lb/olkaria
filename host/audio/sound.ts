@@ -57,6 +57,8 @@ export function createSound(deps: {
   let enabled = readStore() !== 'off';
   let chip: Chip | null = null;
   let pending: ThemeId | null = null;
+  /** The last tension asked for on the pending theme, kept while off or before the chip exists. */
+  let kept: Tension = 0;
   let lastJoinAt: number | null = null;
   let lastBlipAt: number | null = null;
   let burstIndex = 0;
@@ -87,16 +89,18 @@ export function createSound(deps: {
 
   const unlock = (): void => {
     if (!enabled) return; // off: keep listening; toggle() makes the context itself when sound goes on
-    if (start() !== null && pending !== null) withChip((c) => c.play(pending as ThemeId));
+    if (start() !== null && pending !== null) withChip((c) => c.play(pending as ThemeId, kept));
   };
   for (const type of GESTURES) target.addEventListener(type, unlock);
 
   return {
     music(theme) {
+      if (theme !== pending) kept = 0; // a new theme starts untightened, as in Chip.play
       pending = theme;
       withChip((c) => c.play(theme));
     },
     tension(level) {
+      kept = level;
       withChip((c) => c.setTension(level));
     },
     sfx(id) {
@@ -129,7 +133,7 @@ export function createSound(deps: {
           live.stop();
         } else {
           live.sfx('soundOn');
-          if (pending !== null) live.play(pending);
+          if (pending !== null) live.play(pending, kept);
         }
       } catch {
         // the choice is stored either way

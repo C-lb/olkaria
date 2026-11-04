@@ -42,7 +42,7 @@ it('nothing plays before the first gesture; the pending theme starts on it', () 
   expect(makeChip).toHaveBeenCalledTimes(1);
   expect(makeChip).toHaveBeenCalledWith(stubContext);
   expect(chips[0].play).toHaveBeenCalledTimes(1);
-  expect(chips[0].play).toHaveBeenCalledWith('lobby');
+  expect(chips[0].play).toHaveBeenCalledWith('lobby', 0);
   expect(chips[0].sfx).not.toHaveBeenCalled(); // the effect before the gesture was not saved up
 
   press();
@@ -104,7 +104,7 @@ it('toggle stops and restarts and remembers', () => {
   expect(sound.enabled).toBe(true);
   expect(chip.sfx).toHaveBeenCalledWith('soundOn');
   expect(chip.play).toHaveBeenCalledTimes(2);
-  expect(chip.play).toHaveBeenLastCalledWith('lobby');
+  expect(chip.play).toHaveBeenLastCalledWith('lobby', 0);
   expect(window.localStorage.getItem(SOUND_KEY)).toBe('on');
 
   sound.toggle();
@@ -125,7 +125,7 @@ it('toggle stops and restarts and remembers', () => {
   const fresh = chips[chips.length - 1];
   expect(fresh.sfx).toHaveBeenCalledWith('soundOn');
   expect(fresh.play).toHaveBeenCalledTimes(1);
-  expect(fresh.play).toHaveBeenCalledWith('lobby');
+  expect(fresh.play).toHaveBeenCalledWith('lobby', 0);
   expect(window.localStorage.getItem(SOUND_KEY)).toBe('on');
   press(); // the one-time listeners are gone: nothing new is made
   window.dispatchEvent(new Event('pointerdown'));
@@ -185,5 +185,27 @@ it('while off, music is remembered but nothing is played', () => {
 
   expect(sound.toggle()).toBe(true);
   expect(chip.play).toHaveBeenCalledTimes(1);
-  expect(chip.play).toHaveBeenCalledWith('vote');
+  expect(chip.play).toHaveBeenCalledWith('vote', 2); // the tension set while off comes back too
+});
+
+it('the tension is kept while off or before the first gesture, and comes back with the theme', () => {
+  const { sound } = setup();
+  sound.music('vote');
+  sound.tension(2); // no chip yet
+  press();
+  const chip = chips[0];
+  expect(chip.play).toHaveBeenLastCalledWith('vote', 2);
+
+  sound.toggle();
+  sound.tension(1); // the clock reset by R while off
+  sound.tension(2);
+  expect(chip.setTension).not.toHaveBeenCalled();
+  expect(sound.toggle()).toBe(true);
+  expect(chip.play).toHaveBeenLastCalledWith('vote', 2);
+
+  // A new theme starts untightened, as the chip itself does.
+  sound.toggle();
+  sound.music('locked');
+  sound.toggle();
+  expect(chip.play).toHaveBeenLastCalledWith('locked', 0);
 });
