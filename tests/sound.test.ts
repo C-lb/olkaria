@@ -227,3 +227,27 @@ it('a suspended context is resumed on the unlock gesture and on every turn on; a
   live.sound.toggle();
   expect(running.resume).not.toHaveBeenCalled();
 });
+
+it('a first key the how-to or the menu swallows still unlocks: the listeners are in the capture phase', () => {
+  const { makeContext } = setup();
+  // As howto.ts and menu.ts do, added after createSound: on window in the capture phase, and they stop the key there.
+  const swallow = (e: Event) => e.stopPropagation();
+  window.addEventListener('keydown', swallow, true);
+  document.body.addEventListener('pointerdown', swallow); // and a click stopped on its way back up
+  try {
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true }));
+    expect(makeContext).toHaveBeenCalledTimes(1);
+    expect(chips).toHaveLength(1);
+    // Removed with the same option: later gestures make nothing new.
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', bubbles: true }));
+    window.dispatchEvent(new Event('pointerdown'));
+    expect(makeContext).toHaveBeenCalledTimes(1);
+
+    const click = setup();
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(click.makeContext).toHaveBeenCalledTimes(1);
+  } finally {
+    window.removeEventListener('keydown', swallow, true);
+    document.body.removeEventListener('pointerdown', swallow);
+  }
+});

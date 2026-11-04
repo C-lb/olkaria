@@ -24,6 +24,11 @@ export const SOUND_KEY = 'olkaria.sound';
 const BURST_END_MS = 1000;
 
 const GESTURES = ['keydown', 'pointerdown'] as const;
+/**
+ * The unlock listens in the capture phase: howto.ts and menu.ts stop the keys they take on window in the capture phase,
+ * so a first ? or M would never reach a bubble listener. createSound runs before both, so it hears the key first.
+ */
+const CAPTURE = { capture: true } as const;
 
 export function createSound(deps: {
   target: Pick<Window, 'addEventListener' | 'removeEventListener'>;
@@ -90,7 +95,7 @@ export function createSound(deps: {
 
   /** Makes the context and the chip, once a gesture allows it; the one-time listeners go either way. */
   const start = (): Chip | null => {
-    for (const type of GESTURES) target.removeEventListener(type, unlock);
+    for (const type of GESTURES) target.removeEventListener(type, unlock, CAPTURE);
     try {
       ctx = deps.makeContext();
       if (ctx === null) return null;
@@ -106,7 +111,7 @@ export function createSound(deps: {
     if (!enabled) return; // off: keep listening; toggle() makes the context itself when sound goes on
     if (start() !== null && pending !== null) withChip((c) => c.play(pending as ThemeId, kept));
   };
-  for (const type of GESTURES) target.addEventListener(type, unlock);
+  for (const type of GESTURES) target.addEventListener(type, unlock, CAPTURE);
 
   return {
     music(theme) {
