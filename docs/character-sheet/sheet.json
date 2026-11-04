@@ -9,6 +9,29 @@
       "stakeholder": "Citizens, households, Olkaries communities represent:",
       "className": "Family Rogue",
       "who": "",
+      "stats": [
+        {
+          "k": "Health",
+          "icon": "health",
+          "v": "88"
+        },
+        {
+          "k": "Attack",
+          "icon": "attack",
+          "v": "94"
+        },
+        {
+          "k": "Defense",
+          "icon": "defense",
+          "v": "82"
+        }
+      ],
+      "special": {
+        "k": "Special",
+        "icon": "community",
+        "name": "Community",
+        "v": "97"
+      },
       "strike": " Round 1: What will Kenyans accept on power?"
     },
     {
@@ -16,6 +39,29 @@
       "stakeholder": "Kenyan Government & Treasury represent:",
       "className": "Kenyan Knight",
       "who": "",
+      "stats": [
+        {
+          "k": "Health",
+          "icon": "health",
+          "v": "96"
+        },
+        {
+          "k": "Attack",
+          "icon": "attack",
+          "v": "84"
+        },
+        {
+          "k": "Defense",
+          "icon": "defense",
+          "v": "98"
+        }
+      ],
+      "special": {
+        "k": "Special",
+        "icon": "wall",
+        "name": "Sovereign wall",
+        "v": "95"
+      },
       "strike": " Round 2: What can the Government offer instead of a guarantee?"
     },
     {
@@ -23,6 +69,29 @@
       "stakeholder": "Local businesses, banks, startups represent:",
       "className": "Busy Bard",
       "who": "",
+      "stats": [
+        {
+          "k": "Health",
+          "icon": "health",
+          "v": "86"
+        },
+        {
+          "k": "Attack",
+          "icon": "attack",
+          "v": "90"
+        },
+        {
+          "k": "Defense",
+          "icon": "defense",
+          "v": "84"
+        }
+      ],
+      "special": {
+        "k": "Special",
+        "icon": "song",
+        "name": "Trade song",
+        "v": "96"
+      },
       "strike": " Round 3: What can Kenya's local businesses commit?"
     },
     {
@@ -30,6 +99,29 @@
       "stakeholder": "Microsoft & G42 represent:",
       "className": "Page Wizard",
       "who": "",
+      "stats": [
+        {
+          "k": "Health",
+          "icon": "health",
+          "v": "84"
+        },
+        {
+          "k": "Attack",
+          "icon": "attack",
+          "v": "99"
+        },
+        {
+          "k": "Defense",
+          "icon": "defense",
+          "v": "80"
+        }
+      ],
+      "special": {
+        "k": "Special",
+        "icon": "fireball",
+        "name": "Azure fireball",
+        "v": "99"
+      },
       "strike": " Round 4: What should Microsoft do?"
     }
   ],

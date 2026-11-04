@@ -31,6 +31,8 @@ PALETTE = {
     "stoneLight": "#59606f", "stonePale": "#7d8494", "bone": "#ddd7c7", "boneDim": "#b0aa9a", "steel": "#a4abb8",
     "steelDark": "#6f7686", "clothDark": "#2e2b38", "cloth": "#4a4556", "leather": "#6b4f3a", "wood": "#7a5a3a",
     "skin": "#b8957a", "ember": "#a8682c", "amber": "#eda34f",
+    # Option colours A and B from host/hud/Hud.ts, used here by the stat icons only.
+    "rose": "#b5473d", "sky": "#3f6fa3",
 }
 FIGURES = {
     "citizen": [  # Rogue: hood and cloak, a dagger in each hand
@@ -69,6 +71,45 @@ FIGURES = {
 def plural(class_name: str) -> str:
     return class_name + "s"
 
+# Stat and special icons, 8 by 8 pixel grids in the palette, drawn on a dark tile so they read in both themes.
+ICONS = {
+    "health": [[1, 1, 2, 1, "rose"], [4, 1, 2, 1, "rose"], [0, 2, 7, 2, "rose"], [1, 4, 5, 1, "rose"], [2, 5, 3, 1, "rose"],
+               [3, 6, 1, 1, "rose"], [1, 2, 1, 1, "bone"]],
+    "attack": [[3, 0, 2, 1, "bone"], [3, 1, 2, 4, "steel"], [1, 5, 6, 1, "leather"], [3, 6, 2, 1, "wood"], [3, 7, 2, 1, "amber"]],
+    "defense": [[0, 0, 8, 1, "steel"], [0, 1, 8, 3, "sky"], [1, 4, 6, 1, "sky"], [2, 5, 4, 1, "sky"], [3, 6, 2, 1, "sky"],
+                [3, 1, 2, 4, "bone"]],
+    "community": [[1, 0, 2, 3, "skin"], [0, 3, 4, 3, "amber"], [0, 6, 1, 2, "ember"], [3, 6, 1, 2, "ember"],
+                  [5, 0, 2, 3, "skin"], [4, 3, 4, 3, "steel"], [4, 6, 1, 2, "steelDark"], [7, 6, 1, 2, "steelDark"]],
+    "wall": [[0, 0, 3, 2, "boneDim"], [4, 0, 4, 2, "boneDim"], [0, 2, 1, 2, "stonePale"], [2, 2, 3, 2, "stonePale"],
+             [6, 2, 2, 2, "stonePale"], [0, 4, 3, 2, "boneDim"], [4, 4, 4, 2, "boneDim"], [0, 6, 1, 2, "stonePale"],
+             [2, 6, 3, 2, "stonePale"], [6, 6, 2, 2, "stonePale"]],
+    "song": [[2, 5, 3, 2, "amber"], [4, 0, 1, 6, "bone"], [5, 0, 2, 1, "bone"], [6, 1, 1, 2, "bone"]],
+    "fireball": [[2, 2, 4, 1, "steel"], [1, 3, 6, 4, "sky"], [2, 7, 4, 1, "sky"], [3, 4, 2, 2, "bone"], [6, 1, 1, 1, "amber"],
+                 [7, 0, 1, 1, "amber"], [7, 2, 1, 1, "amber"]],
+}
+
+# Card stats, flavour only: the game never reads them. The special sits between the stakeholder and the class
+# (Caleb, 3 November): the citizens' Rogue rallies the community, the Government's Knight holds a sovereign wall,
+# the businesses' Bard sings up trade, Microsoft's Wizard throws an Azure fireball.
+STATS = {
+    "citizen": {"health": 88, "attack": 94, "defense": 82, "special": ("Community", "community", 97)},
+    "government": {"health": 96, "attack": 84, "defense": 98, "special": ("Sovereign wall", "wall", 95)},
+    "business": {"health": 86, "attack": 90, "defense": 84, "special": ("Trade song", "song", 96)},
+    "microsoft": {"health": 84, "attack": 99, "defense": 80, "special": ("Azure fireball", "fireball", 99)},
+}
+
+
+def stats_of(rid: str) -> list:
+    s = STATS[rid]
+    return [{"k": "Health", "icon": "health", "v": str(s["health"])},
+            {"k": "Attack", "icon": "attack", "v": str(s["attack"])},
+            {"k": "Defense", "icon": "defense", "v": str(s["defense"])}]
+
+
+def special_of(rid: str) -> dict:
+    name, icon, v = STATS[rid]["special"]
+    return {"k": "Special", "icon": icon, "name": name, "v": str(v)}
+
 
 def model(content: dict) -> dict:
     """The sheet as data: every line the page shows, composed once here so the page only renders."""
@@ -93,7 +134,7 @@ def model(content: dict) -> dict:
         if i == last_i:
             strike += " The whole party casts with you, and Microsoft is the case's decision maker, so it decides last."
         role_cards.append({"id": rid, "stakeholder": r["stakeholder"], "className": r["className"],
-                           "who": r["blurb"] + ".", "strike": strike})
+                           "who": r["blurb"] + ".", "stats": stats_of(rid), "special": special_of(rid), "strike": strike})
 
     q = content["quotes"]
     briefing = [
@@ -181,7 +222,7 @@ PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
    adds the plan's writing lines; on screen there are no blank fields (Caleb, 3 November). */
 :root{
   --accent:#2f5bd8;
-  --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --tile-dark:#2a2e3a; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
   --ink:#15151a; --ink-2:#52525b; --ink-3:#8f8f98;
   --font:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
   --font-title:'Pixelify Sans',var(--font);
@@ -195,11 +236,11 @@ PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
   --measure:72ch;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --accent:#9db2f3; --bg:#15141c; --surface:#1d1c25; --surface-2:#262530; --tile:#2a2e3a; --line:rgba(255,255,255,.10); --rule:rgba(255,255,255,.4);
+  --accent:#9db2f3; --bg:#15141c; --surface:#1d1c25; --surface-2:#262530; --tile:#2a2e3a; --tile-dark:#3d4352; --line:rgba(255,255,255,.10); --rule:rgba(255,255,255,.4);
   --ink:#ebe6d9; --ink-2:#a9afbb; --ink-3:#7c8290; color-scheme:dark;
 } }
 :root[data-theme="dark"]{
-  --accent:#9db2f3; --bg:#15141c; --surface:#1d1c25; --surface-2:#262530; --tile:#2a2e3a; --line:rgba(255,255,255,.10); --rule:rgba(255,255,255,.4);
+  --accent:#9db2f3; --bg:#15141c; --surface:#1d1c25; --surface-2:#262530; --tile:#2a2e3a; --tile-dark:#3d4352; --line:rgba(255,255,255,.10); --rule:rgba(255,255,255,.4);
   --ink:#ebe6d9; --ink-2:#a9afbb; --ink-3:#7c8290; color-scheme:dark;
 }
 html,body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:var(--t-body); line-height:var(--lh-body); -webkit-print-color-adjust:exact; print-color-adjust:exact; overflow-x:clip; }
@@ -247,6 +288,17 @@ section{ margin-bottom:var(--s5); }
 .role .body{ grid-column:1 / -1; margin-top:var(--s2); }
 .role .who{ color:var(--ink-2); }
 .role .strike{ margin-top:var(--s2); }
+/* Three stat cells under the blurb, the icon on a dark tile over the number and its label, then the special as a bar:
+   the icon, "Special" over the trait's name, the number at the right. */
+.role .stats{ margin-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
+.stat{ display:grid; gap:var(--s1); padding:var(--s2); border-radius:var(--r-sm); background:var(--surface-2); min-width:0; }
+.stat .ico{ width:24px; height:24px; border-radius:6px; background:var(--tile-dark); display:grid; place-items:center; }
+.stat .ico svg{ width:16px; height:16px; shape-rendering:crispEdges; display:block; }
+.stat-k{ font-size:var(--t-cap); line-height:var(--lh-tight); letter-spacing:var(--tr-cap); color:var(--ink-2); }
+.stat-v, .stat-n{ font-size:var(--t-h3); line-height:var(--lh-tight); letter-spacing:var(--tr-h3); font-weight:700; font-variant-numeric:tabular-nums; }
+.stat.special{ grid-column:1 / -1; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; column-gap:var(--s2); }
+.stat.special .txt{ display:grid; gap:2px; min-width:0; }
+.stat.special .stat-v{ font-size:var(--t-body); letter-spacing:0; }
 .measure{ max-width:var(--measure); }
 .rules{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s5); break-inside:avoid; }
 .steps{ margin:0; padding-left:var(--s4); }
@@ -286,7 +338,7 @@ section{ margin-bottom:var(--s5); }
 @page{ size:Letter; margin:13mm 14mm 15mm; }
 @media print{
   :root, :root[data-theme="dark"], :root:not([data-theme="light"]){
-    --accent:#2f5bd8; --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
+    --accent:#2f5bd8; --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --tile-dark:#2a2e3a; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
     --ink:#15151a; --ink-2:#52525b; --ink-3:#8f8f98; color-scheme:light;
     --fs-base:9.5pt; --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --card-pad:14px; --r-lg:12px; --r-sm:8px;
   }
@@ -312,6 +364,7 @@ section{ margin-bottom:var(--s5); }
   'use strict';
   var PALETTE = __PALETTE__;
   var FIGURES = __FIGURES__;
+  var ICONS = __ICONS__;
   var ROLE_ORDER = ['citizen', 'government', 'business', 'microsoft'];
   var SVG = 'http://www.w3.org/2000/svg';
   var dataNode = document.getElementById('sheet-data');
@@ -370,6 +423,35 @@ section{ margin-bottom:var(--s5); }
     });
     return svg;
   }
+  function icon(name) {
+    var svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', '0 0 8 8');
+    svg.setAttribute('aria-hidden', 'true');
+    (ICONS[name] || []).forEach(function (r) {
+      var rect = document.createElementNS(SVG, 'rect');
+      rect.setAttribute('x', r[0]); rect.setAttribute('y', r[1]);
+      rect.setAttribute('width', r[2]); rect.setAttribute('height', r[3]);
+      rect.setAttribute('fill', PALETTE[r[4]]);
+      svg.appendChild(rect);
+    });
+    return svg;
+  }
+  /** One stat cell: the icon on its dark tile, the number, the label under it. */
+  function stat(name, kPath, vPath) {
+    return h('div', { 'class': 'stat' },
+      h('span', { 'class': 'ico' }, icon(name)),
+      t('b', { 'class': 'stat-v' }, vPath),
+      t('span', { 'class': 'stat-k' }, kPath));
+  }
+  /** The special, a bar under the three stats: the icon, "Special" over the trait's name, the number at the right. */
+  function special(s, p) {
+    return h('div', { 'class': 'stat special' },
+      h('span', { 'class': 'ico' }, icon(s.icon)),
+      h('div', { 'class': 'txt' },
+        t('span', { 'class': 'stat-k' }, p + 'special.k'),
+        t('b', { 'class': 'stat-v' }, p + 'special.name')),
+      t('b', { 'class': 'stat-n' }, p + 'special.v'));
+  }
 
   function render() {
     var frag = document.createDocumentFragment();
@@ -382,12 +464,19 @@ section{ margin-bottom:var(--s5); }
     var cards = h('div', { 'class': 'grid2' });
     data.roles.forEach(function (r, i) {
       var p = 'roles.' + i + '.';
+      var stats = null;
+      if (r.stats && r.special) {
+        stats = h('div', { 'class': 'stats' });
+        r.stats.forEach(function (s, j) { stats.appendChild(stat(s.icon, p + 'stats.' + j + '.k', p + 'stats.' + j + '.v')); });
+        stats.appendChild(special(r.special, p));
+      }
       cards.appendChild(h('div', { 'class': 'card role' },
         h('div', { 'class': 'tile' }, figure(r.id)),
         t('p', { 'class': 'sub' }, p + 'stakeholder'),
         t('h3', null, p + 'className'),
         h('div', { 'class': 'body' },
           t('p', { 'class': 'who' }, p + 'who'),
+          stats,
           h('p', { 'class': 'strike' }, h('span', { 'class': 'k' }, 'Your strike'), ' ', t('span', null, p + 'strike')))));
     });
     frag.appendChild(h('section', null, t('h2', null, 'partyHeading'), cards));
@@ -543,7 +632,8 @@ def page_html(m: dict) -> str:
         return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
     return (PAGE.replace("__DATA__", embed(m))
                 .replace("__PALETTE__", embed(PALETTE))
-                .replace("__FIGURES__", embed(FIGURES)))
+                .replace("__FIGURES__", embed(FIGURES))
+                .replace("__ICONS__", embed(ICONS)))
 
 
 def guard(text: str) -> None:
