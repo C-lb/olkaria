@@ -1,7 +1,8 @@
 // The facilitator's keys that work in every scene (spec 6.5). Space, the arrows and A belong to the scenes, and so
 // does N in travel; M and Esc open the menu (menu.ts), which keeps every key from here while it is open. A refused
 // command (a key pressed in the wrong phase) comes back through the client's onError, which main.ts shows as a
-// toast, so the reducer is the one place that decides what each phase allows.
+// toast, so the reducer is the one place that decides what each phase allows. The scenes register their own keys
+// through oncePerEvent, so a press reaches each handler once.
 import type Phaser from 'phaser';
 import { OPTION_IDS, type HostView } from '../shared/types';
 import type { Hud } from './hud/Hud';

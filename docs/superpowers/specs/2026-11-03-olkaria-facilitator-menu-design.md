@@ -1,6 +1,6 @@
 # Olkaria: facilitator menu, automatic travel, class figures on the phone, a leaner lobby
 
-Date: 3 November 2026. Amends `2026-11-02-olkaria-deadlock-design.md` (sections 3.2, 4.1, 4.5, 6.2, 6.5). Where the two disagree, this document wins. Repo `~/olkaria`, live at https://olkaria.sparkbot-worker.workers.dev.
+Date: 3 November 2026. Amends `2026-11-02-olkaria-deadlock-design.md` (sections 3.2, 3.3, 4.1, 4.5, 5.6, 6.2, 6.5). Where the two disagree, this document wins. Repo `~/olkaria`, live at https://olkaria.sparkbot-worker.workers.dev.
 
 ## 1. Intent
 
@@ -44,11 +44,11 @@ Anti-goals
 
 ### 3.1 Opening and closing
 
-- M opens the menu over whatever screen is up, and so does Esc. Either closes it, and so does a click on the scrim outside the panel. In fullscreen Chrome takes Esc to leave fullscreen, so M is the key the runbook teaches. The lobby's keycap names Esc, at Caleb's request (3 November, evening); both keys open the menu.
+- M opens the menu over whatever screen is up, and so does Esc. Either closes it, and so does a click on the scrim outside the panel. In fullscreen Chrome takes Esc to leave fullscreen, so M is the key the runbook teaches, and the key the lobby's keycap names. That keycap named Esc at Caleb's request (3 November, evening) until the final fix pass moved it to M for the same reason; both keys open the menu.
 - The menu is modal. While it is open no key reaches the room or the scenes: digits add no votes, Space advances nothing, N skips nothing. Browser chords (Cmd, Ctrl, Alt) are left to the browser. Key releases pass through, so an arrow held when the menu opened does not stick down.
 - A key typed into a form field never opens the menu (the same guard the hotkeys use).
 - The key map that Esc showed moves into the menu, under the actions, in its two-column form. Its row for Esc becomes "M or Esc: this menu".
-- The lobby's hint line becomes three keycaps with labels: Space "Start", Esc "Shows hotkeys" and ? "How to play" (section 7).
+- The lobby's hint line becomes three keycaps with labels: Space "Start", M "Shows hotkeys" and ? "How to play" (section 7).
 
 ### 3.2 Items
 
@@ -62,7 +62,7 @@ Go to, one row of five: "1 Grid Wyrm", "2 Debt Golem", "3 Fog of Demand", "4 The
 
 Until the first view has arrived, only Reload is enabled.
 
-Asking twice. An item that changes the room (restart, lobby, every stage, the ending) arms on its first press: the button inverts and reads "Sure?" for 3 s. A second press on it inside that time fires it. A press on another item arms that one instead; closing the menu or the time running out disarms. Reload fires at once while the link is up and asks twice while it is down.
+Asking twice. An item that changes the room (restart, lobby, every stage, the ending) arms on its first press: the button inverts and reads "Sure?" for 3 s. A second press on it inside that time fires it, unless it comes within 0.3 s of the first: that is the same press, a double-click or a bounce of the key, and the item stays armed on the first press's time. A press on another item arms that one instead; closing the menu or the time running out disarms. Reload fires at once while the link is up and asks twice while it is down.
 
 After an item fires the menu closes. The room's answer moves the screens as any command does, and a refusal shows as the usual toast.
 
@@ -101,7 +101,7 @@ At the reveal each voter's points for the round (effective score, speed bonus, c
 
 `RoomState` gains `trips`: the number of roads the room has set off on. `start`, a `next` into a travel and a `goto` to a road each add one; `reset` keeps the count; a new room starts at 0. The host view carries it, and every scene is started with the trip it belongs to. The router treats a Travel or a Battle as fitting a view only when key, round and trip all match, so a jump to the round already on the projector starts its road again instead of being mistaken for the gate's own hand-over from Travel to Battle.
 
-Rooms made before this deploy have no `trips` field. They idle out within six hours and the class room is new on the day, so there is no migration.
+Rooms made before this deploy have no `trips` field. They idle out within six hours and the class room is new on the day, so there is no migration. The worker still loads such a room safely (`sanitizeState`, added in the final fix pass): a missing trip count reads as 0, and a vote deadline that is not a finite time, which an earlier build could store, reads as none, so the next tick locks that vote instead of arming an alarm that cannot be set.
 
 ## 5. Automatic travel
 
@@ -123,7 +123,7 @@ The room code block goes. Nobody types a code: the QR and the address are the tw
 
 One panel across the top as today, the bottom third clear for the skyline and the avatars:
 
-- Header: the title on two lines in the pixel face: "Olkaria" at 16 canvas pixels (it was 7, on one line with the subtitle) and "the Deadlock" under it at the title size (7) in ink-2, each with a hard shadow in the background colour one step down and right (two canvas pixels under the name, one under the subtitle), no blur. No quote under it. On the right, in place of the sentence hint, three keycaps with labels: Space "Start", Esc "Shows hotkeys" and ? "How to play" (the first two are Caleb's labels, 3 November, evening; the third is the how-to's). A keycap is the key map's cap (surface-2, r-sm, weight 600, body size) with a 1 px line stroke and a hard one-canvas-pixel bottom edge in the background colour; its label follows in ink-2.
+- Header: the title on two lines in the pixel face: "Olkaria" at 16 canvas pixels (it was 7, on one line with the subtitle) and "the Deadlock" under it at the title size (7) in ink-2, each with a hard shadow in the background colour one step down and right (two canvas pixels under the name, one under the subtitle), no blur. No quote under it. On the right, in place of the sentence hint, three keycaps with labels: Space "Start", M "Shows hotkeys" and ? "How to play" (the first two labels are Caleb's, 3 November, evening, and the third is the how-to's; the second keycap named Esc until the final fix pass, since Chrome takes Esc in fullscreen). A keycap is the key map's cap (surface-2, r-sm, weight 600, body size) with a 1 px line stroke and a hard one-canvas-pixel bottom edge in the background colour; its label follows in ink-2.
 - Body, three columns. The QR, a square 45% of the HUD's height as today. The join column: eyebrow "Scan, or go to", the address on two lines, the host on the first in ink-2 and the path "/j/ABCD" on the second in ink at weight 700; then "12 joined" with the number a hero in the pixel face (t-code) and the word at body size in ink-2; then a 2 by 2 grid of class tiles, each the class figure at one canvas pixel per pixel (12 by 16) beside its plural name in ink-2 and its count in ink. The "Just joined" list as today.
 - Footer: none. Both quotes leave the lobby (Caleb, 3 November, evening). Tanui's still opens round 2's narration; Smith's stays in `content/case.json` and is shown nowhere.
 - Offline, the square carries the offline notice as today and the join column shows only the count and the tiles. While connecting, the square says "Connecting to the room" and the join column shows only the count and the tiles.
@@ -141,7 +141,7 @@ Everything after the lobby is unchanged.
 
 ## 9. Documentation
 
-RUNBOOK: the lobby and travel rows of the run of show and the "Travels 2 to 4" line; "A QR code and a four-letter room code appear" and every other mention of a code to type; the Keys table (Arrows, A, "M or Esc", and what the menu does); "If something breaks" gains "You need to redo a round, or get to one" with the menu steps and the asking-twice rule; the rehearsal checklist gains a menu drill (restart a round, jump to round 3, back to the lobby) and a phone check for the figure. README names the menu. The original spec's 3.2, 4.1, 4.5, 5.6, 6.2 and 6.5 are amended to match this document.
+RUNBOOK: the lobby and travel rows of the run of show and the "Travels 2 to 4" line; "A QR code and a four-letter room code appear" and every other mention of a code to type; the Keys table (Arrows, A, "M or Esc", and what the menu does); "If something breaks" gains "You need to redo a round, or get to one" with the menu steps and the asking-twice rule; the rehearsal checklist gains a menu drill (restart a round, jump to round 3, back to the lobby) and a phone check for the figure. README names the menu. The original spec's 3.2, 3.3, 4.1, 4.5, 5.6, 6.2 and 6.5 are amended to match this document.
 
 ## 10. Left to the builder
 

@@ -130,7 +130,7 @@ Each pickup in travel adds +5 to the next strike, three at most. N skips them.
 
 1. Press M. The menu opens over the screen. While it is open the game keys do nothing.
 2. Click what you want, or arrow to it, then press Enter or Space: Restart round N, Back to the lobby, Reload the page, or a stage under Go to.
-3. Restart round N, Back to the lobby and every Go to button turn pale and say Sure? Press the same one again within 3 s. Pressing another button, closing the menu or waiting calls it off. Reload the page fires at once while the projector is connected, asks twice while it is not, and is greyed out in offline mode.
+3. Restart round N, Back to the lobby and every Go to button turn pale and say Sure? Press the same one again within 3 s; a double-click counts as one press, so press once more after it. Pressing another button calls it off and arms that one instead; closing the menu or waiting calls it off. Reload the page fires at once while the projector is connected, asks twice while it is not, and is greyed out in offline mode.
 4. The menu closes and the screen moves: a road starts walking, the lobby comes back, or the ending shows. Phones follow by themselves.
 
 Rounds before the one you went to keep their votes, scores and damage. That round and the ones after it start over.

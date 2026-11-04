@@ -25,7 +25,8 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 ROLE_ORDER = ["citizen", "government", "business", "microsoft"]
 LETTERS = "ABCD"
 
-# The class figures, 12 by 16, copied from host/art/placeholders.ts: [x, y, w, h, palette key], drawn in order.
+# The class figures, 12 by 16, copied from shared/figures.ts, with their colours from shared/palette.ts:
+# [x, y, w, h, palette key], drawn in order.
 PALETTE = {
     "night": "#15141c", "outline": "#0c0b10", "stoneDeep": "#1f2230", "stoneDark": "#2a2e3a", "stone": "#3d4352",
     "stoneLight": "#59606f", "stonePale": "#7d8494", "bone": "#ddd7c7", "boneDim": "#b0aa9a", "steel": "#a4abb8",
@@ -637,7 +638,8 @@ def page_html(m: dict) -> str:
 
 
 def guard(text: str) -> None:
-    for bad, name in (("—", "em dash"), ("–", "en dash")):
+    # The two dashes are built from their code points, so this file holds neither of the characters it bans.
+    for bad, name in ((chr(0x2014), "em dash"), (chr(0x2013), "en dash")):
         if bad in text:
             sys.exit(f"{name} in the sheet; the house rule bans it")
 
