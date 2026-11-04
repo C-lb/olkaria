@@ -35,6 +35,22 @@ function digitOf(code: string): number {
   return match === null ? 0 : Number(match[1]);
 }
 
+/**
+ * A scene's key handler that runs once for each DOM event. Phaser 3.90's keyboard plugin keeps the key events of the
+ * current frame in a queue and hands the whole queue to every scene's handlers again on each new key event, skipping
+ * only the one event it handled last. So when three key events land inside one frame, say a key let go just before
+ * Space is pressed and released, the Space keydown reaches its handlers a second time on the release's turn: that is
+ * how one press of Space in the lobby sent `start` twice, 4 ms apart. Scenes register their key handlers through this.
+ */
+export function oncePerEvent<E extends Event>(handler: (event: E) => void): (event: E) => void {
+  const seen = new WeakSet<E>();
+  return (event) => {
+    if (seen.has(event)) return;
+    seen.add(event);
+    handler(event);
+  };
+}
+
 /** Whether a form field has the focus, so that a key goes into it and is not a command. */
 export function typing(): boolean {
   const el = document.activeElement;

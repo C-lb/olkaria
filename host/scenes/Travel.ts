@@ -12,6 +12,7 @@ import type { CaseContent } from '../../shared/content';
 import type { HostView } from '../../shared/types';
 import { addBackdrop } from '../art/backdrop';
 import { PALETTE } from '../art/placeholders';
+import { oncePerEvent } from '../hotkeys';
 import type { Hud } from '../hud/Hud';
 import { standAt, Trail } from '../levels/party';
 import {
@@ -248,18 +249,18 @@ export class Travel extends Phaser.Scene {
     this.keys = keys;
     for (const arrow of [keys.left, keys.right, keys.up, keys.down]) arrow.on(Phaser.Input.Keyboard.Events.DOWN, () => { this.auto = false; });
     const plain = (event: KeyboardEvent): boolean => !event.repeat && !event.ctrlKey && !event.altKey && !event.metaKey;
-    keyboard.on('keydown-A', (event: KeyboardEvent) => {
+    keyboard.on('keydown-A', oncePerEvent((event: KeyboardEvent) => {
       if (!plain(event)) return;
       this.auto = !this.auto;
       this.restOwed = false;
       this.restUntil = 0;
       if (this.auto) this.nextStop = stopAhead(this.segment.autoPath, this.lead.body.center.x);
-    });
-    keyboard.on('keydown-N', (event: KeyboardEvent) => {
+    }));
+    keyboard.on('keydown-N', oncePerEvent((event: KeyboardEvent) => {
       if (!plain(event) || this.leaving) return;
       this.lead.body.reset(this.segment.gateX, GROUND_Y);
       this.enterArena();
-    });
+    }));
   }
 
   /**

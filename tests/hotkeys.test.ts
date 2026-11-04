@@ -2,7 +2,7 @@
 // The facilitator's keys: what each sends, and what it must not.
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type Phaser from 'phaser';
-import { installHotkeys } from '../host/hotkeys';
+import { installHotkeys, oncePerEvent } from '../host/hotkeys';
 import type { Hud } from '../host/hud/Hud';
 import type { RoomClient } from '../host/net';
 import type { Callout, HostView } from '../shared/types';
@@ -140,4 +140,18 @@ it('leaves Escape alone', () => {
 it('toggles fullscreen with F', () => {
   press('KeyF', 'f');
   expect(toggleFullscreen).toHaveBeenCalledTimes(1);
+});
+
+it('oncePerEvent runs a scene key handler once for each DOM event, however often Phaser hands the event over', () => {
+  const handler = vi.fn();
+  const wrapped = oncePerEvent(handler);
+  const a = new KeyboardEvent('keydown', { key: ' ' });
+  const b = new KeyboardEvent('keydown', { key: ' ' });
+  wrapped(a); wrapped(a); wrapped(b); wrapped(a);
+  expect(handler).toHaveBeenCalledTimes(2);
+  expect(handler.mock.calls[0][0]).toBe(a);
+  expect(handler.mock.calls[1][0]).toBe(b);
+  const other = vi.fn();
+  oncePerEvent(other)(a);   // each wrapper keeps its own record, so another handler still hears the event
+  expect(other).toHaveBeenCalledTimes(1);
 });

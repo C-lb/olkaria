@@ -10,6 +10,7 @@ import { shares } from '../../shared/scoring';
 import type { Callout, DamageResult, HostView, Phase, Role } from '../../shared/types';
 import { buildBoss, type Boss, type BossId } from '../art/bosses';
 import { PALETTE } from '../art/placeholders';
+import { oncePerEvent } from '../hotkeys';
 import { OPTION_COLORS, type BannerArgs, type Hud, type OptionsArgs } from '../hud/Hud';
 import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
@@ -149,9 +150,9 @@ export class Battle extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off('changedata-view', this.onView, this);
     });
-    this.input.keyboard?.on('keydown-SPACE', (event: KeyboardEvent) => {
+    this.input.keyboard?.on('keydown-SPACE', oncePerEvent((event: KeyboardEvent) => {
       if (!event.repeat) this.onSpace();
-    });
+    }));
     this.time.addEvent({ delay: TICK_MS, loop: true, callback: () => this.tickClock() });
     this.onView(null, (this.registry.get('view') as HostView | null | undefined) ?? null);
   }

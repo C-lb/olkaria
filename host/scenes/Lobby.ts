@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import type { CaseContent } from '../../shared/content';
 import type { HostView, Role } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
+import { oncePerEvent } from '../hotkeys';
 import type { Hud, LobbyArgs } from '../hud/Hud';
 import type { RoomClient, RoomInfo } from '../net';
 import { SEND_LOCK_MS, SPACE_LOCK_KEY } from '../strikers';
@@ -68,6 +69,12 @@ export class Lobby extends Phaser.Scene {
     super('Lobby');
   }
 
+  /** Space does nothing until the game clock passes this. The Battle and the Ending keep the same rest in the registry. */
+  private get lockedUntil(): number {
+    const until: unknown = this.registry.get(SPACE_LOCK_KEY);
+    return typeof until === 'number' ? until : 0;
+  }
+
   create(): void {
     this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
@@ -84,11 +91,13 @@ export class Lobby extends Phaser.Scene {
       this.run += 1;
       this.registry.events.off('changedata-view', this.onView, this);
     });
-    this.input.keyboard?.on('keydown-SPACE', (event: KeyboardEvent) => {
-      if (event.repeat) return;
+    // One start a press: Space rests SEND_LOCK_MS once it sends, which the Battle keeps to as well, so a double press
+    // reaches neither. The rest is set before the send, because offline the answer comes inside it.
+    this.input.keyboard?.on('keydown-SPACE', oncePerEvent((event: KeyboardEvent) => {
+      if (event.repeat || this.time.now < this.lockedUntil) return;
+      this.registry.set(SPACE_LOCK_KEY, this.time.now + SEND_LOCK_MS);
       this.client.send({ k: 'start' });
-      this.registry.set(SPACE_LOCK_KEY, this.time.now + SEND_LOCK_MS);   // the Battle's lockout: a double press never reaches it
-    });
+    }));
 
     this.onView(null, (this.registry.get('view') as HostView | null | undefined) ?? null);
     this.time.delayedCall(SLOW_MS, () => {

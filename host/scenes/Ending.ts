@@ -8,6 +8,7 @@ import type { CaseContent } from '../../shared/content';
 import type { HostView, Role } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
 import { endingArgs, outcomeOf } from '../finale';
+import { oncePerEvent } from '../hotkeys';
 import type { Hud } from '../hud/Hud';
 import type { RoomClient } from '../net';
 import type { SceneData } from '../router';
@@ -85,9 +86,9 @@ export class Ending extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off('changedata-view', this.onView, this);
     });
-    this.input.keyboard?.on('keydown-SPACE', (event: KeyboardEvent) => {
+    this.input.keyboard?.on('keydown-SPACE', oncePerEvent((event: KeyboardEvent) => {
       if (!event.repeat) this.onSpace();
-    });
+    }));
     this.onView(null, (this.registry.get('view') as HostView | null | undefined) ?? null);
   }
 
