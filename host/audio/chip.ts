@@ -26,15 +26,15 @@ const RELEASE_S: Readonly<Record<VoicerNote['bus'], number>> = { music: 0.04, sf
 const PULSE_DUTY = 0.25;
 const PULSE_HARMONICS = 32;
 
+/** A note handed to the voicer and not yet ended: what it takes to release it early. Dropped from tracking once it ends. */
+interface Live { source: AudioScheduledSourceNode; env: GainNode; bus: VoicerNote['bus']; start: number; end: number; stopAt: number; gain: number }
+
 /**
  * master 0.8, music 0.28, sfx 0.55 gains; pulse as a periodic wave at 25% duty, square and triangle as
  * oscillator types, noise as a looping 1 s white buffer through a band-pass at hz with Q 1; envelopes:
  * 5 ms attack, release 40 ms for music and 20 ms for effects; a slide ramps the oscillator's frequency
  * to hzTo over the note; duckMusic drops the music gain to 0.12 at once and ramps it back over the ms given.
  */
-/** A note handed to the voicer and not yet ended: what it takes to release it early. Dropped from tracking once it ends. */
-interface Live { source: AudioScheduledSourceNode; env: GainNode; bus: VoicerNote['bus']; start: number; end: number; stopAt: number; gain: number }
-
 export class WebAudioVoicer implements Voicer {
   private readonly master: GainNode;
   private readonly buses: Record<VoicerNote['bus'], GainNode>;
@@ -288,7 +288,7 @@ export class Chip {
   private advance(): void {
     if (this.current === null) return;
     const now = this.voicer.now();
-    // Fell behind (a throttled timer in a background tab): pick up from now rather than play the backlog at once.
+    // Fell behind (a main-thread hitch longer than the look-ahead): pick up from now rather than play the backlog at once.
     if (this.timeOf(this.reached) < now) this.origin = now - this.reached * this.secondsPerBeat();
     const horizon = now + LOOKAHEAD_S;
     for (;;) {
