@@ -1,6 +1,6 @@
 # Olkaria: the Deadlock
 
-A 12-minute classroom boss fight for the BUSI611 case on Microsoft's US$1 billion data centre in Kenya.
+An 18-minute classroom boss fight for the BUSI611 case on Microsoft's US$1 billion data centre in Kenya.
 The class plays a party of four stakeholder classes and votes on their phones. Each vote becomes an attack on the Deadlock.
 A Phaser game runs on the projector, a plain TypeScript page runs on the phones, and a Cloudflare Worker with one Durable Object per room keeps the state.
 
@@ -39,8 +39,8 @@ npm run build   # Vite, into dist/
 
 `npm run deploy` builds, then runs `wrangler deploy` to the account `npx wrangler whoami` shows (`npx wrangler login` if it shows none).
 It prints the workers.dev address, today https://olkaria.sparkbot-worker.workers.dev.
-Check it with `curl -s -X POST https://olkaria.sparkbot-worker.workers.dev/api/rooms`, which returns a room code and host key as JSON.
-Load test before class: open the host page, note the code, then run `npm run simulate -- --base https://olkaria.sparkbot-worker.workers.dev --code CODE --n 60`.
+Check it with `curl -s -X POST https://olkaria.sparkbot-worker.workers.dev/api/rooms`, which returns `code`, `hostKey` and `joinUrl` as JSON.
+Load test before class: open the host page, note the code at the end of the join address, then run `npm run simulate -- --base https://olkaria.sparkbot-worker.workers.dev --code CODE --n 60`.
 
 ## Content
 
@@ -53,6 +53,7 @@ A change reaches the live site only after `npm run deploy`.
 ## More
 
 - `RUNBOOK.md`: the day itself, from before class to the rehearsal checklist, keys included.
+- M on the host opens the menu: restart the round, back to the lobby, reload, go to a stage or the ending, and the key map. Every item that changes the room asks twice.
 - `CREDITS.md`: the licensed art and font. The class figures, tiles and bosses are drawn in code.
 - Design: `docs/superpowers/specs/2026-11-02-olkaria-deadlock-design.md`
 - Plan: `docs/superpowers/plans/2026-11-02-olkaria-deadlock.md`

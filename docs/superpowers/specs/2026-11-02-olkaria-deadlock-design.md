@@ -8,7 +8,7 @@ Assignment source: the Canvas case project brief (pasted into `~/Desktop/BUSI611
 
 ## 1. Intent
 
-This game is the interactive element: a 12-minute segment inside the 30 to 35 minute slot. It is a poll, a role-play and a stakeholder exercise at once.
+This game is the interactive element: an 18-minute segment inside the 30 to 35 minute slot. It is a poll, a role-play and a stakeholder exercise at once.
 
 The class forms tables of four. At each table, every student takes one stakeholder role, and each role is a character class in a dark-fantasy party: the Citizen is the Rogue, the Kenyan Government is the Knight, Local Businesses are the Bard, Microsoft (with its partner G42 folded in) is the Wizard. The party faces the Deadlock: the stall that has frozen the US$1 billion data centre since May 2026. It has three heads, matching the three constraints in the case's central question (electricity supply, public finances, current demand), and a core, the decision itself. Each head is a round. In each round one class leads a special attack, and the special attack is that stakeholder's decision: what Kenyans will accept on power, what the Government offers instead of a guarantee, what Kenya's businesses commit on demand, and finally what Microsoft does. Everyone votes on their phone; the lead class's votes carry half the attack, the rest of the party the other half; the damage reflects how well the chosen move fits the evidence in the case. Before the party strikes, the facilitators can call out a voter by name to defend their choice for a bonus strike. The class majority on the last round picks the ending.
 
@@ -19,7 +19,7 @@ Why this shape. The brief says the company must be the primary decision-maker, s
 Goals
 
 - Every student picks a stakeholder role, votes four times from their phone, and sees how their stakeholder's choice landed. No app install, no account.
-- Every round gives the facilitator one or two cold calls: a named student defends their vote before the attack lands.
+- Every round gives the facilitator up to four call-outs, each for an option the round has not heard yet: a named student defends their vote before the attack lands.
 - Each debrief hands the facilitator the discussion material for the rest of the slot: the lead stakeholder's split against the party's split, the damage each option did, and the case fact behind each number.
 - The final screen is the class's answer to "what should Microsoft do and why".
 - Runs on the projector from a deployed URL and survives a network failure through a keyboard-driven manual mode.
@@ -40,25 +40,25 @@ Anti-goals
 
 ## 3. The experience
 
-### 3.1 Run of show (12-minute segment)
+### 3.1 Run of show (18-minute segment)
 
 | Time | Beat | On the projector | Facilitator |
 |---|---|---|---|
-| 0:00 to 1:30 | Lobby | QR, code, URL, role counts, avatars dropping in | "Tables of four. Scan, type your name, pick your role: one of each per table." |
+| 0:00 to 1:30 | Lobby | QR, URL, counts per class with their figures, avatars dropping in | "Tables of four. Scan, type your name, pick your role: one of each per table." |
 | 1:30 to 2:00 | Travel 1 | Party runs toward Olkaria; three exhibit pickups (or N to skip) | Reads the exhibit facts as they pop. |
-| 2:00 to 4:30 | Round 1, Grid Wyrm | Rogues' special attack: what Kenyans accept on power | 30 s vote, one call-out, strike, 45 s debrief |
-| 4:30 to 7:00 | Round 2, Debt Golem | Knights' special attack: what the Government offers | Same shape |
-| 7:00 to 9:30 | Round 3, Fog of Demand | Bards' special attack: what Kenya's businesses commit | Same shape |
-| 9:30 to 11:30 | Round 4, the core | Wizards' special attack with the whole party: Microsoft's decision; ending | "What should Microsoft do, and why?" |
-| 11:30 to 12:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hands the split to the discussion that follows |
+| 2:00 to 6:00 | Round 1, Grid Wyrm | Rogues' special attack: what Kenyans accept on power | Up to 2 min vote, locks when everyone has voted, up to four call-outs, strike, 45 s debrief |
+| 6:00 to 10:00 | Round 2, Debt Golem | Knights' special attack: what the Government offers | Same shape |
+| 10:00 to 14:00 | Round 3, Fog of Demand | Bards' special attack: what Kenya's businesses commit | Same shape |
+| 14:00 to 17:30 | Round 4, the core | Wizards' special attack with the whole party: Microsoft's decision; ending | "What should Microsoft do, and why?" |
+| 17:30 to 18:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hands the split to the discussion that follows |
 
-Travel 2 to 4 are skipped with N unless the segment is running early. The debrief lines are built to be picked up again in the facilitated discussion after the game. Because the host advances everything manually, the same build also works as the spine of the whole slot if the team changes its mind.
+Travel 2 to 4 are skipped with N unless the segment is running early. The times assume every vote runs its full two minutes and each round has one call-out; a vote that locks early pulls them in (with 30 s votes the table ends at 12:00) and each further call-out pushes them out. The debrief lines are built to be picked up again in the facilitated discussion after the game. Because the host advances everything manually, the same build also works as the spine of the whole slot if the team changes its mind.
 
 ### 3.2 Host screens (projector)
 
-- Lobby. QR code at least a quarter of the screen height, the room code in large type, the join URL under it, "N joined" and the count per class ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline, and a list of the last eight joiners by name and class ("Ann, Knight") in the text layer. Brad Smith's quote under the title; PS Tanui's "not failed or withdrawn … requires some structuring" as the quest hook. Space starts the game.
+- Lobby. The title on two lines, "Olkaria" over "the Deadlock", with three keycaps beside it: Space "Start", Esc "Shows hotkeys" and ? "How to play". QR code at least a quarter of the screen height with the join address beside it, "N joined" in large type and the count per class in four class tiles, each the class figure beside its name and count ("Rogues 11, Knights 9, Bards 10, Wizards 12"), a pixel avatar of the right class per joiner dropping onto a gothic Nairobi skyline, and a list of the last eight joiners by name and class ("Ann, Knight") in the text layer. The room code and both quotes are gone from the lobby: the address ends in the code, Tanui's line opens round 2 (section 5.6) and Smith's is shown nowhere (`2026-11-03-olkaria-facilitator-menu-design.md`, section 7). Space starts the game.
 - Travel. Side-scrolling platform segment through a dark-fantasy Rift Valley. The presenter controls the lead class of the coming round; the other three trail. Three exhibit pickups per segment. The arena gate starts the round.
-- Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; "N of M voted". Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, up to twice. Then the strike. Every number shown adds up to the damage drained: the lead class performs the special attack carrying the lead half of the base damage, flashing in the colour of its majority option; the other three classes strike together carrying the support half; then one flourish per bonus earned, each with its number ("Focus +15", "Party stands together +10", "Exhibit +5" per pickup) and one rally strike per convincing call-out with the student's name and "+10"; the HP drains by the total. When the sum passes 100 the panel says "capped at 100". When no one of the lead class voted, the special attack is skipped ("No Rogues voted this round") and the support strike carries all of the base; the mirror case skips the support strike. Then the debrief panel: per option, its damage contribution and one projector line with citation; a breakdown line ("Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83"); an alignment line in one of four forms ("The party stood with the Rogues: both chose B", "Split: Rogues chose B, the party chose A", "The Rogues were split" or "The party was split" when a group tied, "No Rogues voted this round"); the discuss line.
+- Battle. Boss with the current head's HP segment and a thin total bar; the narration (the situation and whose special attack this is); four option cards with letter, shape and colour; timer; while the vote is open, who is still to vote ("N still to vote", "Everyone has voted"), and "N of M voted" once it locks. Distribution hidden until lock. After lock: two bars per card, the lead class's split and the rest of the party's split, then the call-out banner (C), judged with Y or N, one at a time and up to four times, each for an option the round has not heard yet. Then the strike. Every number shown adds up to the damage drained: the lead class performs the special attack carrying the lead half of the base damage, flashing in the colour of its majority option; the other three classes strike together carrying the support half; then one flourish per bonus earned, each with its number ("Focus +15", "Party stands together +10", "Exhibit +5" per pickup) and one rally strike per convincing call-out with the student's name and "+10"; the HP drains by the total. When the sum passes 100 the panel says "capped at 100". When no one of the lead class voted, the special attack is skipped ("No Rogues voted this round") and the support strike carries all of the base; the mirror case skips the support strike. Then the debrief panel: per option, its damage contribution and one projector line with citation; a breakdown line ("Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83"); an alignment line in one of four forms ("The party stood with the Rogues: both chose B", "Split: Rogues chose B, the party chose A", "The Rogues were split" or "The party was split" when a group tied, "No Rogues voted this round"); the discuss line.
 - Ending. One of five cutscenes (section 4.6) with the final split, "what must be true" and "the risk you accepted".
 - Leaderboard. Top five students, most consistent strategist, top table, and the final split under "What should Microsoft do, and why?".
 
@@ -79,7 +79,7 @@ Join (name, required, up to 16 characters; role, required, four large buttons wi
 | Local Businesses | Bard | Safaricom and M-Pesa, the banks, the startups of the Silicon Savannah, EcoCloud and the local developers who would build and supply (sections 3.2, 4.2, 5) | Round 3, demand |
 | Microsoft | Wizard | Azure and the capital-allocation decision, with G42, the Abu Dhabi partner that was to lead the investment, folded into the same side (sections 3.1 to 3.4) | Round 4, the decision |
 
-Students choose their role when they join; the lobby shows the counts so tables can balance themselves. The game does not enforce one of each per table. Roles are fixed for the session.
+Students choose their role when they join; the lobby shows the counts so tables can balance themselves. The game does not enforce one of each per table. Roles are fixed for the session. The phone shows the player's class figure on the role buttons, on the waiting card and in the "Your class leads this round" note (3 November amendment, section 6 of `2026-11-03-olkaria-facilitator-menu-design.md`).
 
 Colour belongs to the option letter, never to a class: A is always red, B blue, C yellow, D green, on phones, on the projector's cards and bars, and on the call-out banner. Class sprites keep their own look.
 
@@ -132,7 +132,7 @@ Why this shape: the lead class owns half the attack regardless of how many stude
 
 ### 4.5 Travel and exhibits
 
-Short platform segments between rounds. Arrow keys move and jump (Space also jumps), A auto-runs along a baked path, N skips to the arena. Three exhibit pickups per segment, each a case figure shown as a toast for 4 seconds and worth +5 damage next round (section 5.5).
+Short platform segments between rounds. The party walks by itself along a baked path from one second after the segment starts, resting two seconds at each exhibit, so no key is needed. Arrow keys take over the walk (move and jump; Space also jumps), A pauses the walk and resumes it from where the lead stands, N skips to the arena. Three exhibit pickups per segment, each a case figure shown as a toast for 4 seconds and worth +5 damage next round (section 5.5).
 
 ### 4.6 Endings
 
@@ -242,9 +242,9 @@ Three per segment, each +5 damage in the next round, shown as a toast with the f
 ### 5.6 Characters who speak
 
 - The narrator voice is the game's; the facilitator reads it.
-- PS John Tanui appears in the lobby and before round 2: the project is "not failed or withdrawn" but its scale "requires some structuring" (James, 2026; Vimal, 2026).
+- PS John Tanui appears before round 2 only: the project is "not failed or withdrawn" but its scale "requires some structuring" (James, 2026; Vimal, 2026).
 - President Ruto's "shut off power for half the country" (Semafor, 2026) is the Grid Wyrm's taunt.
-- Brad Smith's "single biggest step to advance the availability of digital technology" (Vimal, 2026) opens the lobby.
+- Brad Smith's "single biggest step to advance the availability of digital technology" (Vimal, 2026) is shown nowhere; it stays in `content/case.json`.
 
 ### 5.7 Projector lines
 
@@ -274,16 +274,19 @@ Why this stack. Phaser 3 is the standard browser engine for pixel platformers wi
 
 Phases: `lobby`, `travel`, `vote`, `locked`, `reveal`, `ending`, `leaderboard`. Round index runs 0 to 3; -1 in the lobby. Each round has a lead role from content (`citizen`, `government`, `business`, `microsoft`).
 
+The state also counts `trips`, the roads the room has set off on (`start`, a `next` into a travel and a `goto` to a road each add one; `reset` keeps it), so a jump to the round already on the projector starts its road again. A vote is stored as `{ option, at }` and gains `points` at the reveal: what that vote earned in its round, call-out points included, which is what a `goto` takes back.
+
 Transitions
 
 - `lobby` → `travel` on host `start` (round 0).
 - `travel` → `vote` on host `openVote` with a window in seconds (default 120). Sets the deadline and schedules an alarm. A vote that leaves no player without a vote locks at once.
-- `vote` → `locked` on host `closeVote` or when the alarm fires.
+- `vote` → `locked` on host `closeVote`, when the alarm fires, or at once when a vote leaves every player in the room with a vote for this round (the early lock: the same transition as `closeVote`, clearing the alarm; it needs at least one player, and synthetic votes never trigger it).
 - In `locked`, host `callout` picks a random player who voted this round and has not been called this round, from those whose option the round has not heard yet, or from any uncalled voter once every voted option has been heard (the command carries the random number so the reducer stays pure), and records a pending call-out; at most 4 per round; with no eligible player it records a call-out with no player so the facilitator can cold-call by hand. Host `judge` resolves the pending call-out (30 points awarded, 10 declined). A second `callout` while one is pending, or outside `locked`, is an error.
 - `locked` → `reveal` on host `reveal`. Tallies the lead role and the rest separately, computes damage and bonuses, applies damage, awards points (vote points, caster bonus, call-out points), records the majority. A still-pending call-out counts as declined.
 - `locked` → `vote` on host `reopen` with a fresh deadline; existing votes stand and the opening time stays. In `vote`, `reopen` extends the deadline. Elsewhere it is an error; a reveal is final.
 - `reveal` → `travel` (round + 1) on host `next` while round < 3; `reveal` → `ending` after round 3. `ending` → `leaderboard` on `next`.
 - Any phase → `lobby` on host `reset` (players kept, scores, tallies, call-outs and damage cleared, bans kept).
+- Any phase → `travel` (round s) or `ending` on host `goto` with stage 0 to 4: stages 0 to 3 are the road of that round, stage 4 is the ending, and any other stage is refused with "bad stage". A jump keeps the rounds revealed before the stage it goes to and clears the rest (an unrevealed current round included), so scores and the boss's HP stay honest; players, bans and `hideNames` stay. A jump to a road adds one to `trips`.
 - Host `exhibit` during `travel` adds a pickup for the current round (max 3). Host `injectVotes` during `vote` or `locked` adds synthetic votes to the current round's support tally (manual mode and bots); synthetic voters never appear as players. Host `kick` removes a player and bans their client id: the phone is told it was removed and stops reconnecting, and any later `join` from that id is refused, so a kick sticks. Host `hideNames` toggles names on the lobby list and the leaderboard.
 
 Player events
@@ -310,7 +313,7 @@ Reconnect. The host page remembers its room for the tab and resumes at the saved
 
 ### 6.5 Host keyboard
 
-Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Space does nothing, so the closing screen survives a stray press. Shift+R twice within 3 seconds: reset to the lobby (the first press shows "Press Shift+R again to reset"). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: auto-run. N in travel: skip. H: hide names on the lobby list and the leaderboard (the banner still names the called student). F: fullscreen. Esc: key map. 1 to 4, Shift+1 to Shift+4, B: tallies.
+Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Space does nothing, so the closing screen survives a stray press. Shift+R twice within 3 seconds: reset to the lobby (the first press shows "Press Shift+R again to reset"). C: call out (locked only). Y or N: judge the pending call-out. R: reopen a locked vote or extend an open one. Arrows and Space in travel: move and jump. A: pause or resume the walk. N in travel: skip. H: hide names on the lobby list and the leaderboard (the banner still names the called student). F: fullscreen. M or Esc: the menu (actions and the key map). 1 to 4, Shift+1 to Shift+4, B: tallies.
 
 ### 6.6 Content file
 
@@ -332,15 +335,15 @@ Space: advance (start, open the vote, lock, reveal, next). On the leaderboard Sp
 - Failure mid-session: offline mode and hand counts; rehearse the switch once.
 - Role imbalance: the lobby shows counts and the lead class always carries half the attack, so a class with three Bards still works; a class with zero of the lead role falls back to the party's votes and the debrief says so.
 - Projector and laptop: whole-number zoom handles any resolution; `caffeinate`; fullscreen with F.
-- Join friction: large QR, code and URL printed under it, player bundle under 100 KB.
+- Join friction: large QR with the join address beside it, player bundle under 100 KB.
 - Names: required and read aloud on a call-out, 16-character cap, H hides them elsewhere, kick from the host.
 - Shy students: the call-out is random, the facilitator can press N or skip, and the phone shows "You're up" before the name is read.
-- Timing: everything skippable with Space; travel skippable with N; the 12-minute table in section 3.1 assumes N on travel 2 to 4.
+- Timing: everything skippable with Space; travel skippable with N; the 18-minute table in section 3.1 assumes N on travel 2 to 4.
 - Content disagreement: the team signs off on scores and debriefs in `content/case.json` before the case document deadline.
 - Load: a script simulates 60 phones with roles; run it against the deployed room before class.
 - Rubric: the final screen asks what Microsoft should do and why; the facilitator says it aloud too.
 
-`RUNBOOK.md` carries the checklist: deploy, create the room, five teammates join with roles, a full 12-minute run, one switch to offline mode, a run with 60 simulated clients.
+`RUNBOOK.md` carries the checklist: deploy, create the room, five teammates join with roles, a full 18-minute run, one switch to offline mode, a run with 60 simulated clients.
 
 Schedule for a 5 November presentation. Build on 2 and 3 November in plan order, which puts the content, scoring, room, phone page and battle screen first (plan tasks 1 to 8, 10, 12). Cuts, in this order, if time runs out: sound; the art pass (placeholder sprites and procedural bosses are acceptable on the day); the travel platformer (replace with a 3-second walk-in to each arena, keep the exhibit bonus as three facts the facilitator reads). Deploy and rehearse with the team's phones on 4 November. The fallback on the day is the offline mode with hand counts, which is in the first build.
 
@@ -368,3 +371,5 @@ Answered on 2 November: Cloudflare account is the one spark-bot uses; 12-minute 
 - Assets from GitHub where a licensed copy exists, otherwise from the author's page with the licence copied; placeholder art first, procedural bosses as the fallback, sound last.
 
 Amended on 3 Nov 2026 at Caleb's request: sections 4.3, 4.4 and 6.2 and the call-outs line in section 10 now carry the two-minute vote, the early lock and the four call-outs, one voice per option. The change is specified in `2026-11-03-olkaria-vote-window-and-callouts-design.md`.
+
+Amended again on 3 Nov 2026 at Caleb's request: sections 3.2, 4.1, 4.5, 5.6, 6.2 and 6.5 now carry the facilitator menu, the automatic walk, the class figures on the phone and the leaner lobby. The change is specified in `2026-11-03-olkaria-facilitator-menu-design.md`. Sections 1, 2, 3.1, 3.2, 6.2 and 8 also follow the vote-window change: up to four call-outs, and a run of show re-timed to 18 minutes for votes at their full two minutes.
