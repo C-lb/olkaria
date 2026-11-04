@@ -41,6 +41,19 @@ const countWord = (n: number): string => COUNT_WORDS[n] ?? String(n);
 /** The text with its first letter in lower case, to sit inside a sentence: "the Deadlock holds". */
 const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
 
+/**
+ * Chunks along a track `length` long, in order, each as wide as it asks or as what is left of the track, whichever is
+ * less, so the track never overflows and stops full.
+ */
+function fit<T extends { width: number }>(length: number, chunks: T[]): T[] {
+  let left = length;
+  return chunks.map((chunk) => {
+    const width = Math.max(0, Math.min(chunk.width, left));
+    left -= width;
+    return { ...chunk, width };
+  });
+}
+
 /** The content's four roles in ROLES order, with their class names and stakeholders. */
 function partyOf(content: CaseContent): Party {
   return ROLES.map((role) => {
@@ -60,7 +73,8 @@ export function howtoSlides(content: CaseContent): HowToSlide[] {
   const colon = content.title.indexOf(': ');
   const name = colon === -1 ? content.title : content.title.slice(0, colon);
   const sub = colon === -1 ? '' : content.title.slice(colon + 2);
-  // The bonuses drawn on the damage track, as the most each adds to one boss; one rally stands for the rallies.
+  // The bonuses drawn on the damage track, as the most each adds to one boss; one rally stands for the rallies. The
+  // track holds one boss's HP: should the content push the bonuses past it, fit() cuts the last chunks to what is left.
   const exhibits = s.exhibitBonus * s.maxExhibits;
   const bonuses = s.focusBonus + s.alignmentBonus + exhibits + s.calloutBonus;
   const decider = party.find((p) => p.role === last.lead)?.stakeholder ?? last.lead;
@@ -102,14 +116,14 @@ export function howtoSlides(content: CaseContent): HowToSlide[] {
       kind: 'damage',
       eyebrow: "The party's damage",
       hp: s.roundHp,
-      chunks: [
+      chunks: fit(s.roundHp, [
         // The evidence is drawn as what is left to the full track, so the example fills it.
         { label: "Evidence behind the party's pick", note: EVIDENCE, width: Math.max(0, s.roundHp - bonuses) },
         { label: `Focus: ${Math.round(s.focusThreshold * 100)}% or more of you on one option`, note: `+${s.focusBonus}`, width: s.focusBonus },
         { label: 'Lead class and party agree', note: `+${s.alignmentBonus}`, width: s.alignmentBonus },
         { label: 'Exhibits found on the road', note: `+${s.exhibitBonus} each, up to ${s.maxExhibits}`, width: exhibits },
         { label: 'Rallies won', note: `+${s.calloutBonus} each, up to ${s.maxCallouts}`, width: s.calloutBonus },
-      ],
+      ]),
       line: `${countWord(bosses)} bosses, ${s.roundHp} each. ${s.roundHp * bosses} in all.`,
     },
     {
@@ -149,8 +163,8 @@ let uninstall: (() => void) | null = null;
  * but never prevented (Cmd+R still reloads), and M closes it and passes on to the menu. Closed: chords pass untouched,
  * and `?` opens it at the first slide unless the key is held, typed into a field, or the menu is up. Open: Space,
  * Enter, ArrowRight, ArrowDown and PageDown go on (the last slide closes); ArrowLeft, ArrowUp and PageUp go back;
- * Escape and `?` close; held keys do nothing. Each slide is drawn afresh as it is shown. Returns open, close and
- * dispose; installing again removes the earlier install first.
+ * Escape and `?` close; Tab does nothing, so the focus never leaves the page; held keys do nothing. Each slide is drawn
+ * afresh as it is shown. Returns open, close and dispose; installing again removes the earlier install first.
  */
 export function installHowTo(hud: Hud, content: CaseContent): { open: () => void; close: () => void; dispose: () => void } {
   uninstall?.();
@@ -214,6 +228,11 @@ export function installHowTo(hud: Hud, content: CaseContent): { open: () => void
     // the browser still acts on it.
     event.stopImmediatePropagation();
     if (chord) return;
+    // Tab would walk the focus out of the page, where ? and M no longer reach the how-to, so it does nothing here.
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      return;
+    }
     const walk = WALK_KEYS.get(event.key);
     if (walk === undefined) return;
     event.preventDefault();

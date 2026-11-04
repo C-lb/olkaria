@@ -208,7 +208,8 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .joined-word { color: var(--ink-2); }
 /* A tile per class, two by two: the figure at one canvas pixel per pixel, the plural name, the count. */
 .counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); }
-.count { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--s2); }
+/* The count follows its own name rather than the far edge of the tile, so it never reads as the next tile's. */
+.count { display: grid; grid-template-columns: auto minmax(0, max-content) 1fr; align-items: center; column-gap: var(--s2); }
 .count .figure { display: block; width: calc(var(--zoom) * 12px); height: calc(var(--zoom) * 16px); }
 .count-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .count b { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -320,6 +321,9 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   animation: hud-in .18s ease-out;
 }
 .banner-line { font: 600 var(--t-title)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; overflow-wrap: anywhere; text-wrap: balance; }
+/* In the lobby the column sits at the bottom, over the skyline, so a toast (the room server refusing, say) never covers
+   the title or the keycaps; with the menu or the how-to up it stays at the top, clear of their panels. */
+.hud:has(> .hud-screen > .lobby):not(:has(> .hud-menu, > .hud-howto)) > .hud-top { top: auto; bottom: var(--s4); }
 .toasts { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: 100%; }
 .toast {
   max-width: calc(var(--zoom) * 260px);
@@ -534,7 +538,8 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .howto-who { color: var(--ink-2); }
 
 /* The pieces, slide by slide. The party: each figure over its class and stakeholder, in even columns; figure(role, 3)
-   is three canvas pixels to each of its 12 x 16, so it stays crisp at every whole zoom. The lists are numbered by
+   is three canvas pixels to each of its 12 x 16, so it stays crisp at every whole zoom, and the row carries that 3 as
+   --figure-scale (FIGURE_SCALE in HowTo.ts), which sizes the figure here. The lists are numbered by
    the stylesheet in the quiet ink. Option tiles and points rows are flat on surface-2 with the dim stroke, twice as
    much padding across as down, the option colour on the badge alone; no label in them wraps. */
 .howto-party {
@@ -546,7 +551,13 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   column-gap: var(--s4);
 }
 .howto-member { display: flex; flex-direction: column; align-items: center; gap: var(--s1); white-space: nowrap; }
-.howto-member .figure { display: block; flex: none; width: calc(var(--zoom) * 36px); height: calc(var(--zoom) * 48px); margin-bottom: var(--s1); }
+.howto-member .figure {
+  display: block;
+  flex: none;
+  width: calc(var(--zoom) * 12px * var(--figure-scale, 3));
+  height: calc(var(--zoom) * 16px * var(--figure-scale, 3));
+  margin-bottom: var(--s1);
+}
 /* The lead's step forward reaches about 8 canvas px over its row and 2 under it: room for it, clear of the eyebrow. */
 .howto-slide[data-kind="lead"] .howto-party { margin-block: var(--s6) var(--s2); }
 .howto-steps, .howto-chunks { list-style: none; display: grid; counter-reset: howto-n; }
@@ -571,7 +582,18 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .howto-option-label, .howto-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.howto-ring { position: relative; flex: none; width: calc(var(--zoom) * 30px); aspect-ratio: 1; }
+/* The clock ring: the window drains from ink to surface-2, and like the tracks the ring is edged with a canvas pixel
+   of the quiet ink, so the empty ring still reads on a washed-out projector. --p is the share of a turn still to run. */
+.howto-ring {
+  --p: 0;
+  position: relative;
+  flex: none;
+  width: calc(var(--zoom) * 30px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(var(--ink) calc(var(--p) * 1turn), var(--surface-2) 0);
+  box-shadow: inset 0 0 0 var(--s1) var(--ink-3);
+}
 .howto-clock {
   position: absolute;
   inset: var(--s3);
@@ -636,12 +658,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .howto-walk { animation: howto-walk 2s ease-out both; animation-delay: calc(var(--i, 0) * .22s); }
 .howto-walk .figure { animation: howto-bob .28s steps(1) 7; animation-delay: calc(var(--i, 0) * .22s); }
 .howto-fill { transform-origin: left; animation: howto-grow .6s ease-out both; animation-delay: calc(var(--i, 0) * .55s); }
-.howto-ring {
-  --p: 0;
-  background: conic-gradient(var(--ink) calc(var(--p) * 1turn), var(--surface-2) 0);
-  border-radius: 50%;
-  animation: howto-drain 3s linear both;
-}
+.howto-ring { animation: howto-drain 3s linear both; }
 .howto-hit { transform-origin: left; animation: howto-hit .5s ease-in 3s both; }
 /* The lead is a .howto-in too; the compound selector outranks that rule wherever the two sit in the file. The scale,
    7 / 6, takes each pixel of the figure from three canvas pixels to three and a half: 14 device pixels at zoom 4, 21

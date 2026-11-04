@@ -315,8 +315,8 @@ export class Hud {
     this.show(panel('lobby',
       h('header', { class: 'lobby-head' },
         h('h1', { class: 'title lobby-title', 'aria-label': TITLE }, h('span', { class: 'lobby-name' }, NAME), h('span', { class: 'lobby-sub' }, SUBTITLE)),
-        // Esc opens the menu as M does; the lobby names Esc (spec 3.1).
-        h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('Esc', 'Shows hotkeys'), keycap('?', 'How to play'))),
+        // M opens the menu, as Esc does; the lobby names M, since in fullscreen Chrome takes Esc to leave it (spec 3.1).
+        h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('M', 'Shows hotkeys'), keycap('?', 'How to play'))),
       h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...address, joined, counts), recent)));
   }
 

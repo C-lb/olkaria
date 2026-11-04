@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   installHotkeys(game, client, hud);
   // The how-to's key listener goes on before the menu's: both listen on window in the capture phase, where listeners
   // run in the order they were added, and this order is what lets the how-to swallow every key before the menu.
-  const howto = installHowTo(hud, content);
+  installHowTo(hud, content);
   installMenu(game, client, hud, content);
 }
 

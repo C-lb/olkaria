@@ -9,7 +9,7 @@ import { badge, figure, h, tint, type Kid } from './Hud';
 /** The slide to draw, where it falls among the slides, and what a click on the slide does. */
 export interface HowToArgs { slide: HowToSlide; index: number; count: number; onNext: () => void }
 
-/** The class figures at three canvas pixels to each of their pixels; the stylesheet sizes them to match. */
+/** The class figures at three canvas pixels to each of their pixels. The party row hands the stylesheet the same number. */
 const FIGURE_SCALE = 3;
 
 /** Sets custom properties the stylesheet reads off an element: its place in the stagger (--i), or a size. */
@@ -30,6 +30,10 @@ const percent = (s: number): string => `${Math.round(s * 1000) / 10}%`;
 /** One of a slide's lines, rising in at place `i`. */
 const line = (text: string, i: number): HTMLElement => staggered(h('p', { class: 'howto-line howto-in' }, text), i);
 
+/** The four classes in a row, with the scale their figures are drawn at as --figure-scale, which sizes them in the stylesheet. */
+const partyRow = (members: HTMLLIElement[]): HTMLElement =>
+  vars(h('ul', { class: 'howto-party' }, ...members), { '--figure-scale': FIGURE_SCALE });
+
 /** One class: its figure over its class name in bold and its stakeholder. */
 function member(m: Party[number], cls: string): HTMLLIElement {
   return h('li', { class: `howto-member ${cls}` },
@@ -43,7 +47,7 @@ function body(s: HowToSlide): Kid[] {
       return [
         h('h1', { class: 'howto-title' }, h('span', { class: 'howto-name' }, s.name), h('span', { class: 'howto-sub' }, s.sub)),
         // The front of the line, on the right, sets off first, so no one walks into the one ahead of them.
-        h('ul', { class: 'howto-party' }, ...s.party.map((m, i) => staggered(member(m, 'howto-walk'), s.party.length - 1 - i))),
+        partyRow(s.party.map((m, i) => staggered(member(m, 'howto-walk'), s.party.length - 1 - i))),
         line(s.line, s.party.length),
       ];
     case 'join':
@@ -64,7 +68,7 @@ function body(s: HowToSlide): Kid[] {
       // The four rise in together, then the lead class steps forward. The split rises in after the lines under it,
       // which say what it shows.
       return [
-        h('ul', { class: 'howto-party' }, ...s.party.map((m) => member(m, m.role === s.lead ? 'howto-in howto-lead' : 'howto-in'))),
+        partyRow(s.party.map((m) => member(m, m.role === s.lead ? 'howto-in howto-lead' : 'howto-in'))),
         staggered(h('div', { class: 'howto-split howto-in' },
           h('span', { class: 'howto-half is-lead' }, s.halves[0]), h('span', { class: 'howto-half' }, s.halves[1])), s.lines.length + 1),
         ...s.lines.map((text, i) => line(text, i + 1)),
@@ -109,6 +113,7 @@ export function howToPanel(a: HowToArgs): HTMLElement {
   const dots = h('ol', { class: 'howto-dots' }, ...Array.from({ length: a.count }, (_, i) =>
     h('li', i === a.index ? { class: 'howto-dot', 'aria-current': 'step' } : { class: 'howto-dot' })));
   const keycap = (key: string, label: string): HTMLElement => h('li', { class: 'howto-key' }, h('kbd', { class: 'key' }, key), h('span', {}, label));
-  const keys = h('ul', { class: 'howto-keys' }, keycap('Space', a.index === a.count - 1 ? 'Close' : 'Next'), keycap('Esc', 'Close'));
+  // The second cap names ?, not Esc: in fullscreen Chrome takes Esc to leave fullscreen before the page sees it.
+  const keys = h('ul', { class: 'howto-keys' }, keycap('Space', a.index === a.count - 1 ? 'Close' : 'Next'), keycap('?', 'Close'));
   return h('div', { class: 'hud-howto', role: 'dialog', 'aria-label': 'How to play' }, slide, h('footer', { class: 'howto-foot' }, dots, keys));
 }

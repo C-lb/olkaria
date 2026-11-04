@@ -395,6 +395,7 @@ it('the unreachable note no longer points at a code', () => {
   const el = mount();
   render(el, null, c, { status: 'joining', name: '', role: null, table: '', unreachable: 'ABCD' }, noop);
   expect(el.querySelector('[data-unreachable]')!.textContent).toBe("Can't reach this room. Scan the QR on the screen again.");
+  expect(el.querySelectorAll('[data-unreachable] span.line')).toHaveLength(2);   // one sentence a line
   render(el, null, c, { status: 'offline', name: 'Ann', role: 'citizen', table: '', unreachable: 'ABCD' }, noop);
   expect(el.textContent).toContain("Can't reach this room.");
   expect(el.textContent).not.toContain('ABCD');

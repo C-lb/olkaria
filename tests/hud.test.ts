@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 // tests/hud.test.ts
 import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import raw from '../content/case.json';
 import { howtoSlides } from '../host/howto';
@@ -94,11 +96,12 @@ describe('lobby', () => {
     expect(text(root, '.recent li')).toBe('<img src=x onerror=alert(1)>, Rogue');
   });
 
-  it('the lobby hint is three keycaps: Space to start, Esc for the hotkeys, ? for how to play', () => {
+  it('the lobby hint is three keycaps: Space to start, M for the hotkeys, ? for how to play', () => {
+    // M, not Esc: in fullscreen Chrome takes Esc to leave fullscreen, so the key the lobby names must be M.
     const { root, hud } = fresh();
     hud.showLobby(lobby());
     expect([...root.querySelectorAll('.lobby-key')].map((li) => [li.querySelector('kbd.key')!.textContent, li.querySelector('span')!.textContent]))
-      .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys'], ['?', 'How to play']]);
+      .toEqual([['Space', 'Start'], ['M', 'Shows hotkeys'], ['?', 'How to play']]);
     expect(root.querySelector('.lobby-hint')).toBeNull();
     expect(root.textContent).not.toContain('every key');
   });
@@ -117,7 +120,13 @@ describe('lobby', () => {
     expect(root.querySelector('.lobby-title .lobby-name')!.textContent).toBe('Olkaria');
     expect(root.querySelector('.lobby-title .lobby-sub')!.textContent).toBe('the Deadlock');
     expect(root.querySelector('.quote')).toBeNull();
-    expect(root.querySelectorAll('.lobby-key')).toHaveLength(3);   // Space, Esc and ? (the how-to plan)
+    expect(root.querySelectorAll('.lobby-key')).toHaveLength(3);   // Space, M and ? (the how-to plan)
+  });
+  it('names the whole title on the heading, and splits an address with a port at the slash after the host', () => {
+    const { root, hud } = fresh();
+    hud.showLobby(lobby({ joinUrl: 'http://localhost:5173/j/ABCD' }));
+    expect(root.querySelector('h1.lobby-title')!.getAttribute('aria-label')).toBe('Olkaria: the Deadlock');
+    expect([text(root, '.join-host'), text(root, '.join-path')]).toEqual(['localhost:5173', '/j/ABCD']);
   });
   it('offline and connecting lobbies keep the tiles but show no address', () => {
     const root = document.createElement('div'); const hud = new Hud(root);
@@ -551,12 +560,13 @@ describe('how to play', () => {
     expect(dialog.querySelectorAll('.howto-option')).toHaveLength(4);
     expect(dialog.querySelectorAll('.howto-dot')).toHaveLength(8);
     expect(dialog.querySelector('.howto-dot[aria-current]')).toBe(dialog.querySelectorAll('.howto-dot')[2]);
-    expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['Esc', 'Close']]);
+    // ? and not Esc on the second cap: in fullscreen Chrome takes Esc to leave fullscreen (spec 3).
+    expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['?', 'Close']]);
     (dialog.querySelector('.howto-slide') as HTMLElement).click();
     expect(onNext).toHaveBeenCalledTimes(1);
     hud.showHowTo({ slide: slides[7], index: 7, count: 8, onNext });
     expect(root.querySelectorAll('.hud-howto')).toHaveLength(1);
-    expect([...root.querySelectorAll('.howto-key span')].map((s) => s.textContent)).toEqual(['Close', 'Close']);
+    expect([...root.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Close'], ['?', 'Close']]);
     hud.showLobby(lobby({}));   // a screen change under the dialog
     expect(root.querySelector('.hud-howto')).not.toBeNull();
     hud.showHowTo(null);
@@ -572,6 +582,9 @@ describe('how to play', () => {
     }
     hud.showHowTo({ slide: slides[0], index: 0, count: 8, onNext: noop });
     expect([...root.querySelectorAll('.howto-member svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
+    // One number sizes the figures: the scale they are drawn at is the one the stylesheet sizes them by.
+    expect((root.querySelector('.howto-party') as HTMLElement).style.getPropertyValue('--figure-scale')).toBe('3');
+    expect(root.querySelector('.howto-member svg.figure')!.getAttribute('width')).toBe('36');
     expect(root.querySelector('.howto-name')!.textContent).toBe('Olkaria');
     hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop });
     expect(root.querySelector('.howto-member.howto-lead svg.figure')!.getAttribute('data-role')).toBe('citizen');
@@ -611,7 +624,8 @@ describe('how to play', () => {
 // ---- The pixel face: no ligatures anywhere it is set ---------------------------------------------------------
 
 describe('the pixel face', () => {
-  const css = (path: string): string => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  // The path is joined by hand: in this environment Vite turns new URL(path, import.meta.url) into a dev-server address.
+  const css = (path: string): string => readFileSync(join(dirname(fileURLToPath(import.meta.url)), path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   it('turns ligatures off in every rule that sets it, after the font, since Pixelify Sans lacks the glyph its "fi" stands for', () => {
     // "Households first" read "Households Arst" on the call-out banner. The font shorthand resets ligatures, so the
     // rule must turn them off after it.

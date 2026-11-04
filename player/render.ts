@@ -17,7 +17,8 @@ export type UiState = {
   error?: string | null;
   /**
    * The room code, set while the room cannot be reached and this tab has never been in. The offline screen and the join
-   * form then carry the unreachable note. The note does not print the code; it only tells one note from another.
+   * form then carry the unreachable note. The code is not in the note's words; it rides on data-unreachable, so
+   * syncUnreachable can tell whether the form already carries this note.
    */
   unreachable?: string | null;
 };
