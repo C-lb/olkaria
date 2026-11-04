@@ -15,7 +15,7 @@
 - No em dashes anywhere: code, comments, copy, commit messages, docs. Plain factual voice, sentence case, never uppercase copy.
 - Anti-vibecode UI: HUD and phone use only the tokens already in `host/hud/hud.css` and `player/styles.css`; flat buttons with a dim stroke, labels never wrap, no new colour, no shine. The one HUD accent (amber) stays for the Discuss line and the rally flash.
 - `shared/` stays free of DOM, Node and Phaser: it is type-checked by both `tsconfig.json` and `worker/tsconfig.json`.
-- Nothing from the room or a player goes through `innerHTML`; the phone builds SVG with DOM calls from constant data.
+- Nothing from the room or a player goes through `innerHTML`; the phone builds SVG from constant data only (the constant `figureSvg` markup through a holder's `innerHTML` is the host's pattern and is allowed on the phone too; amended 3 Nov after Task 6).
 - No text drawn on the canvas; every word on the projector is HUD HTML.
 - Every task ends green: `npm test`, `npm run check` (both tsconfig programs), and for tasks that touch the host or phone `npm run build`.
 - Commit after each task. End every commit message with these two lines:
