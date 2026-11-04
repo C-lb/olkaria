@@ -6,7 +6,6 @@
 import { figureSvg } from '../../shared/figures';
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../../shared/shapes';
 import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
-import { SPEAKERS } from '../quotes';
 import { howToPanel, type HowToArgs } from './HowTo';
 
 /** The option colours, bound to the letters everywhere: badges, bars, the banner letter, the strike flash (spec 7). */
@@ -15,8 +14,7 @@ export const OPTION_COLORS: Record<OptionId, string> = { A: '#b5473d', B: '#3f6f
 export interface LobbyArgs {
   /** The join QR as a data URL; null while it is being drawn, and offline. */
   qrDataUrl: string | null;
-  /** The room code; empty until the room is known. */
-  code: string;
+  /** The address phones join at; empty until the room is known (the lobby says it is connecting), and offline. */
   joinUrl: string;
   count: number;
   roleCounts: Record<Role, number>;
@@ -25,9 +23,6 @@ export interface LobbyArgs {
   /** The last eight joiners as "Ann, Knight", newest first; empty when names are hidden. */
   recent: string[];
   offline: boolean;
-  /** The bare quotes; the speakers and citations come from host/quotes.ts (spec 5.6). */
-  smith: string;
-  tanui: string;
 }
 
 export interface NarrationArgs {
@@ -98,7 +93,10 @@ export interface MenuButton { id: string; label: string; hint?: string; enabled:
 /** The menu's two rows, the line under the stages, and what a press on a button or a click on the scrim does. */
 export interface MenuArgs { actions: MenuButton[]; stages: MenuButton[]; stagesHint: string; onPick: (id: string) => void; onClose: () => void }
 
-const TITLE = 'Olkaria: the Deadlock';
+/** The game's name and the rest of its title, which the lobby sets on two lines; TITLE joins them for the heading's label. */
+const NAME = 'Olkaria';
+const SUBTITLE = 'the Deadlock';
+const TITLE = `${NAME}: ${SUBTITLE}`;
 
 /** How long a toast stays when no time is given. */
 const TOAST_MS = 4000;
@@ -216,11 +214,6 @@ function split(values: Record<OptionId, number>): HTMLElement {
     tint(h('li', { class: 'split-row' }, badge(o, 'is-row'), ...meter(total > 0 ? part(o) / total : 0)), o)));
 }
 
-/** A quote, then who said it. */
-function quote(text: string, who: string): HTMLElement {
-  return h('p', { class: 'quote' }, `“${text}”`, ' ', h('span', { class: 'cite' }, who));
-}
-
 /** One of the menu's buttons: its label, or "Sure?" while it is armed, then its hint if it has one. */
 function menuButton(b: MenuButton, onPick: (id: string) => void): HTMLButtonElement {
   const attrs: Record<string, string> = { class: 'menu-btn', type: 'button', 'data-menu-item': b.id };
@@ -281,9 +274,13 @@ export class Hud {
     root.replaceChildren(this.screen, this.flash, h('div', { class: 'hud-top' }, this.banner, this.toasts));
   }
 
-  /** The lobby: title and quotes, the QR (or the offline notice), the code and address, the counts, the newest names. */
+  /**
+   * The lobby: the title on two lines and the keycaps; the QR, or in its square the offline notice or a line while
+   * there is no QR; the address on two lines, the count and a tile per class; the newest names. No room code and no
+   * quote (spec 7).
+   */
   showLobby(a: LobbyArgs): void {
-    const connecting = !a.offline && a.code === '';
+    const connecting = !a.offline && a.joinUrl === '';
     let join: HTMLElement;
     if (a.offline) {
       join = h('div', { class: 'join' },
@@ -294,13 +291,20 @@ export class Hud {
     } else {
       join = h('div', { class: 'join' }, h('p', { class: 'hint' }, connecting ? 'Connecting to the room' : 'Join at the address'));
     }
-    const room = a.offline || connecting ? [] : [
-      h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, 'Scan, or go to'), h('p', { class: 'join-url' }, a.joinUrl.replace(/^https?:\/\//, ''))),
-      h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, 'Room'), h('p', { class: 'code' }, a.code)),
+    // The address without its scheme, split at the first slash: the host, then the path, which ends in the room code.
+    const bare = a.joinUrl.replace(/^https?:\/\//, '');
+    const slash = bare.indexOf('/');
+    const address = a.offline || connecting ? [] : [
+      h('p', { class: 'eyebrow' }, 'Scan, or go to'),
+      h('p', { class: 'join-url' },
+        h('span', { class: 'join-host' }, slash === -1 ? bare : bare.slice(0, slash)),
+        h('span', { class: 'join-path' }, slash === -1 ? '' : bare.slice(slash))),
     ];
-    const counts = h('div', { class: 'stack' },
-      h('p', { class: 'joined' }, `${a.count} joined`),
-      h('ul', { class: 'counts' }, ...ROLES.map((role) => h('li', {}, `${a.classNames[role]}s `, h('b', {}, String(a.roleCounts[role]))))));
+    const joined = h('p', { class: 'joined' }, h('b', { class: 'joined-n' }, String(a.count)), h('span', { class: 'joined-word' }, ' joined'));
+    // A tile per class: its figure, its plural name, its count. The space keeps the text reading "Knights 2"; a grid
+    // draws no white space between its items, so it takes no column.
+    const counts = h('ul', { class: 'counts' }, ...ROLES.map((role) => h('li', { class: 'count' },
+      figure(role, 1), h('span', { class: 'count-name' }, `${a.classNames[role]}s`), ' ', h('b', {}, String(a.roleCounts[role])))));
     const recent = h('div', { class: 'stack' },
       h('p', { class: 'eyebrow' }, 'Just joined'),
       a.recent.length > 0
@@ -310,11 +314,10 @@ export class Hud {
     const keycap = (key: string, label: string): HTMLElement => h('li', { class: 'lobby-key' }, h('kbd', { class: 'key' }, key), h('span', {}, label));
     this.show(panel('lobby',
       h('header', { class: 'lobby-head' },
-        h('div', { class: 'stack' }, h('h1', { class: 'title' }, TITLE), quote(a.smith, SPEAKERS.smith)),
+        h('h1', { class: 'title lobby-title', 'aria-label': TITLE }, h('span', { class: 'lobby-name' }, NAME), h('span', { class: 'lobby-sub' }, SUBTITLE)),
         // Esc opens the menu as M does; the lobby names Esc (spec 3.1).
         h('ul', { class: 'lobby-keys' }, keycap('Space', 'Start'), keycap('Esc', 'Shows hotkeys'), keycap('?', 'How to play'))),
-      h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...room, counts), recent),
-      quote(a.tanui, SPEAKERS.tanui)));
+      h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...address, joined, counts), recent)));
   }
 
   /** Before the vote: the boss, the question, the situation ending in the lead class's call to strike. */

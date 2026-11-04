@@ -108,7 +108,6 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .hint { color: var(--ink-2); }
 .muted { color: var(--ink-3); }
 .quote { color: var(--ink-2); overflow-wrap: anywhere; }
-.cite { color: var(--ink-3); }
 .sep { height: 1px; margin: var(--s1) calc(var(--s5) * -1); background: var(--line); }
 
 /* The letter, then its shape, on the option's colour: the same height as the letter alone had, as wide as the two need.
@@ -153,10 +152,17 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   column-gap: var(--s3);
 }
 
-/* ---- Lobby: one panel across the top; the bottom third stays clear for the skyline and the avatars ---- */
+/* ---- Lobby: one panel across the top; the bottom third stays clear for the skyline and the avatars. The title on
+   two lines and the keycaps; the square, the join column (the address on two lines, the count as a hero, a tile per
+   class) and the newest names. No room code, as the address ends in it, and no quote ------------------------ */
 
 .lobby { position: absolute; top: var(--s4); left: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s4); }
 .lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s6); }
+/* The name over the rest of the title, each with a hard shadow in the background colour down and to the right, no
+   blur: two canvas pixels under the name, one under the rest. */
+.lobby-title { display: flex; flex-direction: column; }
+.lobby-name { font-size: calc(var(--zoom) * 16px); line-height: var(--lh-title); text-shadow: var(--s2) var(--s2) 0 var(--bg); }
+.lobby-sub { font-size: var(--t-title); line-height: var(--lh-title); color: var(--ink-2); text-shadow: var(--s1) var(--s1) 0 var(--bg); }
 /* Keycaps, here and in the how-to's footer: each a flat cap with a dim stroke and a hard one-pixel bottom edge, then its
    label. The cap sets its own face: a kbd would otherwise fall back to the browser's monospace. */
 .lobby-keys { flex: 0 0 auto; list-style: none; display: flex; gap: var(--s4); }
@@ -186,11 +192,20 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   background: var(--surface-2);
 }
 .join-title { font: 600 var(--t-title)/var(--lh-title) var(--font-title); }
-.join-url { font-size: var(--t-narr); font-weight: 600; line-height: var(--lh-title); overflow-wrap: anywhere; }
-.code { font: 600 var(--t-code)/var(--lh-title) var(--font-title); letter-spacing: .04em; }
-.joined { font-size: var(--t-narr); font-weight: 600; line-height: var(--lh-title); }
-.counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s1) var(--s4); color: var(--ink-2); }
-.counts b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
+/* The address on two lines: the host, then the path, which ends in the room code, larger and in ink. */
+.join-url { display: flex; flex-direction: column; line-height: var(--lh-title); }
+.join-host { color: var(--ink-2); font-weight: 600; overflow-wrap: anywhere; }
+.join-path { font-size: var(--t-narr); font-weight: 700; }
+/* "12 joined": the number a hero in the pixel face, the word at body size. */
+.joined { display: flex; align-items: baseline; gap: var(--s2); }
+.joined-n { font: 600 var(--t-code)/var(--lh-title) var(--font-title); font-variant-numeric: tabular-nums; }
+.joined-word { color: var(--ink-2); }
+/* A tile per class, two by two: the figure at one canvas pixel per pixel, the plural name, the count. */
+.counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); }
+.count { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--s2); }
+.count .figure { display: block; width: calc(var(--zoom) * 12px); height: calc(var(--zoom) * 16px); }
+.count-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .recent { list-style: none; display: grid; gap: var(--s1); }
 .recent li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

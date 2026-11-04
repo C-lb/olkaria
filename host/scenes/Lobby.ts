@@ -1,4 +1,4 @@
-// The lobby. The HUD carries the QR, the code, the counts per class and the newest names; the canvas carries a
+// The lobby. The HUD carries the QR, the address, the counts per class and the newest names; the canvas carries a
 // gothic Nairobi skyline and, for every phone that joins, an avatar of its class dropping onto the road. No text is
 // drawn on the canvas. Space starts the game.
 import Phaser from 'phaser';
@@ -135,15 +135,12 @@ export class Lobby extends Phaser.Scene {
       .map((p) => `${p.name}, ${classNames[p.role]}`);
     const args: LobbyArgs = {
       qrDataUrl: this.room?.qr ?? null,
-      code: this.room?.code ?? '',
       joinUrl: this.room?.joinUrl ?? '',
       count: players.length,
       roleCounts,
       classNames,
       recent,
       offline: this.client.mode === 'offline',
-      smith: this.content.quotes.smith,
-      tanui: this.content.quotes.tanui,
     };
     const sig = JSON.stringify(args);
     if (sig === this.shown) return;

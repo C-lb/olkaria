@@ -17,7 +17,7 @@ it('draws four cards in letter order with letter colours and two bars each', () 
 });
 it('shows the lobby counts, the banner and the debrief lines', () => {
   const root = document.createElement('div'); const hud = new Hud(root);
-  hud.showLobby({ qrDataUrl: null, code: 'ABCD', joinUrl: 'https://x/j/ABCD', count: 3, roleCounts: { citizen: 1, government: 2, business: 0, microsoft: 0 }, classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' }, recent: ['Ann, Knight', 'Cy, Rogue'], offline: true, smith: 's', tanui: 't' });
+  hud.showLobby({ qrDataUrl: null, joinUrl: 'https://x/j/ABCD', count: 3, roleCounts: { citizen: 1, government: 2, business: 0, microsoft: 0 }, classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' }, recent: ['Ann, Knight', 'Cy, Rogue'], offline: true });
   expect(root.textContent).toContain('Knights 2'); expect(root.textContent).toContain('Offline mode'); expect(root.textContent).toContain('Ann, Knight');
   hud.showBanner({ name: 'Sarah', letter: 'B', phone: 'Yes to 60 to 100 MW, tied', footer: 'Y convincing, N not' });
   expect(root.textContent).toContain('Sarah, defend B: Yes to 60 to 100 MW, tied');
@@ -36,10 +36,10 @@ import { afterEach, describe, vi } from 'vitest';
 import { capitalise, type LobbyArgs } from '../host/hud/Hud';
 
 const lobby = (over: Partial<LobbyArgs> = {}): LobbyArgs => ({
-  qrDataUrl: null, code: 'ABCD', joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
+  qrDataUrl: null, joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
   roleCounts: { citizen: 0, government: 0, business: 0, microsoft: 0 },
   classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' },
-  recent: [], offline: false, smith: 'single biggest step', tanui: 'not failed or withdrawn', ...over,
+  recent: [], offline: false, ...over,
 });
 const fresh = (): { root: HTMLElement; hud: Hud } => {
   const root = document.createElement('div');
@@ -51,12 +51,11 @@ const text = (root: HTMLElement, selector: string) => root.querySelector(selecto
 afterEach(() => { vi.useRealTimers(); });
 
 describe('lobby', () => {
-  it('shows the QR, the address without its scheme and the code online, with no offline notice', () => {
+  it('shows the QR and the address without its scheme online, with no offline notice', () => {
     const { root, hud } = fresh();
     hud.showLobby(lobby({ qrDataUrl: 'data:image/png;base64,AAAA' }));
     expect(root.querySelector('img.qr')?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
     expect(text(root, '.join-url')).toBe('olkaria.example.dev/j/ABCD');
-    expect(text(root, '.code')).toBe('ABCD');
     expect(root.textContent).not.toContain('Offline mode');
   });
 
@@ -70,17 +69,10 @@ describe('lobby', () => {
 
   it('says it is connecting until the room is known, and shows no code or address meanwhile', () => {
     const { root, hud } = fresh();
-    hud.showLobby(lobby({ code: '', joinUrl: '' }));
+    hud.showLobby(lobby({ joinUrl: '' }));
     expect(root.textContent).toContain('Connecting to the room');
     expect(root.querySelector('.code')).toBeNull();
     expect(root.querySelector('.join-url')).toBeNull();
-  });
-
-  it('frames the bare quotes with their speakers and citations', () => {
-    const { root, hud } = fresh();
-    hud.showLobby(lobby());
-    expect(root.textContent).toContain('“single biggest step” Brad Smith, Microsoft (Vimal, 2026)');
-    expect(root.textContent).toContain('“not failed or withdrawn” PS John Tanui (James, 2026; Vimal, 2026)');
   });
 
   it('lists every class count, and says names are hidden when players have joined but the list is empty', () => {
@@ -107,6 +99,34 @@ describe('lobby', () => {
       .toEqual([['Space', 'Start'], ['Esc', 'Shows hotkeys'], ['?', 'How to play']]);
     expect(root.querySelector('.lobby-hint')).toBeNull();
     expect(root.textContent).not.toContain('every key');
+  });
+
+  it('the lobby shows the address in two lines, the count as a hero and the four class tiles, and no room code', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    hud.showLobby(lobby({ joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 12, roleCounts: { citizen: 3, government: 4, business: 2, microsoft: 3 } }));
+    expect(root.querySelector('.join-host')!.textContent).toBe('olkaria.example.dev');
+    expect(root.querySelector('.join-path')!.textContent).toBe('/j/ABCD');
+    expect(root.querySelector('.joined-n')!.textContent).toBe('12');
+    expect([...root.querySelectorAll('.count svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
+    expect([...root.querySelectorAll('.count')].map((li) => [li.querySelector('.count-name')!.textContent, li.querySelector('b')!.textContent]))
+      .toEqual([['Rogues', '3'], ['Knights', '4'], ['Bards', '2'], ['Wizards', '3']]);
+    expect(root.textContent).not.toContain('Room');
+    expect(root.querySelector('.code')).toBeNull();
+    expect(root.querySelector('.lobby-title .lobby-name')!.textContent).toBe('Olkaria');
+    expect(root.querySelector('.lobby-title .lobby-sub')!.textContent).toBe('the Deadlock');
+    expect(root.querySelector('.quote')).toBeNull();
+    expect(root.querySelectorAll('.lobby-key')).toHaveLength(3);   // Space, Esc and ? (the how-to plan)
+  });
+  it('offline and connecting lobbies keep the tiles but show no address', () => {
+    const root = document.createElement('div'); const hud = new Hud(root);
+    hud.showLobby(lobby({ offline: true }));
+    expect(root.querySelector('.join-url')).toBeNull();
+    expect(root.querySelectorAll('.count')).toHaveLength(4);
+    expect(root.textContent).toContain('Offline mode');
+    hud.showLobby(lobby({ joinUrl: '' }));
+    expect(root.textContent).toContain('Connecting to the room');
+    expect(root.querySelector('.join-url')).toBeNull();
+    expect(root.querySelectorAll('.count')).toHaveLength(4);
   });
 });
 
@@ -382,10 +402,8 @@ describe('options status and judged call-outs', () => {
   });
 });
 
-// ---- Task 8 fix round 1: the timed toast taken down at a skip, and the quotes attributed from one place ---------
-import { SPEAKERS } from '../host/quotes';
-
-describe('timed toast and quote attributions', () => {
+// ---- Task 8 fix round 1: the timed toast taken down at a skip ---------------------------------------------------
+describe('timed toast', () => {
   it('clearTimedToast() takes down the timed toast and leaves the sticky one', () => {
     vi.useFakeTimers();
     const { root, hud } = fresh();
@@ -396,13 +414,6 @@ describe('timed toast and quote attributions', () => {
     hud.clearTimedToast();   // nothing left to take down
     vi.advanceTimersByTime(4000);
     expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
-  });
-
-  it('frames the lobby quotes with the speakers and citations from host/quotes.ts', () => {
-    const { root, hud } = fresh();
-    hud.showLobby(lobby());
-    const quotes = [...root.querySelectorAll('.quote')].map((q) => q.textContent);
-    expect(quotes).toEqual([`“single biggest step” ${SPEAKERS.smith}`, `“not failed or withdrawn” ${SPEAKERS.tanui}`]);
   });
 });
 
