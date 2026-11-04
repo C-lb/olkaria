@@ -29,8 +29,7 @@
       "special": {
         "k": "Special",
         "icon": "community",
-        "name": "Community",
-        "v": "95"
+        "name": "Community"
       },
       "strike": " Round 1: How much data-centre power use will Kenyans accept?"
     },
@@ -59,8 +58,7 @@
       "special": {
         "k": "Special",
         "icon": "wall",
-        "name": "Sovereign wall",
-        "v": "95"
+        "name": "Sovereign wall"
       },
       "strike": " Round 2: What will the Government offer instead of a guarantee?"
     },
@@ -89,8 +87,7 @@
       "special": {
         "k": "Special",
         "icon": "song",
-        "name": "Trade song",
-        "v": "95"
+        "name": "Trade song"
       },
       "strike": " Round 3: What will Kenya's businesses commit to?"
     },
@@ -119,8 +116,7 @@
       "special": {
         "k": "Special",
         "icon": "fireball",
-        "name": "Azure fireball",
-        "v": "100"
+        "name": "Azure fireball"
       },
       "strike": " Round 4: What should Microsoft do?"
     }

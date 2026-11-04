@@ -93,10 +93,10 @@ ICONS = {
 # (Caleb, 3 November): the citizens' Rogue rallies the community, the Government's Knight holds a sovereign wall,
 # the businesses' Bard sings up trade, Microsoft's Wizard throws an Azure fireball.
 STATS = {
-    "citizen": {"health": 90, "attack": 95, "defense": 80, "special": ("Community", "community", 95)},
-    "government": {"health": 95, "attack": 85, "defense": 100, "special": ("Sovereign wall", "wall", 95)},
-    "business": {"health": 85, "attack": 90, "defense": 85, "special": ("Trade song", "song", 95)},
-    "microsoft": {"health": 85, "attack": 100, "defense": 80, "special": ("Azure fireball", "fireball", 100)},
+    "citizen": {"health": 90, "attack": 95, "defense": 80, "special": ("Community", "community")},
+    "government": {"health": 95, "attack": 85, "defense": 100, "special": ("Sovereign wall", "wall")},
+    "business": {"health": 85, "attack": 90, "defense": 85, "special": ("Trade song", "song")},
+    "microsoft": {"health": 85, "attack": 100, "defense": 80, "special": ("Azure fireball", "fireball")},
 }
 
 
@@ -108,8 +108,8 @@ def stats_of(rid: str) -> list:
 
 
 def special_of(rid: str) -> dict:
-    name, icon, v = STATS[rid]["special"]
-    return {"k": "Special", "icon": icon, "name": name, "v": str(v)}
+    name, icon = STATS[rid]["special"]
+    return {"k": "Special", "icon": icon, "name": name}
 
 
 def model(content: dict) -> dict:
@@ -283,20 +283,22 @@ section{ margin-bottom:var(--s5); }
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s3); }
 .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--card-pad); break-inside:avoid; }
 .role{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s3); align-content:start; }
-.role .tile{ grid-row:1 / span 2; width:48px; height:48px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
+.role .tile{ align-self:center; width:48px; height:48px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
 .role .tile svg{ width:30px; height:40px; shape-rendering:crispEdges; display:block; }
-.role .sub{ margin-bottom:2px; min-height:calc(2em * var(--lh-tight)); display:flex; align-items:flex-end; }
+/* The eyebrow and title sit centred on the figure. The height fits a two-line eyebrow, so every card's stats line up. */
+.role .head{ display:flex; flex-direction:column; justify-content:center; min-height:calc(var(--t-cap) * var(--lh-tight) * 2 + 2px + var(--t-h3) * var(--lh-h3)); }
+.role .sub{ margin-bottom:2px; }
 .role .body{ grid-column:1 / -1; margin-top:var(--s2); }
 .role .who{ color:var(--ink-2); }
 .role .strike{ margin-top:var(--s2); }
 /* Three stat cells under the blurb, each an icon on a dark tile with its number beside it, then the special as a bar:
-   the icon, the number, the move's title. */
+   the icon and the move's title. */
 .role .stats{ margin-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
 .stat{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:var(--s2); padding:var(--s2); border-radius:var(--r-sm); background:var(--surface-2); min-width:0; }
 .stat .ico{ width:24px; height:24px; border-radius:6px; background:var(--tile-dark); display:grid; place-items:center; }
 .stat .ico svg{ width:16px; height:16px; shape-rendering:crispEdges; display:block; }
-.stat-v, .stat-n{ font-size:var(--t-h3); line-height:var(--lh-tight); letter-spacing:var(--tr-h3); font-weight:700; font-variant-numeric:tabular-nums; }
-.stat.special{ grid-column:1 / -1; grid-template-columns:auto auto minmax(0,1fr); }
+.stat-v{ font-size:var(--t-h3); line-height:var(--lh-tight); letter-spacing:var(--tr-h3); font-weight:700; font-variant-numeric:tabular-nums; }
+.stat.special{ grid-column:1 / -1; }
 .stat.special .stat-title{ font-size:var(--t-body); line-height:var(--lh-tight); font-weight:700; }
 .measure{ max-width:var(--measure); }
 .rules{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s5); break-inside:avoid; }
@@ -442,11 +444,10 @@ section{ margin-bottom:var(--s5); }
       h('span', { 'class': 'ico' }, icon(name)),
       t('b', { 'class': 'stat-v' }, vPath));
   }
-  /** The special, a bar under the three stats: the icon, the number beside it, then the move's title. */
+  /** The special, a bar under the three stats: the icon, then the move's title. */
   function special(s, p) {
     return h('div', { 'class': 'stat special', role: 'group', 'aria-label': String(get(p + 'special.k')) },
       h('span', { 'class': 'ico' }, icon(s.icon)),
-      t('b', { 'class': 'stat-n' }, p + 'special.v'),
       t('b', { 'class': 'stat-title' }, p + 'special.name'));
   }
 
@@ -469,8 +470,7 @@ section{ margin-bottom:var(--s5); }
       }
       cards.appendChild(h('div', { 'class': 'card role' },
         h('div', { 'class': 'tile' }, figure(r.id)),
-        t('p', { 'class': 'sub' }, p + 'stakeholder'),
-        t('h3', null, p + 'className'),
+        h('div', { 'class': 'head' }, t('p', { 'class': 'sub' }, p + 'stakeholder'), t('h3', null, p + 'className')),
         h('div', { 'class': 'body' },
           t('p', { 'class': 'who' }, p + 'who'),
           stats,
