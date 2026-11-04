@@ -159,8 +159,12 @@ export class WebAudioVoicer implements Voicer {
   }
 }
 
-/** How far ahead of the voicer's clock the music is scheduled. */
-export const LOOKAHEAD_S = 0.12;
+/**
+ * How far ahead of the voicer's clock the music is scheduled: a quarter second, the usual figure for a 40 ms timer, so
+ * a main-thread hitch (the fullscreen toggle, a heavy frame) shorter than that leaves no gap. A switch still lands on
+ * the next beat not yet scheduled, at most this much later.
+ */
+export const LOOKAHEAD_S = 0.25;
 /** How often the scheduler wakes to top the look-ahead up. */
 export const TICK_MS = 40;
 
