@@ -5,7 +5,7 @@ import { hitFor, SFX } from '../host/audio/sfx';
 
 const EPS = 1e-9;
 let clock = 0;
-const voicer = { now: () => clock, note: vi.fn(), duckMusic: vi.fn(), stopAll: vi.fn() };
+const voicer = { now: () => clock, note: vi.fn(), duckMusic: vi.fn(), releaseMusic: vi.fn(), stopAll: vi.fn() };
 const notes = (): VoicerNote[] => voicer.note.mock.calls.map((c) => c[0] as VoicerNote);
 
 /** One timer tick: the voicer's clock and the fake interval move together. */
@@ -21,6 +21,7 @@ beforeEach(() => {
   clock = 0;
   voicer.note.mockReset();
   voicer.duckMusic.mockReset();
+  voicer.releaseMusic.mockReset();
   voicer.stopAll.mockReset();
 });
 afterEach(() => {
@@ -77,6 +78,9 @@ it('switches themes on the beat and ignores the same theme', () => {
   expect(firstStart).toBeCloseTo(boundary, 9);
   const firstHz = after.filter((n) => Math.abs(n.start - firstStart) < EPS).map((n) => n.hz).sort();
   expect(firstHz).toEqual(stepsBetween(THEMES.vote, 0, 0.01, 0).map((e) => e.hz).sort());
+  // The lobby's notes still sounding are released on the boundary, so nothing of it rings into the vote.
+  expect(voicer.releaseMusic).toHaveBeenCalledTimes(1);
+  expect(voicer.releaseMusic.mock.calls[0][0]).toBeCloseTo(boundary, 9);
 
   chip.play('vote');
   expect(chip.playing).toBe('vote');
@@ -90,6 +94,7 @@ it('switches themes on the beat and ignores the same theme', () => {
     expect(n.start).toBeCloseTo(boundary + expected[i].beat * spb, 9);
   });
   expect(vote.map((n) => n.hz).sort()).toEqual(expected.map((e) => e.hz).sort());
+  expect(voicer.releaseMusic).toHaveBeenCalledTimes(1); // the repeat queued no second switch
   chip.stop();
 });
 
@@ -126,11 +131,16 @@ it('stop ends scheduling and silences', () => {
   chip.play('travel');
   tick(10);
   expect(chip.playing).toBe('travel');
+  expect(voicer.releaseMusic).not.toHaveBeenCalled();
+  const stoppedAt = clock;
   chip.stop();
   const count = notes().length;
   tick(25);
   expect(notes().length).toBe(count);
+  expect(voicer.releaseMusic).toHaveBeenCalledTimes(1);
+  expect(voicer.releaseMusic).toHaveBeenCalledWith(stoppedAt);
   expect(voicer.stopAll).toHaveBeenCalledTimes(1);
+  expect(voicer.releaseMusic.mock.invocationCallOrder[0]).toBeLessThan(voicer.stopAll.mock.invocationCallOrder[0]);
   expect(chip.playing).toBeNull();
   expect(vi.getTimerCount()).toBe(0);
 });

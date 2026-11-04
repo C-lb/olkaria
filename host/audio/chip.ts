@@ -7,7 +7,15 @@ import { hitFor, SFX, type SfxId, type SfxStep } from './sfx';
 export interface VoicerNote { bus: 'music' | 'sfx'; wave: Wave; hz: number; hzTo?: number; gain: number; start: number; seconds: number }
 
 /** The one layer over the Web Audio API. Chip talks to this; the tests hand it a recorder. */
-export interface Voicer { now(): number; note(n: VoicerNote): void; duckMusic(ms: number): void; stopAll(): void }
+export interface Voicer {
+  now(): number;
+  note(n: VoicerNote): void;
+  duckMusic(ms: number): void;
+  /** Every music-bus note still sounding at `at` fades to 0 over the music release from there, then stops. Effects are untouched. */
+  releaseMusic(at: number): void;
+  /** Every live note fades out over its bus's release from now, then stops. */
+  stopAll(): void;
+}
 
 const MASTER_GAIN = 0.8;
 const MUSIC_GAIN = 0.28;
@@ -24,12 +32,15 @@ const PULSE_HARMONICS = 32;
  * 5 ms attack, release 40 ms for music and 20 ms for effects; a slide ramps the oscillator's frequency
  * to hzTo over the note; duckMusic drops the music gain to 0.12 at once and ramps it back over the ms given.
  */
+/** A note handed to the voicer and not yet ended: what it takes to release it early. Dropped from tracking once it ends. */
+interface Live { source: AudioScheduledSourceNode; env: GainNode; bus: VoicerNote['bus']; start: number; end: number; stopAt: number; gain: number }
+
 export class WebAudioVoicer implements Voicer {
   private readonly master: GainNode;
   private readonly buses: Record<VoicerNote['bus'], GainNode>;
   private readonly pulse: PeriodicWave;
   private readonly noise: AudioBuffer;
-  private readonly live = new Set<AudioScheduledSourceNode>();
+  private readonly live = new Set<Live>();
 
   constructor(private readonly ctx: AudioContext) {
     this.master = ctx.createGain();
@@ -94,9 +105,10 @@ export class WebAudioVoicer implements Voicer {
       osc.connect(env);
       source = osc;
     }
-    this.live.add(source);
+    const live: Live = { source, env, bus: n.bus, start: n.start, end, stopAt, gain: n.gain };
+    this.live.add(live);
     source.onended = () => {
-      this.live.delete(source);
+      this.live.delete(live);
       env.disconnect();
     };
     source.start(n.start);
@@ -111,15 +123,39 @@ export class WebAudioVoicer implements Voicer {
     g.linearRampToValueAtTime(MUSIC_GAIN, t + ms / 1000);
   }
 
+  releaseMusic(at: number): void {
+    for (const l of this.live) if (l.bus === 'music') this.release(l, at);
+  }
+
   stopAll(): void {
-    for (const source of this.live) {
+    const t = this.ctx.currentTime;
+    for (const l of this.live) this.release(l, t);
+  }
+
+  /** Fades one note to 0 over its bus's release from `at` and stops it there; a note not yet begun never sounds. */
+  private release(l: Live, at: number): void {
+    if (l.start >= at) {
       try {
-        source.stop();
+        l.source.stop(at); // at or before its start: it never plays
       } catch {
         // already stopped
       }
+      l.env.disconnect();
+      this.live.delete(l);
+      return;
     }
-    this.live.clear();
+    if (l.end <= at) return; // already in its own release, silent within one release time
+    const level = at < l.start + ATTACK_S ? (l.gain * (at - l.start)) / ATTACK_S : l.gain;
+    l.end = at;
+    l.stopAt = at + RELEASE_S[l.bus];
+    l.env.gain.cancelScheduledValues(at);
+    l.env.gain.setValueAtTime(level, at);
+    l.env.gain.linearRampToValueAtTime(0, l.stopAt);
+    try {
+      l.source.stop(l.stopAt);
+    } catch {
+      // already stopped
+    }
   }
 }
 
@@ -137,7 +173,8 @@ type Timers = { setInterval: typeof setInterval; clearInterval: typeof clearInte
  * - `reached`: the beat the schedule has reached. Every note with an onset before it has been handed to
  *   the voicer; each tick schedules from it up to the beat under now + LOOKAHEAD_S.
  * - `pending`: a switch to another theme and the whole beat of the current theme it lands on (the first
- *   whole beat not yet scheduled). When the schedule reaches that beat the new theme starts at beat 0 there.
+ *   whole beat not yet scheduled). When the schedule reaches that beat the old theme's notes still sounding
+ *   are released there and the new theme starts at beat 0 at the same time.
  */
 export class Chip {
   private current: ThemeId | null = null;
@@ -198,6 +235,7 @@ export class Chip {
     this.timer = null;
     this.current = null;
     this.pending = null;
+    this.voicer.releaseMusic(this.voicer.now());
     this.voicer.stopAll();
   }
 
@@ -243,6 +281,8 @@ export class Chip {
       if (p && p.atBeat <= target) {
         this.schedule(this.reached, p.atBeat);
         const at = this.timeOf(p.atBeat);
+        // Called once the old theme is fully handed over, so its last notes before the boundary are released too.
+        this.voicer.releaseMusic(at);
         this.current = p.theme;
         this.tension = p.tension;
         this.origin = at;
