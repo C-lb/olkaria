@@ -482,16 +482,6 @@ section{ margin-bottom:var(--s5); }
     data.briefing.forEach(function (_, i) { brief.appendChild(t('p', null, 'briefing.' + i)); });
     frag.appendChild(h('section', null, t('h2', null, 'briefHeading'), brief));
 
-    var steps = h('ol', { 'class': 'steps' });
-    data.steps.forEach(function (_, i) { steps.appendChild(t('li', null, 'steps.' + i)); });
-    var scoring = h('div', null);
-    data.scoring.forEach(function (_, i) {
-      scoring.appendChild(h('p', null, t('span', { 'class': 'k' }, 'scoring.' + i + '.k'), ' ', t('span', null, 'scoring.' + i + '.text')));
-    });
-    frag.appendChild(h('section', { 'class': 'rules' },
-      h('div', null, t('h2', null, 'stepsHeading'), steps),
-      h('div', null, t('h2', null, 'scoringHeading'), scoring)));
-
     frag.appendChild(h('section', { 'class': 'strikes' }, t('h2', null, 'strikesHeading'), t('p', { 'class': 'measure intro' }, 'strikesIntro')));
 
     data.rounds.forEach(function (rd, i) {
