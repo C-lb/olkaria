@@ -99,8 +99,7 @@ PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: one reading column; a 2 by 2 party grid, then each question a stacked block with its three options in a
-   grid. Print collapses to Letter and adds the plan's writing lines; on screen there are no blank fields (Caleb,
-   3 November). */
+   grid. Print is Letter, two pages: the four roles, then the questions (Caleb, 5 November). */
 :root{
   --accent:#2f5bd8;
   --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --tile-dark:#2a2e3a; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
@@ -155,25 +154,25 @@ h3{ font-size:var(--t-h3); font-weight:600; line-height:var(--lh-h3); letter-spa
 /* Header */
 .hdr{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:var(--s4) var(--s6); padding-bottom:var(--s4); border-bottom:1px solid var(--line); margin-bottom:var(--s5); }
 .hdr > div{ flex:1 1 420px; }
-.eyebrow{ font-size:var(--t-cap); line-height:var(--lh-tight); letter-spacing:var(--tr-eyebrow); color:var(--ink-2); margin:0 0 var(--s3); }
-.lead{ font-size:var(--t-lead); line-height:var(--lh-lead); letter-spacing:var(--tr-lead); color:var(--ink-2); max-width:var(--measure); }
 
 /* Sections */
 section{ margin-bottom:var(--s5); }
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s3); }
 .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--card-pad); break-inside:avoid; }
-.role{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s3); align-content:start; }
+.role{ display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto 1fr; column-gap:var(--s3); }
 /* The figure is 16 by 20 pixels, drawn at 2 or 2.5 screen pixels each, inside a tile with room on every side. */
 .role .tile{ align-self:center; width:58px; height:58px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
 .role .tile svg{ width:40px; height:50px; shape-rendering:crispEdges; display:block; }
-/* The eyebrow and title sit centred on the figure. The height fits a two-line eyebrow, so every card's stats line up. */
-.role .head{ display:flex; flex-direction:column; justify-content:center; min-height:calc(var(--t-cap) * var(--lh-tight) * 2 + 2px + var(--t-h3) * var(--lh-h3)); }
-.role .sub{ margin-bottom:2px; }
-.role .body{ grid-column:1 / -1; margin-top:var(--s2); }
-.role .who{ color:var(--ink-2); }
+/* The role's name sits centred on the figure. Under them, who the role represents and what it cares about, then the
+   stats pinned to the foot of the card so they line up across a row whatever the length of the text above. */
+.role .head{ display:flex; flex-direction:column; justify-content:center; }
+.role .body{ grid-column:1 / -1; margin-top:var(--s3); display:flex; flex-direction:column; }
+.fact + .fact{ margin-top:var(--s3); }
+.fact .sub{ margin:0; }
+.fact p + p{ margin-top:2px; }
 /* Three stat cells under the blurb, each an icon on a dark tile with its number beside it, then the special as a bar:
    the icon and the move's title. */
-.role .stats{ margin-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
+.role .stats{ margin-top:auto; padding-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
 .stat{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:var(--s2); padding:var(--s2); border-radius:var(--r-sm); background:var(--surface-2); min-width:0; }
 .stat .ico{ width:24px; height:24px; border-radius:6px; background:var(--tile-dark); display:grid; place-items:center; }
 .stat .ico svg{ width:16px; height:16px; shape-rendering:crispEdges; display:block; }
@@ -198,9 +197,7 @@ section{ margin-bottom:var(--s5); }
 /* Questions: three options side by side */
 .round{ break-inside:avoid; border-top:1px solid var(--line); padding-top:var(--s3); margin-bottom:var(--s4); }
 .round-head{ margin-bottom:var(--s2); }
-.round-head .sub:empty{ display:none; }
 .round-head h2{ color:var(--ink); margin:0; }
-.options-sub{ margin-top:var(--s2); }
 .options{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2) var(--s4); }
 /* A line left empty takes no room on the sheet; while editing it stays visible so it can be filled in. */
 #app:not(.editing) [data-path]:empty{ display:none; }
@@ -208,19 +205,13 @@ section{ margin-bottom:var(--s5); }
 .options p{ margin:0; }
 .letter{ display:inline-flex; align-items:center; justify-content:center; width:1.9em; height:1.9em; border-radius:var(--r-sm); background:var(--surface-2); font-weight:700; margin-top:1px; }
 
-/* The plan box */
-.plan{ break-inside:avoid; border-top:1px solid var(--line); padding-top:var(--s4); }
-.lines{ display:none; margin-top:var(--s4); }   /* writing lines are for paper; the screen stays clean */
-.line{ display:flex; align-items:flex-end; gap:var(--s2); height:12mm; border-bottom:1px solid var(--rule); }
-.line .k{ color:var(--ink-3); font-size:var(--t-cap); padding-bottom:2px; }
-.line + .line{ margin-top:0; }
 
 @media (max-width:560px){
   .grid2, .rules, .options{ grid-template-columns:minmax(0,1fr); }
 }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 
-/* Print: Letter, the light palette whatever the theme, no toolbar, two rounds to a page */
+/* Print: Letter, the light palette whatever the theme, no toolbar, the questions on a page of their own */
 @page{ size:Letter; margin:13mm 14mm 15mm; }
 @media print{
   :root, :root[data-theme="dark"], :root:not([data-theme="light"]){
@@ -232,7 +223,7 @@ section{ margin-bottom:var(--s5); }
   .toolbar{ display:none !important; }
   .role .tile{ width:48px; height:48px; }
   .role .tile svg{ width:32px; height:40px; }
-  .lines{ display:block; }
+  .strikes{ break-before:page; }
 }
 </style>
 <script type="application/json" id="sheet-data">__DATA__</script>
@@ -340,10 +331,7 @@ section{ margin-bottom:var(--s5); }
   function render() {
     var frag = document.createDocumentFragment();
     frag.appendChild(h('header', { 'class': 'hdr' },
-      h('div', null,
-        t('p', { 'class': 'eyebrow' }, 'eyebrow'),
-        t('h1', null, 'title'),
-        t('p', { 'class': 'lead' }, 'lead'))));
+      h('div', null, t('h1', null, 'title'))));
 
     var cards = h('div', { 'class': 'grid2' });
     data.roles.forEach(function (r, i) {
@@ -356,18 +344,15 @@ section{ margin-bottom:var(--s5); }
       }
       cards.appendChild(h('div', { 'class': 'card role' },
         h('div', { 'class': 'tile' }, figure(r.id)),
-        h('div', { 'class': 'head' }, t('p', { 'class': 'sub' }, p + 'stakeholder'), t('h3', null, p + 'className')),
+        h('div', { 'class': 'head' }, t('h3', null, p + 'className')),
         h('div', { 'class': 'body' },
-          t('p', { 'class': 'who' }, p + 'who'),
+          h('div', { 'class': 'fact' }, t('p', { 'class': 'sub' }, 'representsLabel'), t('p', null, p + 'stakeholder')),
+          h('div', { 'class': 'fact' }, t('p', { 'class': 'sub' }, 'caresLabel'), t('p', null, p + 'cares')),
           stats)));
     });
     frag.appendChild(h('section', null, t('h2', null, 'partyHeading'), cards));
 
-    var brief = h('div', { 'class': 'measure' });
-    data.briefing.forEach(function (_, i) { brief.appendChild(t('p', null, 'briefing.' + i)); });
-    frag.appendChild(h('section', null, t('h2', null, 'briefHeading'), brief));
-
-    frag.appendChild(h('section', { 'class': 'strikes' }, t('h2', null, 'strikesHeading'), t('p', { 'class': 'measure intro' }, 'strikesIntro')));
+    frag.appendChild(h('section', { 'class': 'strikes' }, t('h2', null, 'strikesHeading')));
 
     data.rounds.forEach(function (rd, i) {
       var p = 'rounds.' + i + '.';
@@ -378,18 +363,8 @@ section{ margin-bottom:var(--s5); }
           h('div', null, t('p', null, op + 'screen'))));
       });
       frag.appendChild(h('section', { 'class': 'round' },
-        h('div', { 'class': 'round-head' }, t('p', { 'class': 'sub' }, p + 'label'), t('h2', null, p + 'question')),
-        t('p', { 'class': 'sub options-sub' }, p + 'optionsLabel'), opts));
+        h('div', { 'class': 'round-head' }, t('h2', null, p + 'question')), opts));
     });
-
-    // The plan section only when it has something to show: lines, a heading or an intro. While editing it stays, so
-    // an empty heading or intro can still be filled in.
-    var planLines = Number(data.planLines) || 0;
-    if (editing || planLines > 0 || String(data.planHeading || '') !== '' || String(data.planIntro || '') !== '') {
-      var lines = h('div', { 'class': 'lines' });
-      for (var n = 0; n < planLines; n++) lines.appendChild(h('p', { 'class': 'line' }, h('span', { 'class': 'k' }, String(n + 1))));
-      frag.appendChild(h('section', { 'class': 'plan' }, t('h2', null, 'planHeading'), t('p', { 'class': 'measure intro' }, 'planIntro'), lines));
-    }
 
     app.textContent = '';
     app.appendChild(frag);

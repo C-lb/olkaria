@@ -1,14 +1,14 @@
 {
-  "eyebrow": "",
   "title": "Olkaria: Deadlock Character Sheet",
-  "lead": "",
   "partyHeading": "MEET YOUR PARTY",
+  "representsLabel": "Represents",
+  "caresLabel": "Cares about",
   "roles": [
     {
       "id": "citizen",
-      "stakeholder": "Citizens, households, Olkaries communities represent:",
       "className": "Citizen",
-      "who": "",
+      "stakeholder": "Households and Olkaria communities",
+      "cares": "Keeping the lights on and bills affordable, and getting local jobs and skills out of the deal instead of watching power get diverted.",
       "stats": [
         {
           "k": "Health",
@@ -35,9 +35,9 @@
     },
     {
       "id": "government",
-      "stakeholder": "Kenyan Government & Treasury represent:",
       "className": "Government",
-      "who": "",
+      "stakeholder": "Kenyan Government & Treasury",
+      "cares": "Protecting the grid and the national balance sheet. That means no blackouts, no risky demand guarantee, and Kenya staying in control of its own energy and data.",
       "stats": [
         {
           "k": "Health",
@@ -64,9 +64,9 @@
     },
     {
       "id": "business",
-      "stakeholder": "Local businesses, banks, startups represent:",
       "className": "Local Businessman",
-      "who": "",
+      "stakeholder": "Local businesses, banks, startups",
+      "cares": "Cheap, nearby cloud access and new customers and contracts, without being pushed into long commitments before the market is ready.",
       "stats": [
         {
           "k": "Health",
@@ -93,9 +93,9 @@
     },
     {
       "id": "microsoft",
-      "stakeholder": "Microsoft & G42 represent:",
-      "className": "Satya Nadella",
-      "who": "",
+      "className": "Satya Nadella (CEO of Microsoft)",
+      "stakeholder": "Microsoft",
+      "cares": "Moving fast to beat AWS, Google and Oracle, earning a return on the US$1bn, and keeping G42 on board without building ahead of demand.",
       "stats": [
         {
           "k": "Health",
@@ -121,18 +121,10 @@
       }
     }
   ],
-  "briefHeading": "PREAMBLE",
-  "briefing": [
-    "Microsoft and G42 want to build a US$1 billion data centre at Olkaria, Kenya's geothermal steam fields, with a headline capacity of 1 GW. Microsoft president Brad Smith called it the “single biggest step to advance the availability of digital technology”. However, the project is now deadlocked for three reasons. First, President Ruto has said that switching it on would “shut off power for half the country”, and some lines already run above 120% of their design capacity. Second, the Treasury will not sign the anchor-tenant guarantee Microsoft wants, which is a government promise to cover demand for the data centre's capacity. Third, Kenya's whole data-centre market is about 20 MW, so 1 GW would be about 50 times its current size.",
-    "Principal Secretary John Tanui says the project is “not failed or withdrawn” but “requires some structuring”, so your party's job is to find that structure."
-  ],
   "strikesHeading": "QUESTIONS",
-  "strikesIntro": "",
   "rounds": [
     {
-      "label": "",
       "question": "Q1. What should Kenya do about the data centre's electricity needs?",
-      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -149,9 +141,7 @@
       ]
     },
     {
-      "label": "",
       "question": "Q2. How should Microsoft secure enough customers in Kenya?",
-      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -168,9 +158,7 @@
       ]
     },
     {
-      "label": "",
       "question": "Q3. AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?",
-      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -187,9 +175,7 @@
       ]
     },
     {
-      "label": "",
       "question": "Q4. If Microsoft waits, what is the biggest thing lost?",
-      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -206,9 +192,7 @@
       ]
     },
     {
-      "label": "",
       "question": "Q5. What should Microsoft do in Kenya?",
-      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -224,8 +208,5 @@
         }
       ]
     }
-  ],
-  "planHeading": "",
-  "planIntro": "",
-  "planLines": 0
+  ]
 }
