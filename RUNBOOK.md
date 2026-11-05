@@ -4,7 +4,7 @@ Live game: https://olkaria.sparkbot-worker.workers.dev
 Projector page: https://olkaria.sparkbot-worker.workers.dev/host/
 Phones join by scanning the QR on the lobby screen, or at the address beside it.
 
-Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games, every vote counted.
+The game is five boss fights, one question each. Every question has three options, A, B and C. The class votes on their phones, students defend their picks, the boss dies whatever the vote, and the projector shows how the room split. Nothing is scored. After question 5 the ending congratulates the room and shows who picked each option.
 
 ## Before class
 
@@ -17,18 +17,16 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
    The room is created when the page loads, and a room closes after 6 hours with no activity.
    `?new=1` makes it a fresh room, so the class does not land in a rehearsal room with its old players.
    The page drops `?new=1` from the address by itself, so a reload stays in this room.
-   Only this tab on this laptop hosts: the room's key lives in the tab. A co-presenter who opens the host address on their own laptop makes a second room.
+   Only this tab on this laptop hosts, because the room's key lives in the tab. A co-presenter who opens the host address on their own laptop makes a second room.
 5. Open a second tab at https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline and leave it there.
    Once loaded it needs no network, so offline mode is one tab away.
    Chrome can unload a tab it thinks is idle, and reloading it needs the network.
    So add olkaria.sparkbot-worker.workers.dev in Chrome settings, Performance, "Always keep these sites active", or click the offline tab just before class.
-6. Use that offline tab for the real fullscreen look on the projector.
-   F, then Space shows the party setting off, then N shows the Grid Wyrm and its HP bar.
-   Check the backdrop, the boss, the HP bar, the class figures and the text sizes.
-   The class figures are 12 × 16 placeholders drawn in code, and they stay that way for this presentation.
-   So far the game has only been seen in a laptop browser window, never fullscreen on a 1920 × 1080 projector.
-   At 1920 × 1080 it draws at 6× and fills the screen.
-   For the next boss: Space, B, then Space four times, then N, with a slow two-count between presses. The same again for each boss after it.
+6. Use that offline tab to check the real fullscreen look on the projector.
+   F, then Space shows the Grid Wyrm with question 1. Space opens the vote, B adds 30 bot votes, and Space locks it.
+   Check the backdrop, the boss, the four figures, the option cards and the text sizes from the back of the room.
+   Question 2 has the longest options, so check that its cards fit: M, then Q2 Demand twice, then Space to open its vote.
+   At 1920 x 1080 the game draws at 6x and fills the screen.
    Then Shift+R twice takes that tab back to its lobby, and Esc leaves fullscreen.
 7. Go back to the class tab and press F for fullscreen. That is the tab you run the game in.
    Click once on the game, so the keys work and the music starts.
@@ -36,107 +34,118 @@ Load-tested on 3 November 2026 on this URL: 60 simulated phones, two full games,
 8. Scan the QR from the back row with your phone, and read the lobby text from there too.
    The QR should open the join form for this room. You do not need to join.
 
-## The 18-minute run of show
+## Run of show
 
-? opens How to play: eight slides, Space next, ? closes (Esc too, outside fullscreen). Show it while the phones join.
+? opens How to play: five slides, Space next, ? closes (Esc too, outside fullscreen). Show it while the phones join.
 
-| Time | Beat | On the projector | You |
-|---|---|---|---|
-| 0:00 to 1:30 | Lobby | QR, address, counts per class with their figures, avatars dropping in | "Tables of four. Scan, type your name, pick your role (one of each per table), then type your table number, just the number." Space starts. |
-| 1:30 to 2:00 | Travel 1 | The party walks to the arena by itself past three exhibit pickups | Read each fact as it pops. N skips to the arena. |
-| 2:00 to 6:00 | Round 1, Grid Wyrm | The Rogues' special attack: what Kenyans accept on power | Up to 2 min vote, locks when everyone has voted, up to four call-outs, strike, 45 s debrief |
-| 6:00 to 10:00 | Round 2, Debt Golem | The Knights' special attack: what the Government offers | Same shape |
-| 10:00 to 14:00 | Round 3, Fog of Demand | The Bards' special attack: what Kenya's businesses commit | Same shape |
-| 14:00 to 17:30 | Round 4, the core | The Wizards' special attack: Microsoft's decision, then the ending | "What should Microsoft do, and why?" |
-| 17:30 to 18:00 | Leaderboard | Top five, most consistent strategist, top table, the final split | Hand the split to the discussion |
+| Beat | On the projector | You |
+|---|---|---|
+| Lobby | QR, address, how many have joined, avatars dropping in | "Scan, type your name, pick your role, and choose your team from the list." Space starts. |
+| Question 1, Grid Wyrm | Power | Space opens the vote. Lock, call-outs, strike, split. |
+| Question 2, Fog of Demand | Demand | The same |
+| Question 3, Hydra of Rivalry | Competition | The same |
+| Question 4, Wraith of Risk | Risk | The same |
+| Question 5, The Deadlock | The Deadlock | The same, then Space for the ending |
+| Ending | "Congratulations!", the four characters jumping, question 5's split with names | Hand over to the discussion |
 
-Travels 2 to 4: press N straight away unless you are running early. The party walks by itself either way.
+Each vote runs up to 2:00 and locks early once everyone has voted. A question with a full 2:00 vote, one call-out and the split takes about 3 to 4 minutes, so five of them take 15 to 20. Time it at the rehearsal.
 
-The times above assume every vote runs its full 2:00 and each round has one call-out. A vote that locks early pulls every later time in: if every vote locks at 30 s, the table ends at 12:00. Each call-out after the first pushes every later time out by as long as it takes. Time it at the rehearsal.
+The roles are Citizen, Government, Local Businessman and Satya Nadella. The teams are Team 1 to Team 8. A team is only a label on the phone and changes nothing in the game.
 
 ### Keys
 
 | Key | What it does |
 |---|---|
-| Space in the lobby | Start the game |
-| Space in travel | Jump |
-| Space at the narration | Open the vote |
+| Space in the lobby | Start the game: question 1's boss arrives |
+| Space as a boss arrives | Open the vote |
 | Space in the vote | Lock the vote |
-| Space on the locked vote | The party strikes |
-| Space during the strike | Skip to the debrief |
-| Space on the debrief | Next travel, or the ending after round 4 |
-| Space on the ending | The leaderboard |
-| Space on the leaderboard | Nothing |
-| Arrows | Take over the walk in travel: run and jump |
-| A | Pause or resume the walk in travel. After an arrow takes over, the walk stays off until A resumes it. |
-| N | In travel: skip to the arena. With a call-out up: not convincing. |
-| C | Call a student out, once the vote is locked |
-| Y | Call-out convincing |
-| R | Reopen a locked vote, or extend an open one, with a fresh 2:00 |
-| 1 to 4 | Add one vote for A to D |
-| Shift+1 to 4 | Add ten votes for A to D |
-| B | Add 30 bot votes, weighted toward the evidence |
-| H | Hide or show names in the lobby list and on the leaderboard |
+| Space on the locked vote | The party strikes and the boss dies |
+| Space during the strike | Skip to the split |
+| Space on the split | The next boss, or the ending after question 5 |
+| Space on the ending | Nothing. The ending closes the game. |
+| C | Call a student out, once the vote is locked. One at a time, up to 4 a question. |
+| Y | The call-out made a valid point: the projector flashes "Valid point, Ann!" |
+| N | Move on from the call-out. Nothing is shown and the banner clears. |
+| R | Reopen a locked vote, or extend an open one, with a fresh 2:00. Not once the boss has died. |
+| H | Hide or show names in the lobby list and on the ending |
 | F | Fullscreen on or off |
 | S | Sound off or on |
-| ? | How to play, eight slides; Space next, ? closes (Esc too, outside fullscreen) |
-| M or Esc | Open or close the menu: restart the round, back to the lobby, reload, Sound off or on, go to any stage or the ending, and every key. In fullscreen, Chrome takes Esc to leave fullscreen, so use M. |
-| Shift+R twice | Within 3 s: back to the lobby. Players stay; votes and scores go. |
-| Cmd+R | Reload. Needs the network. The same room and screen come back, except that the narration comes back as the start of travel, and a strike in progress comes back as its debrief. |
+| ? | How to play, five slides. Space next, ? closes (Esc too, outside fullscreen). |
+| M or Esc | Open or close the menu: restart the question, back to the lobby, reload, sound off or on, go to Q1 to Q5 or the Ending. In fullscreen, Chrome takes Esc to leave fullscreen, so use M. |
+| Shift+R twice | Within 3 s: back to the lobby. Players stay; their votes go. |
+| Cmd+R | Reload. Needs the network. The same room and question come back. |
+| 1 to 3 | Add one vote for A to C. Meant for offline mode, and works online too. |
+| Shift+1 to 3 | Add ten votes for A to C |
+| B | Add 30 bot votes, spread evenly over A to C |
 
-In the arena, Space rests about a second after each press, and a second and a half once the vote locks. A second press inside the rest is ignored without a note.
-If Space seems to do nothing, wait a moment and press it again.
+Y and N do nothing unless a call-out is waiting. Neither gives anything to anyone.
+Space rests about a second after each press, and a second and a half once the vote locks. A second press inside the rest is ignored without a note, so if Space seems to do nothing, wait a moment and press it again.
 A key the room refuses, such as C before the vote locks, shows a short note such as "Bad phase" and changes nothing.
-The vote keys (1 to 4, Shift, B) work while a vote is open or locked. They count for the party, never the lead class.
+The vote keys (1 to 3, Shift, B) work while a vote is open or locked.
 
-### Every round
+### Every question
 
-1. You arrive at the arena with the narration up. Space opens the vote.
-2. The vote runs 2:00 and locks itself at 0:00, or as soon as everyone has voted. Space locks it early.
-   The status line counts who is still to vote.
+1. The boss arrives with the question's name and the question. Space opens the vote.
+2. The projector shows the question, three option cards with the full text, the clock and how many still have to vote. Each phone shows the question and three buttons.
+   The vote runs 2:00 and locks itself at 0:00, or as soon as everyone has voted. Space locks it early.
+3. A phone that has voted shows "Look at the screen now.", then the letter it picked and that option's text.
+4. Once the vote locks, each card shows its share of the votes.
    When the vote locks itself, Space does nothing for a second and a half, and a note says why: the clock ran out, or everyone voted.
-   Then C calls a student out, and Space strikes.
-3. Once locked, each card shows two bars: the lead class and the rest of the party.
-   C calls out a voter whose option the round has not heard yet, at random among them (anyone uncalled once every voted option has been heard).
-   The student defends their choice.
-   Y if convincing: +10 damage and 30 points to them. N if not: no bonus and 10 points.
-   C again for the next voice. Four per round at most.
-4. Space: the party strikes. Space during the strike skips to the debrief.
-5. Debrief: read the discuss line and take a comment or two. Space moves on to the next travel.
+   If you want call-outs, press C at that point, not Space, because Space strikes.
+5. C calls out a voter whose option has not been heard yet, at random among them, and anyone not yet called once every voted option has been heard.
+   The banner reads "Ann, defend B". Ann's phone says "You're up. Defend B." with the option's text, and the other phones say "Ann is defending B."
+   Y if she made a valid point, N to move on. C again for the next voice, up to 4 a question.
+6. Space: all four characters strike and the boss dies. It takes a few seconds, and Space skips it.
+7. The split: the question and how many picked A, B and C, as counts and shares. Space goes on to the next boss.
 
-After round 4's debrief, Space shows the ending. Space again shows the leaderboard.
-On the leaderboard Space does nothing, so a stray press cannot end the closing screen.
+After question 5's split, Space shows the ending: "Congratulations!" and "The Deadlock is broken.", the four characters jumping, and question 5's three options with the names of who picked each, in the order they joined. Hand counts and bot votes add to the counts but have no names. A column shows 30 names at most, then "and N more". H hides the names and leaves the counts.
+The phones show "Congratulations!", "Look at the screen now." and the student's five picks.
 
-### Discuss lines
+### The five questions
 
-As of 3 November, the debriefs show these lines (`rounds[i].discuss` in `content/case.json`).
+From `content/case.json`, as the projector and the phones show them.
 
-- Round 1, Grid Wyrm: "Why did the full 1 GW do so little damage, and what condition made 60 to 100 MW safe?"
-- Round 2, Debt Golem: "Two live offers, one honest refusal, one dead option. Which would you sign, and who carries the risk?"
-- Round 3, Fog of Demand: "What would Kenya's businesses need to see before they sign, and what would Microsoft need to see before it builds?"
-- Round 4, the core: "What should Microsoft do, and why?"
+**Question 1. Grid Wyrm (Power).** What should Kenya do about the data centre's electricity needs?
 
-### Exhibit facts
+- A. Protect households first. Delay the project until Kenya has enough reliable electricity for its residents.
+- B. Prioritize economic growth. Give the data centre access to electricity to attract investment, even if it puts more pressure on the grid.
+- C. Make Microsoft pay. Require Microsoft and its partners to secure additional electricity for the project.
 
-As of 3 November (`exhibits` in `content/case.json`).
-Each pickup in travel adds +5 to the next strike, three at most. N skips them.
+**Question 2. Fog of Demand (Demand).** How should Microsoft secure enough customers in Kenya?
 
-- Travel 1: Olkaria generates about 950 MW. Record peak demand 2,444 MW, January 2026. 1 GW = about 31% of installed capacity.
-- Travel 2: Public debt about 68% of GDP, June 2025. 48.5% of ordinary revenue goes to debt service. PPP liabilities need Parliament's approval, September 2026.
-- Travel 3: Kenya's data-centre market is about 20 MW. Market worth US$266 million in 2025, US$805 million by 2031. 97.5% of online Kenyans vs 8.7% of all Kenyans used AI.
-- Travel 4: US$1 billion is 0.6% of Microsoft's FY2027 capex. Nairobi development centre closing, October 2026. Microsoft committed US$329 million more to South Africa, April 2026.
+- A. Secure business commitments. Ask major Kenyan companies to commit to using Microsoft's services before construction.
+- B. Make the government a customer. Have Kenya purchase cloud services for government operations to help create demand.
+- C. Bet on future growth. Microsoft invests now without any demand guarantee, trusting that Kenya's growing technology market will bring customers later.
+
+**Question 3. Hydra of Rivalry (Competition).** AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?
+
+- A. Enter, but start small, so it is present without overspending.
+- B. Move fast, so firms get a nearby Azure region instead of relying on South Africa.
+- C. Let rivals compete, because more providers could mean more choice and lower prices.
+
+**Question 4. Wraith of Risk (Risk).** If Microsoft waits, what is the biggest thing lost?
+
+- A. They don't lose out since the money works harder in markets that have present demand.
+- B. Jobs and skills training, which are already weakened by the Nairobi centre closure.
+- C. Investor trust, progress made in talks, and the chance to be East Africa's tech hub.
+
+**Question 5. The Deadlock (The Deadlock).** What should Microsoft do in Kenya?
+
+- A. Build big. Build the full 1 GW data centre now. Microsoft gets in early, but may build before there are enough customers.
+- B. Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first.
+- C. Wait. Focus on South Africa instead. This avoids the risk, but Microsoft could lose G42 and a rival could take the opportunity.
 
 ## If something breaks
 
-**You need to redo a round, or get to one.**
+**You need to redo a question, or get to one.**
 
 1. Press M. The menu opens over the screen. While it is open the game keys do nothing.
-2. Click what you want, or arrow to it, then press Enter or Space: Restart round N, Back to the lobby, Reload the page, or a stage under Go to.
-3. Restart round N, Back to the lobby and every Go to button turn pale and say Sure? Press the same one again within 3 s; a double-click counts as one press, so press once more after it. Pressing another button calls it off and arms that one instead; closing the menu or waiting calls it off. Reload the page fires at once while the projector is connected, asks twice while it is not, and is greyed out in offline mode.
-4. The menu closes and the screen moves: a road starts walking, the lobby comes back, or the ending shows. Phones follow by themselves.
+2. Click what you want, or arrow to it, then press Enter or Space: Restart question N, Back to the lobby, Reload the page, or Q1 to Q5 or Ending under Go to.
+3. Restart question N, Back to the lobby and every Go to button turn pale and say Sure? Press the same one again within 3 s. A double-click counts as one press, so press once more after it. Pressing another button calls the first off and arms that one instead, and closing the menu or waiting calls it off too. Reload the page fires at once while the projector is connected, asks twice while it is not, and is greyed out in offline mode.
+4. The menu closes and the screen moves: a boss arrives, the lobby comes back, or the ending shows. Phones follow by themselves.
 
-Rounds before the one you went to keep their votes, scores and damage. That round and the ones after it start over.
-Going to a stage from the lobby starts the game there.
+Questions before the one you went to keep their votes. That question and the ones after it start over. Going to the Ending shows what has been played.
+Going to a question from the lobby starts the game there.
 
 **The Wi-Fi drops.**
 The projector shows "Reconnecting to the room" and keeps trying, at most 10 s apart.
@@ -146,17 +155,13 @@ If the room does not come back, switch to offline mode:
 
 1. Esc leaves fullscreen. Click the offline tab from before class and press F there.
    With a network you could also open https://olkaria.sparkbot-worker.workers.dev/host/?mode=offline.
-2. Offline mode starts at its own lobby with no phones. Space starts it.
-3. To catch up, play each round you already did on bot votes: N, Space, B, then Space four times.
-   Leave a slow two-count between presses and wait for each change: N brings the narration, Space opens the vote, B adds 30 votes, then each Space brings the bars, the strike, the debrief and the next travel.
-   If the debrief comes by itself at the end of the strike, leave out that Space.
-4. For your round: N, then Space to open the vote, then the hand counts.
-   Take a show of hands per option and type the counts: 1 to 4 add one vote for A to D, Shift+1 to 4 add ten.
+2. Offline mode starts at its own lobby with no phones. Space starts it at question 1.
+3. To get to your question, press M, then the question under Go to, twice.
+4. Space opens the vote. Take a show of hands per option and type the counts: 1 to 3 add one vote for A to C, and Shift+1 to 3 add ten.
    For 23 hands on B: Shift+2, Shift+2, then 2 three times.
    Digits typed before the vote opens answer "Not accepting votes" and count for nothing.
-5. The debrief says no one of the lead class voted, because hand counts count for the party. That is expected.
-6. The offline leaderboard has no names and no top table, and it says "No one voted in all four rounds".
-   The final split and the closing question still show.
+5. Space locks the vote, Space strikes, and Space goes on, as online. C still works, but with no phones it is a hand call-out with no name, and Y flashes "Valid point!".
+6. The offline ending has counts and no names, because hand counts have none.
 7. Do not reload the offline tab. Offline mode keeps nothing, and with no network a reload loses the page: Chrome shows its offline page.
 8. If the Wi-Fi comes back, you can return to the class tab. It reconnects by itself and shows "Connected".
    Phones that still have the page open reconnect on their own.
@@ -171,45 +176,45 @@ Reload the tab (Cmd+R). It opens a new room, and the class scans the new QR.
 Read out the address beside the QR, all of it, with the `/j/` and the letters at the end. Those letters have no I or O.
 The bare address without `/j/` opens the projector page, not the join page.
 A phone that says "Can't reach this room. Scan the QR on the screen again." most likely has the wrong address. Have it scan the QR.
+The Join button stays grey until the student has typed a name, picked a role and chosen a team.
 
-**A student picked the wrong role.**
-While the lobby is up, they tap Change on their phone and pick again; the counts per class move with them.
-Once the game has started, roles stay as they are.
+**A student picked the wrong role or team.**
+While the lobby is up, they tap Change on their phone and pick again.
+Once the game has started, roles and teams stay as they are.
 
-**A class has no one in the lead role.**
-The lead strike is skipped, the party carries the whole attack, and the debrief says so ("No Rogues voted this round"). Carry on.
+**A phone drops mid-game.**
+It reconnects by itself and comes back to the question the room is on, with its vote if it had voted. If it does not, reopen the join address on that phone; it rejoins as the same player.
+A student who misses a vote shows "Look at the screen now." with no pick, and their ending shows "No vote" for that question.
 
 **The projector page reloads.**
-With a network, it comes back to the same room and the same screen, in the same tab.
-A strike in progress comes back as its debrief. Travel starts again from the beginning.
-The narration counts as travel, because the room stays in travel until the vote opens: a reload there brings back the start of travel, and N gets you to the arena again.
+With a network, it comes back to the same room and the same question, in the same tab.
+A boss's arrival comes back as that boss's arrival. A strike in progress comes back on the split.
 With no network, a reload shows Chrome's offline page, so do not reload while the Wi-Fi is down.
 Never open the host page in a new tab mid-game. A new tab makes a new room, and the phones stay in the old one.
 If you close the tab by accident, Cmd+Shift+T reopens it.
-If it comes back in the game, carry on. If it comes back at a lobby with nobody joined, the old room is out of reach: ask the class to scan the new QR.
+If it comes back in the game, carry on. If it comes back at a lobby with nobody joined, the old room is out of reach, so ask the class to scan the new QR.
 
 **A call-out nobody wants.**
-N declines it: no bonus, and the student still gets 10 points.
-C again calls someone else, four per round at most.
-Space with the call-out still up strikes at once and counts it as declined, so there is no further call-out that round.
+N moves on and clears the banner.
+C again calls someone else, up to 4 a question.
+Space with the call-out still up strikes at once, and that question takes no more call-outs.
 
 **A vote needs more time.**
-R reopens it with a fresh 2:00, even after it locked. Once the party has struck, the round is final.
+R reopens it with a fresh 2:00, even after it locked. Once the boss has died, the vote is final.
 A vote that locked because everyone had voted reopens the same way, for a late joiner, who shows as "1 still to vote". It locks again once everyone has voted.
 If no one is left to vote, the reopened vote stays open and the status line reads "Everyone has voted". Space or the clock closes it.
 
 **Names should not be on screen.**
-H hides them in the lobby list and on the leaderboard.
-Everything about a call-out still names the student: the banner, the line under the cards, the rally strike and the debrief's rally line.
+H hides them in the lobby list and on the ending.
+A call-out still names the student on the banner and in the "Valid point" flash.
 There is no kick on the projector, and none will be built. A rude name stays in the room.
-H keeps it off the lobby list and the leaderboard. If a call-out lands on it, press N straight away.
-The banner shows the name until you do, and the line under the cards keeps it until the debrief.
+H keeps it off the lobby list and the ending. If a call-out lands on it, press N straight away.
 
 **No sound.** Check the laptop's output and its volume, then press S twice. The browser plays nothing until the page has been clicked or a key pressed once.
 
 **Something is badly wrong.**
 Shift+R, then Shift+R again within 3 s, takes the room back to the lobby. The first press shows "Press Shift+R again to reset".
-Everyone stays joined. Votes and scores go.
+Everyone stays joined. Their votes go.
 
 ## After class
 
@@ -219,16 +224,17 @@ Everyone stays joined. Votes and scores go.
 
 ## Rehearsal checklist
 
-For 4 November, on the projector if you can.
+On the projector if you can.
 
-- [ ] Five phones join with the same table number and every role covered. There are four roles, so one comes twice.
-- [ ] A full 18-minute run, timed against the run of show.
-- [ ] Up to four call-outs per round, one voice per option, judged with Y or N.
-- [ ] Round 2: switch to the offline tab on purpose and play the round with hand counts. Then go back to the online tab and carry on.
-- [ ] Round 3: reload the host page once (Cmd+R) after the vote opens. It should come back to the same screen, or to the debrief if the strike was playing. Do it in the online tab, since offline mode starts over on a reload.
-- [ ] The leaderboard names the shared table as the top table.
-- [ ] The menu: M, Restart round 1 twice, play on. M, Go to 3 Fog of Demand twice. M, Back to the lobby twice.
-- [ ] Each phone shows its class figure on the join form and on the waiting screen.
+- [ ] Five phones join, each with a team from the list, and every role covered. There are four roles, so one comes twice.
+- [ ] A full run of all five questions and the ending, timed.
+- [ ] On a phone, the question and all three options read without a sideways scroll.
+- [ ] Up to four call-outs on one question, one voice per option, each judged with Y or N.
+- [ ] Question 2: switch to the offline tab on purpose and play the question with hand counts. Then go back to the online tab and carry on.
+- [ ] Question 3: reload the host page once (Cmd+R) after the vote opens. It should come back to the same question. Do it in the online tab, since offline mode starts over on a reload.
+- [ ] The ending lists each phone's name under the option it picked on question 5. H hides the names and leaves the counts.
+- [ ] The menu: M, Restart question 1 twice, play on. M, Q3 Competition twice. M, Back to the lobby twice.
+- [ ] Each phone shows its role figure on the join form and on the waiting screen, and its team on the waiting screen.
 
 ### What confused a teammate
 
