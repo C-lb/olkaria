@@ -2,7 +2,7 @@
 import { noteHz, type Wave } from './score';
 
 export type SfxId =
-  | 'join' | 'exhibit' | 'gate' | 'voteOpen' | 'tick' | 'tickHigh' | 'lock' | 'callout' | 'rallyYes' | 'rallyNo'
+  | 'join' | 'voteOpen' | 'tick' | 'tickHigh' | 'lock' | 'callout' | 'rallyYes' | 'rallyNo'
   | 'strikeEnd' | 'endingWon' | 'endingHolds' | 'menuOpen' | 'menuClose' | 'soundOn' | 'riser';
 
 /** at: ms from the effect's start; hzTo: slide target. A noise step's hz is the centre of its band. */
@@ -14,12 +14,6 @@ const JOIN: readonly SfxStep[] = [note(0, 'pulse', 'E5', 60, 0.3), note(60, 'pul
 
 export const SFX: Readonly<Record<SfxId, readonly SfxStep[]>> = {
   join: JOIN,
-  exhibit: [note(0, 'pulse', 'B5', 50, 0.3), note(50, 'pulse', 'E6', 120, 0.3)],
-  gate: [
-    { at: 0, wave: 'square', hz: noteHz('C2'), hzTo: noteHz('G1'), ms: 140, gain: 0.6 },
-    { at: 0, wave: 'noise', hz: 400, ms: 60, gain: 0.3 },
-    { at: 140, wave: 'triangle', hz: noteHz('C4'), hzTo: noteHz('C5'), ms: 260, gain: 0.4 },
-  ],
   voteOpen: [note(0, 'pulse', 'C5', 70, 0.3), note(70, 'pulse', 'E5', 70, 0.3), note(140, 'pulse', 'G5', 70, 0.3)],
   tick: [note(0, 'pulse', 'C6', 40, 0.25)],
   // The half-second tick of the last 3 s, so each of those seconds sounds twice: C6 on the second, E6 between.

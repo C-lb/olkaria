@@ -3,10 +3,9 @@
 // rehearsal or for a lost connection, with synthetic voters instead of phones.
 import type { CaseContent } from '../shared/content';
 import { hostView, initialState, reduce } from '../shared/room-logic';
-import { effectiveScores } from '../shared/scoring';
 import {
   OPTION_IDS,
-  type ClientMsg, type HostCmd, type HostView, type OptionId, type RoomEvent, type RoomState, type ServerMsg, type Tally,
+  type ClientMsg, type HostCmd, type HostView, type RoomEvent, type RoomState, type ServerMsg, type Tally,
 } from '../shared/types';
 import { forgetRoom, recallRoom, rememberRoom } from './session';
 
@@ -37,7 +36,7 @@ export interface RoomClient {
    * there is none. Returns the function that unsubscribes.
    */
   onStatus(cb: (status: ConnectionStatus) => void): () => void;
-  /** Adds n synthetic voters to the current round, leaning toward the options the evidence favours. */
+  /** Adds n synthetic voters to the current round, spread evenly over the options (botTally). */
   addBots(n: number): void;
 }
 
@@ -77,42 +76,28 @@ class Listeners<T> {
 
 // ---- Bots ------------------------------------------------------------------------------------------
 
-/** Added to every option's score before the bots draw, so a weak option still gets the odd vote, as in a real class. */
-const BOT_FLOOR = 10;
-
-/** Reported when there is nothing to add bots to: the lobby, or no view or content yet to build their votes from. */
+/** Reported when there is nothing to add bots to: the lobby, or no view yet to read the round from. */
 const NO_ROUND = 'Start the game before adding bots';
 
 /**
- * n bot votes spread over the options: each of n independent draws lands on an option with probability
- * proportional to its effective score plus BOT_FLOOR, so the evidence-strongest option collects the most.
- * `rng` returns numbers in [0, 1). An n that is not a positive number gives no votes; a fraction is rounded down.
+ * n bot votes spread evenly over the options: each of n independent draws lands on A, B or C with the same chance,
+ * since no option scores higher than another. `rng` returns numbers in [0, 1). An n that is not a positive number gives
+ * no votes; a fraction is rounded down.
  */
-export function botTally(
-  content: CaseContent, roundIndex: number, prior: readonly (OptionId | null)[], n: number, rng: () => number,
-): Tally {
-  const score = effectiveScores(content, roundIndex, prior);
-  const edges: number[] = [];
-  let sum = 0;
-  for (const o of OPTION_IDS) {
-    sum += score[o] + BOT_FLOOR;
-    edges.push(sum);
-  }
-  const tally: Tally = { A: 0, B: 0, C: 0, D: 0 };
+export function botTally(n: number, rng: () => number): Tally {
+  const tally: Tally = { A: 0, B: 0, C: 0 };
   const draws = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
   for (let i = 0; i < draws; i++) {
-    const x = rng() * sum;
-    const at = edges.findIndex((edge) => x < edge);
-    // A draw that rounding leaves past the last edge belongs to the last option.
-    tally[OPTION_IDS[at === -1 ? OPTION_IDS.length - 1 : at]] += 1;
+    // A draw that rounding leaves at the very end of the range belongs to the last option.
+    tally[OPTION_IDS[Math.min(OPTION_IDS.length - 1, Math.floor(rng() * OPTION_IDS.length))]] += 1;
   }
   return tally;
 }
 
 /** Bot votes for the round a view shows, or null while there is nothing to vote in. */
-function botVotes(content: CaseContent | undefined, view: Pick<HostView, 'round' | 'majorities'> | null, n: number): Tally | null {
-  if (content === undefined || view === null || view.round < 0) return null;
-  return botTally(content, view.round, view.majorities, n, Math.random);
+function botVotes(view: Pick<HostView, 'round'> | null, n: number): Tally | null {
+  if (view === null || view.round < 0) return null;
+  return botTally(n, Math.random);
 }
 
 // ---- Offline ---------------------------------------------------------------------------------------
@@ -161,7 +146,7 @@ export class OfflineRoomClient implements RoomClient {
   onStatus(cb: (status: ConnectionStatus) => void): () => void { return this.statuses.on(cb); }
 
   addBots(n: number): void {
-    const counts = botVotes(this.content, this.state, n);
+    const counts = botVotes(this.state, n);
     if (counts === null) this.errors.emit(NO_ROUND);
     else this.send({ k: 'injectVotes', counts });
   }
@@ -254,8 +239,8 @@ export class WsRoomClient implements RoomClient {
   private readonly errors = new Listeners<string>();
   private readonly statuses = new Listeners<ConnectionStatus>(true);
 
-  /** `baseUrl` is the page origin. `content` is only needed by addBots. */
-  constructor(baseUrl: string, private readonly content?: CaseContent) {
+  /** `baseUrl` is the page origin. */
+  constructor(baseUrl: string) {
     this.base = baseUrl.replace(/\/+$/, '');
   }
 
@@ -287,7 +272,7 @@ export class WsRoomClient implements RoomClient {
   onStatus(cb: (status: ConnectionStatus) => void): () => void { return this.statuses.on(cb); }
 
   addBots(n: number): void {
-    const counts = botVotes(this.content, this.view, n);
+    const counts = botVotes(this.view, n);
     if (counts === null) this.errors.emit(NO_ROUND);
     else this.send({ k: 'injectVotes', counts });
   }
@@ -457,5 +442,5 @@ export function createRoomClient(loc: Pick<Location, 'search' | 'origin'>, conte
   const params = new URLSearchParams(loc.search);
   if (params.get('mode') === 'offline') return new OfflineRoomClient(content);
   if (params.get('new') === '1') forgetRoom();
-  return new WsRoomClient(loc.origin, content);
+  return new WsRoomClient(loc.origin);
 }

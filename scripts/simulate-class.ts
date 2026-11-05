@@ -1,11 +1,12 @@
 // Fake phones for a rehearsal or a load check. N players join a room over WebSockets and vote at random
-// moments in every round until the leaderboard comes up.
+// moments in every round until the ending comes up.
 //   npm run simulate -- --base http://localhost:8787 --code ABCD --n 60
-// Player i is role ROLES[i % 4] at table `Table ${floor(i / 4) + 1}`, named `Sim i`, client id `sim-i`.
-// Rounds are numbered from 0, as in the room. The exit code is 0 only when the leaderboard comes up with every
-// phone still connected. A connection error, a phone the room closed or removed first, or phones that have not
+// Player i is role ROLES[i % 4] in team TEAMS[floor(i / 4) % 8], named `Sim i`, client id `sim-i`.
+// Rounds are numbered from 0, as in the room. The exit code is 0 only when every phone sees the ending while it is
+// still connected. A connection error, a phone the room closed or removed first, or phones that have not
 // all joined within 15 seconds end the run with 1.
 import WebSocket from 'ws';
+import { TEAMS } from '../shared/names';
 import { ROLES, type ClientMsg, type OptionId, type PlayerView, type ServerMsg } from '../shared/types';
 
 /** Each phone votes at a random moment in the first 20 seconds of the window, or in the first two thirds of a shorter one. */
@@ -15,8 +16,8 @@ const VOTE_SPREAD_SHARE = 0.66;
 /** Every phone must be a player in the room (have had its first view) within this long. */
 const JOIN_WAIT_MS = 15_000;
 
-/** Option weights A:B:C:D = 1:3:1:2, so B usually wins and the others still collect votes. */
-const WEIGHTS: readonly (readonly [OptionId, number])[] = [['A', 1], ['B', 3], ['C', 1], ['D', 2]];
+/** Option weights A:B:C = 1:3:2, so B usually wins and the others still collect votes. */
+const WEIGHTS: readonly (readonly [OptionId, number])[] = [['A', 1], ['B', 3], ['C', 2]];
 
 const USAGE = 'usage: npm run simulate -- --base http://localhost:8787 --code ABCD [--n 60]';
 
@@ -31,7 +32,7 @@ function pickOption(): OptionId {
     draw -= weight;
     if (draw < 0) return option;
   }
-  return 'D';
+  return 'C';
 }
 
 const base = flag('base');
@@ -46,6 +47,7 @@ const wsBase = base.replace(/^http/, 'ws').replace(/\/+$/, '');
 const sockets: WebSocket[] = [];
 const votesSent = new Map<number, number>();
 let joined = 0;
+let ended = 0;   // phones that have seen the ending
 let live = 0;   // sockets not closed yet
 let finished = false;
 
@@ -58,7 +60,7 @@ const joinWatchdog = setTimeout(() => {
 function finish(): void {
   if (finished) return;
   finished = true;
-  console.log('leaderboard');
+  console.log(`ending on all ${n} phones`);
   for (const socket of sockets) socket.close(1000);
   setTimeout(() => process.exit(), 250);
 }
@@ -70,6 +72,7 @@ function startPhone(i: number): void {
   live += 1;
   const scheduled = new Set<number>();   // rounds this phone has a vote queued for, until the room shows it landed
   let seen = false;
+  let atEnding = false;
   let explained = false;   // this phone has already said why it is failing, so its close needs no line of its own
 
   const send = (msg: ClientMsg): void => {
@@ -85,8 +88,12 @@ function startPhone(i: number): void {
         console.log(`joined ${n}`);
       }
     }
-    if (view.phase === 'leaderboard') {
-      finish();
+    if (view.phase === 'ending') {
+      if (!atEnding) {
+        atEnding = true;
+        ended += 1;
+      }
+      if (ended === n) finish();
       return;
     }
     if (view.myVote !== null) {
@@ -111,7 +118,7 @@ function startPhone(i: number): void {
   };
 
   socket.on('open', () => {
-    send({ t: 'join', clientId, name: `Sim ${i}`, role: ROLES[i % ROLES.length], table: `Table ${Math.floor(i / 4) + 1}` });
+    send({ t: 'join', clientId, name: `Sim ${i}`, role: ROLES[i % ROLES.length], table: TEAMS[Math.floor(i / 4) % TEAMS.length] });
   });
   socket.on('message', (data) => {
     const msg = JSON.parse(data.toString()) as ServerMsg;
@@ -132,8 +139,8 @@ function startPhone(i: number): void {
   socket.on('close', (closeCode, reason) => {
     live -= 1;
     if (!finished) {
-      // Any close before the leaderboard fails the run, even a clean one (the room was wiped, this phone was removed).
-      if (!explained) console.error(`${clientId}: closed before the leaderboard (${closeCode}${reason.length > 0 ? ` ${reason.toString()}` : ''})`);
+      // Any close before the ending fails the run, even a clean one (the room was wiped, this phone was removed).
+      if (!explained) console.error(`${clientId}: closed before the ending (${closeCode}${reason.length > 0 ? ` ${reason.toString()}` : ''})`);
       process.exitCode = 1;
     }
     if (live === 0) process.exit();

@@ -1,93 +1,37 @@
-// The pure side of the closing scenes: which ending the class reached and what its screen says (spec 4.6), and the
-// leaderboard (spec 3.2). Titles, bullets, phone labels, class names and the synergy letters come from the content,
-// every number from the view. No Phaser and no DOM, so all of it is tested.
+// The pure side of the ending: the room is congratulated, and the last question's split is shown with who picked
+// each option. The words come from the content, the counts and names from the view. Nothing is scored, so nothing is
+// ranked. No Phaser and no DOM, so all of it is tested.
 import type { CaseContent } from '../shared/content';
-import { consistencyAward, endingFor, tableAward } from '../shared/scoring';
-import { OPTION_IDS, type HostView, type OptionId, type Player } from '../shared/types';
-import type { EndingArgs, LeaderboardArgs } from './hud/Hud';
-import { labelFor } from './strikers';
+import { OPTION_IDS, type HostView, type Player } from '../shared/types';
+import type { EndingArgs } from './hud/Hud';
 
-/** How many players the leaderboard ranks. */
-const TOP = 5;
-/** What the leaderboard calls a player while names are hidden (H). */
-const HIDDEN_NAME = 'Player';
-/** The question the leaderboard closes on, which the class discussion picks up. */
-const QUESTION = 'What should Microsoft do, and why?';
-/** Said in place of the Deadlock's sentence when the final round had no votes: no option can be the ending then. */
-const NO_FINAL_VOTES = 'No one voted in the final round.';
+/** How many names one column shows; the rest are counted as "and N more", so a big class still fits the screen. */
+export const NAMES_SHOWN = 30;
+
+const byJoinThenId = (a: Player, b: Player): number => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /**
- * The ending the class reached, its tier, the final round's blended majority (null when nobody voted in it), and the
- * letters that majority was tied with, which the earlier letter won.
- */
-export interface Outcome { ending: OptionId | 'holds'; tier: 'decisive' | 'fragile' | 'holds'; majority: OptionId | null; tiedWith: OptionId[] }
-
-/**
- * The final round's blended majority at the tier the four rounds' damage reaches, or the Deadlock holding below the
- * fragile tier (endingFor). A final round with no votes has no majority, and endingFor would read its empty tally as
- * A, so the Deadlock holds then whatever the damage. The view's tallies are the final round's: the room stays in it
- * through the ending and the leaderboard.
- */
-export function outcomeOf(content: CaseContent, view: HostView): Outcome {
-  if (OPTION_IDS.every((o) => view.tally[o] === 0)) return { ending: 'holds', tier: 'holds', majority: null, tiedWith: [] };
-  const totalDamage = view.damageLog.reduce((sum, d) => sum + d.total, 0);
-  return endingFor({ content, finalLead: view.leadTally, finalSupport: view.supportTally, totalDamage });
-}
-
-/** "C", "C and D", "B, C and D". */
-const letters = (list: readonly OptionId[]): string =>
-  (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`);
-
-/**
- * The ending screen, over round 4's split. An option's ending: its title and tier ("decisive, tied with C" when the
- * final round was a tie the earlier letter won), what must be true and the risk accepted. The Deadlock holding: no
- * tier (its title says it), its sentence, then for each earlier round what its lead class chose beside the letters
- * the final majority needed there. With no votes in the final round there is nothing to compare, so no rows.
+ * The ending screen. Each column's count is the view's tally of the last round, so hand counts and bots are in it;
+ * its names are the players whose last-round vote is that letter, in the order they joined, which is why a column can
+ * name fewer than it counts. With names hidden (H) a column has its count only.
  */
 export function endingArgs(content: CaseContent, view: HostView): EndingArgs {
-  const { ending, tier, majority, tiedWith } = outcomeOf(content, view);
-  const split = view.tally;
-  if (ending !== 'holds') {
-    const { title, mustBeTrue, risk } = content.endings[ending];
-    return { title, tier: tiedWith.length > 0 ? `${tier}, tied with ${letters(tiedWith)}` : tier, split, mustBeTrue, risk, holds: null };
-  }
-  const { title, text } = content.endings.holds;
-  if (majority === null) return { title, tier: '', text: NO_FINAL_VOTES, split, mustBeTrue: [], risk: [], holds: [] };
-  const holds = content.synergy[majority].map((coherent, i) => ({
-    round: `Round ${i + 1}`, chose: chose(content, i, view.majorities[i] ?? null), needed: coherent.join(' or '),
-  }));
-  return { title, tier: '', text, split, mustBeTrue: [], risk: [], holds };
-}
-
-/** "Rogues chose C: Full 1 GW for the hub", the lead class of round `i` with the majority's phone label, or "Knights chose nothing". */
-function chose(content: CaseContent, i: number, letter: OptionId | null): string {
-  const round = content.rounds[i];
-  const who = labelFor(content, round.lead, true);
-  if (letter === null) return `${who} chose nothing`;
-  const phone = round.options.find((o) => o.id === letter)?.phone;
-  return phone === undefined ? `${who} chose ${letter}` : `${who} chose ${letter}: ${phone}`;
-}
-
-/**
- * The leaderboard: the top five by score, the earlier joiner first on a tie, each named (or "Player" while names are
- * hidden) with their class; the most consistent strategist and the top table (spec 4.4), when someone qualifies; and
- * round 4's split under the closing question.
- */
-export function leaderboardArgs(content: CaseContent, view: HostView): LeaderboardArgs {
-  const players = Object.values(view.players);
-  const nameOf = (p: Player): string => (view.hideNames ? HIDDEN_NAME : p.name);
-  const rows = [...players]
-    .sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt)
-    .slice(0, TOP)
-    .map((p) => ({ name: nameOf(p), className: labelFor(content, p.role), score: p.score }));
-  const strategistId = consistencyAward(players, content);
-  const strategist = players.find((p) => p.id === strategistId);
-  const top = tableAward(players);
+  const lastIndex = content.rounds.length - 1;
+  const last = content.rounds[lastIndex];
+  const players = Object.values(view.players).sort(byJoinThenId);
   return {
-    rows,
-    consistent: strategist === undefined ? 'No one voted in all four rounds' : `Most consistent strategist: ${nameOf(strategist)}`,
-    table: top === null ? null : `Top table: ${top.table} (${Math.round(top.mean)} avg)`,
-    split: view.tally,
-    question: QUESTION,
+    title: content.ending.title,
+    text: content.ending.text,
+    question: last.question,
+    columns: OPTION_IDS.map((letter, i) => {
+      const voters = view.hideNames ? [] : players.filter((p) => p.votes[lastIndex]?.option === letter);
+      return {
+        letter,
+        text: last.options[i].text,
+        count: view.tally[letter],
+        names: voters.slice(0, NAMES_SHOWN).map((p) => p.name),
+        more: Math.max(0, voters.length - NAMES_SHOWN),
+      };
+    }),
   };
 }

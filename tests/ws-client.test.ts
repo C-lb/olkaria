@@ -75,9 +75,9 @@ const settle = async (): Promise<void> => {
 };
 
 /** A connected client: the room is created, the socket is open and the first view has arrived. */
-async function online(first: HostView = lobby, withContent = true) {
+async function online(first: HostView = lobby) {
   stubFetch(() => reply(201, created));
-  const client = new WsRoomClient(BASE, withContent ? content : undefined);
+  const client = new WsRoomClient(BASE);
   const states: HostView[] = [];
   const errors: string[] = [];
   const statuses: ConnectionStatus[] = [];
@@ -759,26 +759,23 @@ describe('WsRoomClient status', () => {
 });
 
 describe('WsRoomClient.addBots', () => {
-  it('sends injectVotes for the round and earlier majorities of the last view', async () => {
+  it('sends injectVotes drawn evenly by botTally, in any round', async () => {
     const { client } = await online(voting);
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     client.addBots(20);
-    const first = botTally(content, 0, [], 20, () => 0.1);
-    expect(first).toEqual({ A: 20, B: 0, C: 0, D: 0 });
+    const first = botTally(20, () => 0.1);
+    expect(first).toEqual({ A: 20, B: 0, C: 0 });
     expect(sentCommands()).toEqual([{ t: 'cmd', key: 'fresh-key', cmd: { k: 'injectVotes', counts: first } }]);
 
-    // The next view moves the room to round 4 with three earlier majorities, and the bots follow.
-    ws().say({ t: 'host', state: viewOf({ phase: 'vote', round: 3, majorities: ['B', 'C', 'B'] }) });
+    // The next view moves the room to the last round; earlier majorities change nothing, since no option scores.
+    ws().say({ t: 'host', state: viewOf({ phase: 'vote', round: 4, majorities: ['B', 'C', 'B', 'A'] }) });
     vi.spyOn(Math, 'random').mockReturnValue(0.7);
     client.addBots(20);
-    const later = botTally(content, 3, ['B', 'C', 'B'], 20, () => 0.7);
-    expect(later).toEqual({ A: 0, B: 0, C: 0, D: 20 });
-    expect(later).not.toEqual(botTally(content, 3, [], 20, () => 0.7));
-    expect(sentCommands().at(-1)).toEqual({ t: 'cmd', key: 'fresh-key', cmd: { k: 'injectVotes', counts: later } });
+    expect(sentCommands().at(-1)).toEqual({ t: 'cmd', key: 'fresh-key', cmd: { k: 'injectVotes', counts: { A: 0, B: 0, C: 20 } } });
   });
 
   it('reports an error and sends nothing before the room has sent a view', () => {
-    const client = new WsRoomClient(BASE, content);
+    const client = new WsRoomClient(BASE);
     const errors: string[] = [];
     client.onError((m) => errors.push(m));
     client.addBots(10);
@@ -788,13 +785,6 @@ describe('WsRoomClient.addBots', () => {
 
   it('reports an error and sends nothing while the room is still in the lobby', async () => {
     const { client, errors } = await online(lobby);
-    client.addBots(10);
-    expect(errors).toEqual(['Start the game before adding bots']);
-    expect(ws().sent).toEqual([]);
-  });
-
-  it('reports an error and sends nothing when it was built without content', async () => {
-    const { client, errors } = await online(voting, false);
     client.addBots(10);
     expect(errors).toEqual(['Start the game before adding bots']);
     expect(ws().sent).toEqual([]);
@@ -832,7 +822,7 @@ describe('createRoomClient', () => {
     expect(calls[0].url).toBe(`${BASE}/api/rooms`);
   });
 
-  it('gives the online client the content, so addBots can build votes', async () => {
+  it('adds bots online once the room has sent a view of a round', async () => {
     stubFetch(() => reply(201, created));
     const client = createRoomClient(at(''), content);
     void client.connect();

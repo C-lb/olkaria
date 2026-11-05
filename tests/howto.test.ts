@@ -14,62 +14,52 @@ import type { RoomClient } from '../host/net';
 import { loadContent } from '../shared/content';
 
 const c = loadContent(raw);
+
+// These tests are about the slides and the keys. The markup is host/hud/HowTo.ts's, drawn here by a stand-in with the
+// same dialog, slide and dots, so a test of the keys does not hang on how a slide looks.
+vi.mock('../host/hud/HowTo', () => ({
+  howToPanel: (a: { slide: { title: string; lines: string[] }; index: number; count: number; onNext: () => void }): HTMLElement => {
+    const panel = document.createElement('div');
+    panel.className = 'hud-howto';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'How to play');
+    const slide = document.createElement('section');
+    slide.className = 'howto-slide';
+    slide.textContent = [a.slide.title, ...a.slide.lines].join(' ');
+    slide.addEventListener('click', () => a.onNext());
+    const dots = document.createElement('ol');
+    for (let i = 0; i < a.count; i++) {
+      const dot = document.createElement('li');
+      dot.className = 'howto-dot';
+      if (i === a.index) dot.setAttribute('aria-current', 'step');
+      dots.append(dot);
+    }
+    panel.append(slide, dots);
+    return panel;
+  },
+}));
 /** The sound facade, silent: the menu and the keys take one. */
 const sound: Sound = { music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(), toggle: vi.fn(() => true), enabled: true };
 
-it('eight slides from the case: the first boss, its question and options, the lead class, the constants', () => {
-  const s = howtoSlides(c);
-  expect(s.map((x) => x.kind)).toEqual(['title', 'join', 'round', 'lead', 'points', 'damage', 'ending', 'awards']);
-  const [title, join, round, lead, points, damage, ending, awards] = s;
-  if (title.kind !== 'title' || join.kind !== 'join' || round.kind !== 'round' || lead.kind !== 'lead' || points.kind !== 'points' || damage.kind !== 'damage' || ending.kind !== 'ending' || awards.kind !== 'awards') throw new Error('kinds');
-  expect([title.name, title.sub]).toEqual(['Olkaria', 'the Deadlock']);
-  expect(title.party.map((p) => [p.role, p.className, p.stakeholder])).toEqual([['citizen', 'Rogue', 'Citizen'], ['government', 'Knight', 'Kenyan Government'], ['business', 'Bard', 'Local Businesses'], ['microsoft', 'Wizard', 'Microsoft']]);
-  expect(join.steps).toEqual(['Scan the code on the screen', 'Pick your class', 'Type your name']);
-  expect(round).toMatchObject({ boss: 'Grid Wyrm', question: 'What will Kenyans accept on power?', hp: 100, clock: '2:00', hit: 62 });
-  expect(round.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
-  expect(round.options[1].label).toBe('Yes to 60 to 100 MW, tied');
-  expect(round.lines).toEqual(['Talk at your table. Vote on your phone.', 'The clock stops when everyone has voted.']);
-  expect(lead.lead).toBe('citizen');
-  expect(lead.halves).toEqual(['Lead class', 'The rest of the party']);
-  expect(points.chips.map((ch) => ch.value)).toEqual(['0 to 100', 'up to +20', '+10', '+10', '+30']);
-  expect(damage.chunks.map((ch) => ch.width)).toEqual([50, 15, 10, 15, 10]);
-  expect(damage.chunks.map((ch) => ch.note)).toEqual(['0 to 100', '+15', '+10', '+5 each, up to 3', '+10 each, up to 4']);
-  expect(damage.chunks[1].label).toBe('Focus: 60% or more of you on one option');
-  expect(damage.line).toBe('Four bosses, 100 each. 400 in all.');
-  expect(ending).toMatchObject({ max: 400, fragile: 180, decisive: 260, fill: 260, holds: 'Under 180, the Deadlock holds.' });
-  expect(ending.lines[0]).toBe('Microsoft decides.');
-  expect(awards.items).toEqual(['Top five players', 'Most consistent strategist', 'Top table']);
+it('five slides, each a title and one or two lines, with the vote time read from the settings', () => {
+  expect(howtoSlides(c)).toEqual([
+    { title: 'Join', lines: ['Scan the code. Pick your name, your role and your team.'] },
+    { title: 'Five bosses', lines: ['Power, Demand, Competition, Risk, and the Deadlock. Each one guards a question.'] },
+    { title: 'Vote', lines: ['Read the question on your phone and pick A, B or C. You have 2:00.'] },
+    { title: 'Defend', lines: ['Then look at the screen. You may be called to defend your pick.'] },
+    { title: 'The ending', lines: ['The last vote decides how it ends.'] },
+  ]);
+  const quick = howtoSlides({ ...c, settings: { ...c.settings, voteSeconds: 90 } });
+  expect(quick[2].lines).toEqual(['Read the question on your phone and pick A, B or C. You have 1:30.']);
+  for (const slide of howtoSlides(c)) expect(slide.lines.length).toBeGreaterThanOrEqual(1);
+  for (const slide of howtoSlides(c)) expect(slide.lines.length).toBeLessThanOrEqual(2);
 });
 
-it('no slide gives away an option score by letter, a debrief, a projector line or an ending title', () => {
-  const text = JSON.stringify(howtoSlides(c));
-  for (const r of c.rounds.slice(0, 3)) for (const o of r.options) {
-    expect(text).not.toContain(o.debrief);
-    expect(text).not.toContain(o.projector);
-    expect(text).not.toContain(`${o.id} ${o.score}`);
+it('says nothing about points, scores, damage, a leaderboard or the old classes, and has no dashes', () => {
+  for (const text of howtoSlides(c).flatMap((s) => [s.title, ...s.lines])) {
+    expect(text).not.toMatch(/points|score|damage|leaderboard|Rogue|Knight|Bard|Wizard/i);
+    expect(text).not.toMatch(/[\u2013\u2014]/);
   }
-  for (const [key, e] of Object.entries(c.endings)) if (key !== 'holds') expect(text).not.toContain(e.title);
-  expect(text).not.toMatch(/[\u2013\u2014]/);
-});
-it('the damage track never holds more than the HP of one boss, however large the content makes the bonuses', () => {
-  const widths = (roundHp: number): number[] => {
-    const damage = howtoSlides({ ...c, scoring: { ...c.scoring, roundHp } }).find((s) => s.kind === 'damage');
-    if (damage?.kind !== 'damage') throw new Error('no damage slide');
-    return damage.chunks.map((ch) => ch.width);
-  };
-  const sum = (ws: number[]): number => ws.reduce((a, b) => a + b, 0);
-  expect(widths(100)).toEqual([50, 15, 10, 15, 10]);   // the case: the evidence fills what the bonuses leave
-  expect(widths(40)).toEqual([0, 15, 10, 15, 0]);      // bonuses past the HP: the track fills in order and stops full
-  expect(sum(widths(40))).toBe(40);
-  for (const hp of [1, 25, 49, 50, 51]) {
-    expect(sum(widths(hp))).toBe(hp);
-    expect(widths(hp).every((w) => w >= 0)).toBe(true);
-  }
-});
-it('every line that counts the bosses reads the count from the rounds, in sentence case', () => {
-  const lines = (content: typeof c): string[] => howtoSlides(content).flatMap((s) => ('line' in s ? [s.line] : []));
-  expect(lines(c)).toEqual(['Four classes. One party. Four bosses.', 'Points add up over four bosses. Top five at the end.', 'Four bosses, 100 each. 400 in all.']);
-  expect(lines({ ...c, rounds: c.rounds.slice(0, 3) })).toEqual(['Four classes. One party. Three bosses.', 'Points add up over three bosses. Top five at the end.', 'Three bosses, 100 each. 300 in all.']);
 });
 
 // ---- The keys: ? opens the how-to over any screen, and while it is up no key gets past it but M ------------------
@@ -106,8 +96,8 @@ it('? opens the how-to at the first slide; Space, the arrows and Esc walk and cl
   press('Escape');
   expect(root.querySelector('.hud-howto')).toBeNull();
   press('?', { shiftKey: true });
-  for (let i = 0; i < 7; i++) press(' ');
-  expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[7]);
+  for (let i = 0; i < 4; i++) press(' ');
+  expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[4]);
   press(' ');
   expect(root.querySelector('.hud-howto')).toBeNull();
 });

@@ -2,7 +2,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Chip } from '../host/audio/chip';
 import { noteHz } from '../host/audio/score';
-import { JOIN_GAP_MS, joinHz, type SfxStep } from '../host/audio/sfx';
+import { JOIN_GAP_MS, joinHz, SFX, type SfxStep } from '../host/audio/sfx';
 import { createSound, SOUND_KEY } from '../host/audio/sound';
 
 type FakeChip = { play: ReturnType<typeof vi.fn>; setTension: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; sfx: ReturnType<typeof vi.fn>; hit: ReturnType<typeof vi.fn>; steps: ReturnType<typeof vi.fn>; playing: null };
@@ -289,4 +289,9 @@ it('a hidden tab goes quiet and comes back on the theme and tension of the momen
   show('visible');
   expect(chip.play).toHaveBeenCalledTimes(plays + 1);
   expect(chip.stop).toHaveBeenCalledTimes(stops);
+});
+
+it('has no cue for the road: no exhibit pickup and no gate', () => {
+  expect(Object.keys(SFX)).not.toContain('exhibit');
+  expect(Object.keys(SFX)).not.toContain('gate');
 });

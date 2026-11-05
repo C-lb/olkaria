@@ -63,3 +63,8 @@ it('tension comes from the clock: above 10 s calm, 10 s tight, 3 s tighter', () 
   expect(tensionFor(3000)).toBe(2);
   expect(tensionFor(0)).toBe(2);
 });
+
+it('has no theme for the road, which is gone; the boss arrival keeps the narration theme', () => {
+  expect(ids).not.toContain('travel');
+  expect(ids).toContain('narration');
+});

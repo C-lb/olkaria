@@ -1,5 +1,5 @@
-// The facilitator's keys that work in every scene (spec 6.5). Space, the arrows and A belong to the scenes, and so
-// does N in travel; M and Esc open the menu (menu.ts), which keeps every key from here while it is open. A refused
+// The facilitator's keys that work in every scene (spec 6.5). Space belongs to the scenes; M and Esc open the menu
+// (menu.ts), which keeps every key from here while it is open. A refused
 // command (a key pressed in the wrong phase) comes back through the client's onError, which main.ts shows as a
 // toast, so the reducer is the one place that decides what each phase allows. The scenes register their own keys
 // through oncePerEvent, so a press reaches each handler once.
@@ -33,9 +33,9 @@ export function callOffReset(): void {
   callOff?.();
 }
 
-/** 1 to 4 on the top row or the number pad, read by position so Shift (which turns "1" into "!") does not hide it; else 0. */
+/** 1 to 3 on the top row or the number pad, one per option, read by position so Shift (which turns "1" into "!") does not hide it; else 0. */
 function digitOf(code: string): number {
-  const match = /^(?:Digit|Numpad)([1-4])$/.exec(code);
+  const match = /^(?:Digit|Numpad)([1-3])$/.exec(code);
   return match === null ? 0 : Number(match[1]);
 }
 
@@ -67,9 +67,9 @@ function pendingCallout(view: HostView | null): boolean {
 }
 
 /**
- * 1 to 4 add a vote to A to D and Shift+1 to 4 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
- * pending call-out (only while one is pending in `locked`, otherwise N is the Travel scene's skip); R reopens; H hides
- * or shows names; F toggles fullscreen; S turns the sound off or on (Shift+S does nothing); Shift+R twice within 3 s resets to the lobby, and any other key in between
+ * 1 to 3 add a vote to A to C and Shift+1 to 3 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
+ * pending call-out, Y a valid point and N moving on, only while one is pending in `locked`; R reopens; H hides or shows
+ * names; F toggles fullscreen; S turns the sound off or on (Shift+S does nothing); Shift+R twice within 3 s resets to the lobby, and any other key in between
  * calls the reset off, as opening the menu or the how-to does (callOffReset). Escape is the menu's (menu.ts), not one
  * of these. Held keys do not repeat, and Ctrl, Alt or Cmd chords (a reload) are left to the browser. Returns the
  * function that removes the keys again; installing again removes the earlier install first, so a key never sends twice.

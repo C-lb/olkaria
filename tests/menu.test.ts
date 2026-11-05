@@ -67,16 +67,28 @@ function press(key: string, init: KeyboardEventInit = {}): void {
 it('lists the actions and the stages for the lobby online', () => {
   const m = menuItems(c, lobbyView, 'online', 'open', { enabled: true });
   expect(m.actions.map((a) => [a.id, a.label, a.enabled, a.confirm])).toEqual([
-    ['restart', 'Restart the round', false, true], ['lobby', 'Back to the lobby', false, true], ['reload', 'Reload the page', true, false],
+    ['restart', 'Restart the question', false, true], ['lobby', 'Back to the lobby', false, true], ['reload', 'Reload the page', true, false],
     ['sound', 'Sound off', true, false]]);
   expect(m.actions[2].hint).toBe('The same room and screen come back.');
-  expect(m.stages.map((s) => s.label)).toEqual(['1 Grid Wyrm', '2 Debt Golem', '3 Fog of Demand', '4 The core', 'Ending']);
-  expect(m.stages.map((s) => s.act)).toEqual([0, 1, 2, 3, 4].map((stage) => ({ kind: 'cmd', cmd: { k: 'goto', stage } })));
+  expect(m.stages.map((s) => s.label)).toEqual(['Q1 Power', 'Q2 Demand', 'Q3 Competition', 'Q4 Risk', 'Q5 The Deadlock', 'Ending']);
+  expect(m.stages.map((s) => s.act)).toEqual([0, 1, 2, 3, 4, 5].map((stage) => ({ kind: 'cmd', cmd: { k: 'goto', stage } })));
   expect(m.stages.every((s) => s.enabled && s.confirm)).toBe(true);
+});
+it('says nothing a person reads about points, scores, damage, a leaderboard or the old classes', () => {
+  const views = [null, lobbyView, { ...lobbyView, phase: 'reveal', round: 2 } as HostView];
+  for (const v of views) {
+    for (const mode of ['online', 'offline'] as const) {
+      for (const link of ['open', 'closed', null] as const) {
+        const m = menuItems(c, v, mode, link, { enabled: true });
+        const words = [...m.actions, ...m.stages].flatMap((i) => [i.label, i.hint]).concat(m.stagesHint);
+        for (const w of words) expect(w).not.toMatch(/points|score|damage|leaderboard|Rogue|Knight|Bard|Wizard|road/i);
+      }
+    }
+  }
 });
 it('names the round to restart and sends goto for it; offline the reload is disabled and says why', () => {
   const m = menuItems(c, { ...lobbyView, phase: 'reveal', round: 2 }, 'offline', 'open', { enabled: true });
-  expect(m.actions[0]).toMatchObject({ label: 'Restart round 3', enabled: true, act: { kind: 'cmd', cmd: { k: 'goto', stage: 2 } } });
+  expect(m.actions[0]).toMatchObject({ label: 'Restart question 3', enabled: true, act: { kind: 'cmd', cmd: { k: 'goto', stage: 2 } } });
   expect(m.actions[1]).toMatchObject({ enabled: true, act: { kind: 'cmd', cmd: { k: 'reset' } } });
   expect(m.actions[2]).toMatchObject({ enabled: false, hint: 'Offline mode starts over on a reload. Use Back to the lobby.', act: { kind: 'reload' } });
 });
@@ -187,14 +199,14 @@ it('draws the panel again only when a view changes what it shows, so a click tha
   view = vote;
   press('m');
   const panel = root.querySelector('.hud-menu');
-  const joiner = { id: 'p9', name: 'Ann', role: 'citizen' as const, table: null, joinedAt: T0, score: 0, lastPoints: 0, votes: {} };
+  const joiner = { id: 'p9', name: 'Ann', role: 'citizen' as const, table: 'Team 1', joinedAt: T0, votes: {} };
   view = { ...vote, updatedAt: vote.updatedAt + 1, players: { p9: joiner } };   // a join: nothing the menu shows changes
   for (const fn of viewListeners) fn();
   expect(root.querySelector('.hud-menu')).toBe(panel);
   view = { ...vote, updatedAt: vote.updatedAt + 2, round: 1 };
   for (const fn of viewListeners) fn();
   expect(root.querySelector('.hud-menu')).not.toBe(panel);
-  expect(root.querySelector('[data-menu-item=restart]')!.textContent).toContain('Restart round 2');
+  expect(root.querySelector('[data-menu-item=restart]')!.textContent).toContain('Restart question 2');
 });
 it('a press on another item moves the arming', () => {
   view = { ...lobbyView, phase: 'reveal', round: 1 };
@@ -214,11 +226,11 @@ it('the arrows walk the enabled buttons, wrapping, and Enter presses the focused
   press('ArrowDown');
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('sound');
   press('ArrowLeft'); press('ArrowUp');
-  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-5');
   press('Enter');
   vi.advanceTimersByTime(DEAD_MS);
   press('Enter');
-  expect(send).toHaveBeenCalledWith({ k: 'goto', stage: 4 });
+  expect(send).toHaveBeenCalledWith({ k: 'goto', stage: 5 });
 });
 it('reload fires at once while the link is up, asks twice once it drops, and a click on the scrim closes', () => {
   press('m');
@@ -248,7 +260,7 @@ it('Tab and Shift+Tab walk the focus like the arrows, so it never leaves the pag
   expect(document.activeElement?.getAttribute('data-menu-item')).toBe('sound');
   expect(tab(true).defaultPrevented).toBe(true);
   tab(true);
-  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-4');   // back past the first, to the last
+  expect(document.activeElement?.getAttribute('data-menu-item')).toBe('stage-5');   // back past the first, to the last
 });
 it('closing disarms: an item armed before Esc does not bring the menu back when its time runs out', () => {
   press('m');
@@ -266,7 +278,7 @@ it('redraws for a new view while open, and stops listening for views once closed
   for (const fn of viewListeners) fn();
   const restart = root.querySelector('[data-menu-item=restart]') as HTMLButtonElement;
   expect(restart.disabled).toBe(false);
-  expect(restart.textContent).toContain('Restart round 1');
+  expect(restart.textContent).toContain('Restart question 1');
   press('m');
   expect(viewListeners.size).toBe(0);
 });

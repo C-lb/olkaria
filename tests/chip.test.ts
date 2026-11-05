@@ -128,9 +128,9 @@ it('tension changes the tempo of what comes next', () => {
 
 it('stop ends scheduling and silences', () => {
   const chip = new Chip(voicer);
-  chip.play('travel');
+  chip.play('narration');
   tick(10);
-  expect(chip.playing).toBe('travel');
+  expect(chip.playing).toBe('narration');
   expect(voicer.releaseMusic).not.toHaveBeenCalled();
   const stoppedAt = clock;
   chip.stop();

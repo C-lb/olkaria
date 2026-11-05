@@ -1,4 +1,6 @@
+// @vitest-environment happy-dom
 // tests/offline-client.test.ts
+// happy-dom, because one test plays the whole game through the facilitator's real keys (host/hotkeys.ts).
 import { it, expect } from 'vitest';
 import raw from '../content/case.json';
 import { loadContent } from '../shared/content';
@@ -11,26 +13,25 @@ it('runs the state machine locally and reports views', async () => {
   expect(code).toBe('OFFLINE');
   client.send({ k: 'start' }); client.send({ k: 'openVote' });
   client.send({ k: 'injectVotes', counts: { B: 3 } });
-  expect(views.at(-1).phase).toBe('vote'); expect(views.at(-1).supportTally.B).toBe(3); expect(views.at(-1).lead).toBe('citizen');
+  expect(views.at(-1).phase).toBe('vote'); expect(views.at(-1).tally).toEqual({ A: 0, B: 3, C: 0 });
   t = 121000; client.tick();
   expect(views.at(-1).phase).toBe('locked');
   client.send({ k: 'callout' }); client.send({ k: 'judge', awarded: true });
+  expect(views.at(-1).callouts[0]).toEqual([{ playerId: null, option: null, status: 'awarded' }]);
   client.send({ k: 'reveal' });
-  expect(views.at(-1).damageLog[0].total).toBe(100);   // all support on B: 80 + focus 15 + rally 10, capped
-  expect(views.at(-1).damageLog[0].alignment).toBe(0);
-});
-it('bot votes lean toward the strongest option', () => {
-  const t = botTally(c, 0, [], 1000, Math.random);
-  expect(t.A + t.B + t.C + t.D).toBe(1000);
-  expect(t.B).toBeGreaterThan(t.C);
+  expect(views.at(-1).phase).toBe('reveal');
+  expect(views.at(-1).majorities).toEqual(['B']);
 });
 
 // Added after the brief's tests. The fake clock keeps the client's 250 ms timer from outliving a test,
 // including the brief's own, which calls connect() and never stops it.
 import { afterEach, beforeEach, describe, vi } from 'vitest';
+import type Phaser from 'phaser';
+import type { Sound } from '../host/audio/sound';
+import { installHotkeys } from '../host/hotkeys';
+import type { Hud } from '../host/hud/Hud';
 import type { ConnectionStatus } from '../host/net';
-import { effectiveScores } from '../shared/scoring';
-import { OPTION_IDS, type HostView, type OptionId, type Tally } from '../shared/types';
+import { OPTION_IDS, type HostCmd, type HostView, type Tally } from '../shared/types';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -40,7 +41,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const ZERO: Tally = { A: 0, B: 0, C: 0, D: 0 };
+const ZERO: Tally = { A: 0, B: 0, C: 0 };
 const total = (t: Tally): number => OPTION_IDS.reduce((sum, o) => sum + t[o], 0);
 
 function last<T>(xs: readonly T[]): T {
@@ -61,53 +62,87 @@ function seeded(seed: number): () => number {
 }
 
 describe('botTally', () => {
+  it('draws evenly over A, B and C, since no option scores higher than another', () => {
+    const t = botTally(300, seeded(1));
+    expect(t.A + t.B + t.C).toBe(300);
+    expect(Math.min(t.A, t.B, t.C)).toBeGreaterThan(60);
+    expect(Object.keys(t).sort()).toEqual(['A', 'B', 'C']);
+    // A rng that sweeps [0, 1) evenly in midpoints gives each option a third.
+    let i = 0;
+    expect(botTally(3000, () => (i++ + 0.5) / 3000)).toEqual({ A: 1000, B: 1000, C: 1000 });
+  });
+
   it('hands out exactly n whole votes, and none for an n that is not a positive number', () => {
     for (const n of [1, 2, 7, 30, 1000]) {
-      const t = botTally(c, 0, [], n, seeded(n));
+      const t = botTally(n, seeded(n));
       expect(total(t)).toBe(n);
       for (const o of OPTION_IDS) expect(Number.isInteger(t[o])).toBe(true);
     }
-    for (const n of [0, -5, NaN, Infinity]) expect(botTally(c, 0, [], n, Math.random)).toEqual(ZERO);
-    expect(total(botTally(c, 0, [], 2.9, Math.random))).toBe(2);
+    for (const n of [0, -5, NaN, Infinity]) expect(botTally(n, Math.random)).toEqual(ZERO);
+    expect(total(botTally(2.9, Math.random))).toBe(2);
   });
 
   it('gives the same tally for the same rng, and draws once per vote', () => {
-    expect(botTally(c, 1, ['B'], 200, seeded(42))).toEqual(botTally(c, 1, ['B'], 200, seeded(42)));
-    expect(botTally(c, 1, ['B'], 200, seeded(42))).not.toEqual(botTally(c, 1, ['B'], 200, seeded(43)));
+    expect(botTally(200, seeded(42))).toEqual(botTally(200, seeded(42)));
+    expect(botTally(200, seeded(42))).not.toEqual(botTally(200, seeded(43)));
     const rng = vi.fn(seeded(7));
-    botTally(c, 2, ['B', 'C'], 25, rng);
+    botTally(25, rng);
     expect(rng).toHaveBeenCalledTimes(25);
   });
 
   it('puts the edges of the range on the first and last option', () => {
-    expect(botTally(c, 0, [], 20, () => 0)).toEqual({ ...ZERO, A: 20 });
-    expect(botTally(c, 0, [], 20, () => 0.9999999)).toEqual({ ...ZERO, D: 20 });
+    expect(botTally(20, () => 0)).toEqual({ ...ZERO, A: 20 });
+    expect(botTally(20, () => 0.9999999)).toEqual({ ...ZERO, C: 20 });
     // A draw that rounding pushes to the very end of the range still lands on an option.
-    expect(botTally(c, 0, [], 5, () => 1)).toEqual({ ...ZERO, D: 5 });
+    expect(botTally(5, () => 1)).toEqual({ ...ZERO, C: 5 });
   });
+});
 
-  it('weights each option by its evidence score plus 10, and the round 4 score by the earlier majorities', () => {
-    // A rng that sweeps [0, 1) evenly in midpoints puts each option's share of the votes at its share of the weight.
-    const sweep = (n: number): (() => number) => {
-      let i = 0;
-      return () => (i++ + 0.5) / n;
+describe('a whole game offline, on the keys', () => {
+  it('plays start to ending over five rounds with keys 1 to 3 and Space, and Digit4 sends nothing', async () => {
+    let t = 0;
+    const client = new OfflineRoomClient(c, () => t);
+    const views: HostView[] = [];
+    const errors: string[] = [];
+    client.onState((v) => views.push(v));
+    client.onError((m) => errors.push(m));
+    await client.connect();
+    const sent: HostCmd[] = [];
+    const send = client.send.bind(client);
+    client.send = (cmd: HostCmd) => { sent.push(cmd); send(cmd); };
+    const game = { registry: { get: (key: string) => (key === 'view' ? last(views) : undefined) }, scale: { toggleFullscreen: vi.fn() } } as unknown as Phaser.Game;
+    const hud = { showToast: vi.fn() } as unknown as Hud;
+    const sound: Sound = { music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(), toggle: vi.fn(() => true), enabled: true };
+    const dispose = installHotkeys(game, client, hud, sound);
+    const key = (code: string, k: string, init: KeyboardEventInit = {}): void => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code, key: k, bubbles: true, ...init }));
     };
-    const cases: [number, OptionId[]][] = [[0, []], [1, ['B']], [2, ['B', 'C']], [3, ['B', 'C', 'B']], [3, []]];
-    for (const [round, prior] of cases) {
-      const score = effectiveScores(c, round, prior);
-      const weights = OPTION_IDS.map((o) => score[o] + 10);
-      const sum = weights.reduce((a, b) => a + b, 0);
-      const n = 5000;
-      const t = botTally(c, round, prior, n, sweep(n));
-      expect(total(t)).toBe(n);
-      OPTION_IDS.forEach((o, i) => {
-        expect(Math.abs(t[o] - (n * weights[i]) / sum), `round ${round} option ${o}`).toBeLessThanOrEqual(1);
-      });
+    // Space belongs to the scenes, so the test sends what spaceAction (host/strikers.ts) sends for each phase.
+    client.send({ k: 'start' });
+    for (let round = 0; round < c.rounds.length; round++) {
+      expect(last(views)).toMatchObject({ phase: 'travel', round });
+      client.send({ k: 'openVote' });
+      key('Digit1', '1');
+      key('Digit2', '@', { shiftKey: true });
+      key('Numpad3', '3');
+      const before = sent.length;
+      key('Digit4', '4');
+      key('Numpad4', '4');
+      expect(sent).toHaveLength(before);
+      expect(last(views).tally).toEqual({ A: 1, B: 10, C: 1 });
+      t += 121_000;
+      client.tick();
+      expect(last(views).phase).toBe('locked');
+      key('KeyC', 'c');
+      key('KeyY', 'y');
+      expect(last(views).callouts[round]).toEqual([{ playerId: null, option: null, status: 'awarded' }]);
+      client.send({ k: 'reveal' });
+      client.send({ k: 'next' });
     }
-    // The earlier majorities change round 4: B and D fit them, A and C do not.
-    const fitting = botTally(c, 3, ['B', 'C', 'B'], 1000, seeded(5));
-    const unrelated = botTally(c, 3, [], 1000, seeded(5));
-    expect(fitting.B + fitting.D).toBeGreaterThan(unrelated.B + unrelated.D);
+    expect(last(views).phase).toBe('ending');
+    expect(last(views).majorities).toEqual(['B', 'B', 'B', 'B', 'B']);
+    expect(errors).toEqual([]);
+    dispose();
   });
 });
 
@@ -218,19 +253,18 @@ describe('OfflineRoomClient', () => {
     expect(errors).toEqual([]);
   });
 
-  it('adds bot votes to the support side of the current round, weighted by botTally', async () => {
+  it('adds bot votes to the current round, drawn by botTally', async () => {
     const { client, views } = start();
     await client.connect();
     client.send({ k: 'start' });
     client.send({ k: 'openVote' });
     vi.spyOn(Math, 'random').mockReturnValue(0);   // every bot draws the first option
     client.addBots(30);
-    expect(last(views).supportTally).toEqual({ ...ZERO, A: 30 });
     expect(last(views).tally).toEqual({ ...ZERO, A: 30 });
-    expect(last(views).leadTally).toEqual(ZERO);
+    expect(last(views).synthetic[0]).toEqual({ ...ZERO, A: 30 });
     client.send({ k: 'closeVote' });
     client.addBots(5);   // still counts while the vote is locked
-    expect(last(views).supportTally).toEqual({ ...ZERO, A: 35 });
+    expect(last(views).tally).toEqual({ ...ZERO, A: 35 });
   });
 
   it('refuses bots in the lobby and adds nothing', async () => {
@@ -238,7 +272,7 @@ describe('OfflineRoomClient', () => {
     await client.connect();
     client.addBots(30);
     expect(errors).toEqual(['Start the game before adding bots']);
-    expect(last(views).supportTally).toEqual(ZERO);
+    expect(last(views).tally).toEqual(ZERO);
     expect(last(views).synthetic).toEqual({});
   });
 
@@ -338,7 +372,7 @@ describe('OfflineRoomClient', () => {
 
   it('delivers views in order to every listener when a listener sends a command while it is being told a view', async () => {
     const client = new OfflineRoomClient(c, () => 0);
-    const trail = (v: HostView) => `${v.phase}:${total(v.supportTally)}`;
+    const trail = (v: HostView) => `${v.phase}:${total(v.tally)}`;
     const reacting: string[] = [];
     const scene: HostView[] = [];
     let added = false;
@@ -355,7 +389,7 @@ describe('OfflineRoomClient', () => {
     client.send({ k: 'openVote' });
     expect(reacting).toEqual(['lobby:0', 'travel:0', 'vote:0', 'vote:10']);
     expect(scene.map(trail)).toEqual(['lobby:0', 'travel:0', 'vote:0', 'vote:10']);
-    expect(total(last(scene).supportTally)).toBe(10);   // the last view the scene holds is the newest
+    expect(total(last(scene).tally)).toBe(10);   // the last view the scene holds is the newest
   });
 
   it('keeps the views a listener makes in one go in the order it made them', async () => {
@@ -368,7 +402,7 @@ describe('OfflineRoomClient', () => {
       client.addBots(10);
       client.send({ k: 'closeVote' });
     });
-    client.onState((v) => scene.push(`${v.phase}:${total(v.supportTally)}`));
+    client.onState((v) => scene.push(`${v.phase}:${total(v.tally)}`));
     await client.connect();
     client.send({ k: 'start' });
     client.send({ k: 'openVote' });

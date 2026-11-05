@@ -1,4 +1,4 @@
-// The facilitator's menu (spec 3): M or Esc opens it over any screen, with the actions (restart the round, back to
+// The facilitator's menu (spec 3): M or Esc opens it over any screen, with the actions (restart the question, back to
 // the lobby, reload the page, sound off or on), a row of stages to go to, and the key map. menuItems() says what each item reads and
 // does, from the view, the mode and the link; installMenu() owns the keys, the asking twice and the redraws; the HUD
 // only draws (Hud.showMenu). While the menu is open no key press reaches the room or the scenes.
@@ -22,13 +22,13 @@ export const ARM_MS = 3000;
  */
 export const DEAD_MS = 300;
 
-const RESTART_HINT = 'This round again from its road. Its votes go; earlier rounds stay.';
-const LOBBY_HINT = 'Players stay; votes and scores go.';
+const RESTART_HINT = 'This question again from its boss. Its votes go; earlier questions stay.';
+const LOBBY_HINT = 'Players stay; their votes go.';
 const RELOAD_HINT_UP = 'The same room and screen come back.';
 const RELOAD_HINT_DOWN = 'Needs the network. Without it the page is lost.';
 const RELOAD_HINT_OFFLINE = 'Offline mode starts over on a reload. Use Back to the lobby.';
 const SOUND_HINT = 'S does the same.';
-const STAGES_HINT = 'Earlier rounds stay. The one you go to, and the ones after it, start over. Ending shows what has been played.';
+const STAGES_HINT = 'Earlier questions stay. The one you go to, and the ones after it, start over. Ending shows what has been played.';
 
 /** The menu installed last, taken down when another install replaces it. */
 let uninstall: (() => void) | null = null;
@@ -37,8 +37,9 @@ let uninstall: (() => void) | null = null;
 const isToggle = (key: string): boolean => key === 'Escape' || key === 'm' || key === 'M';
 
 /**
- * What the menu offers (spec 3.2). The restart names the round it plays again and, like the way back to the lobby,
- * waits for the game to start. Every stage, then the ending, can be gone to once a view has come, from the lobby too.
+ * What the menu offers (spec 3.2). The restart names the question it plays again and, like the way back to the lobby,
+ * waits for the game to start. Every stage, "Q1 Power" to "Q5 The Deadlock", then the ending, can be gone to once a
+ * view has come, from the lobby too.
  * The reload fires at once while the link is up and asks twice while it is down; offline it is off, because a reload
  * there loses the game. Until the first view only the reload and the sound are on. The sound item names what it does
  * now, "Sound off" while it plays, and never asks twice. `link` is the client's latest ConnectionStatus (host/net.ts),
@@ -52,12 +53,12 @@ export function menuItems(
   const stage = (index: number, label: string): MenuItem => ({ id: `stage-${index}`, label, hint: '', enabled: view !== null, confirm: true, act: goto(index) });
   return {
     actions: [
-      { id: 'restart', label: round === null ? 'Restart the round' : `Restart round ${round + 1}`, hint: RESTART_HINT, enabled: round !== null, confirm: true, act: goto(round ?? 0) },
+      { id: 'restart', label: round === null ? 'Restart the question' : `Restart question ${round + 1}`, hint: RESTART_HINT, enabled: round !== null, confirm: true, act: goto(round ?? 0) },
       { id: 'lobby', label: 'Back to the lobby', hint: LOBBY_HINT, enabled: round !== null, confirm: true, act: { kind: 'cmd', cmd: { k: 'reset' } } },
       { id: 'reload', label: 'Reload the page', ...reloadState(mode, link), act: { kind: 'reload' } },
       { id: 'sound', label: sound.enabled ? 'Sound off' : 'Sound on', hint: SOUND_HINT, enabled: true, confirm: false, act: { kind: 'sound' } },
     ],
-    stages: [...content.rounds.map((r, i) => stage(i, `${i + 1} ${r.boss}`)), stage(content.rounds.length, 'Ending')],
+    stages: [...content.rounds.map((r, i) => stage(i, `Q${i + 1} ${r.problem}`)), stage(content.rounds.length, 'Ending')],
     stagesHint: STAGES_HINT,
   };
 }

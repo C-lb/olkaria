@@ -53,11 +53,15 @@ const locked = (callouts: Callout[]): Partial<HostView> => ({ phase: 'locked', r
 
 it('adds one vote per digit and ten with Shift, by key position', () => {
   press('Digit2', '2');
-  press('Digit4', '$', { shiftKey: true });
+  press('Digit3', '#', { shiftKey: true });
   press('Numpad1', '1');
   expect(send.mock.calls.map(([cmd]) => cmd)).toEqual([
-    { k: 'injectVotes', counts: { B: 1 } }, { k: 'injectVotes', counts: { D: 10 } }, { k: 'injectVotes', counts: { A: 1 } },
+    { k: 'injectVotes', counts: { B: 1 } }, { k: 'injectVotes', counts: { C: 10 } }, { k: 'injectVotes', counts: { A: 1 } },
   ]);
+  // There is no option D any more, so 4 and 5 send nothing, on either row.
+  press('Digit4', '4');
+  press('Numpad4', '4');
+  press('Digit4', '$', { shiftKey: true });
   press('Digit5', '5');
   expect(send).toHaveBeenCalledTimes(3);
 });
@@ -86,10 +90,10 @@ it('sends bots, call-outs, reopen and hide names', () => {
 
 it('judges with Y and N only while a call-out is pending in a locked vote', () => {
   press('KeyY', 'y');
-  view = locked([{ playerId: 'p1', option: 'B', status: 'awarded', points: 30 }]);
+  view = locked([{ playerId: 'p1', option: 'B', status: 'awarded' }]);
   press('KeyN', 'n');
   expect(send).not.toHaveBeenCalled();
-  view = locked([{ playerId: 'p1', option: 'B', status: 'awarded', points: 30 }, { playerId: null, option: null, status: 'pending', points: 0 }]);
+  view = locked([{ playerId: 'p1', option: 'B', status: 'awarded' }, { playerId: null, option: null, status: 'pending' }]);
   press('KeyY', 'y');
   press('KeyN', 'n');
   expect(send.mock.calls.map(([cmd]) => cmd)).toEqual([{ k: 'judge', awarded: true }, { k: 'judge', awarded: false }]);

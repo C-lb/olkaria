@@ -52,7 +52,7 @@ export interface OptionsArgs {
 export interface OptionsStatus { timerText: string; votedText: string }
 
 /** The call-out. No name is a hand call-out: the facilitator picks someone in the room. */
-export interface BannerArgs { name: string | null; letter: OptionId | null; phone: string | null; footer: string }
+export interface BannerArgs { name: string | null; letter: OptionId | null; footer: string }
 
 /** The parts of a round's damage. `cap` is the most one round can drain (`scoring.roundHp`), named when `capped`. */
 export interface Breakdown { base: number; focus: number; alignment: number; exhibit: number; rally: number; total: number; capped: boolean; cap: number }
@@ -65,19 +65,11 @@ export interface DebriefArgs {
   discuss: string;
 }
 
-export interface EndingArgs {
-  title: string;
-  tier: string;
-  /** One paragraph under the title, above the rows: why the Deadlock holds. Absent for an option's ending. */
-  text?: string;
-  /** Round 4's votes per option, as counts or shares: each bar is the option's part of the whole. */
-  split: Record<OptionId, number>;
-  /** Stored lowercase in the content; each bullet is capitalised here. */
-  mustBeTrue: string[];
-  risk: string[];
-  /** For "the Deadlock holds": per round, "Round 1", what the class chose, and the letters the final pick needed ("B or D"). */
-  holds: { round: string; chose: string; needed: string }[] | null;
-}
+/**
+ * The ending: the title and the line under it, the last question, and one column per option with its full text, how
+ * many picked it, and the names of those who did (at most a screenful, then "and N more").
+ */
+export interface EndingArgs { title: string; text: string; question: string; columns: { letter: OptionId; text: string; count: number; names: string[]; more: number }[] }
 
 export interface LeaderboardArgs {
   rows: { name: string; className: string; score: number }[];

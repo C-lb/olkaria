@@ -1,9 +1,9 @@
-// The music as data: ten chiptune themes written as sixteenth-note steps, and the pure
+// The music as data: nine chiptune themes written as sixteenth-note steps, and the pure
 // functions that turn a window of beats into note events. No DOM, no Phaser, no Web Audio.
 
 export type Wave = 'pulse' | 'square' | 'triangle' | 'noise';
 export type ThemeId =
-  | 'lobby' | 'travel' | 'narration' | 'vote' | 'locked'
+  | 'lobby' | 'narration' | 'vote' | 'locked'
   | 'strike' | 'debrief' | 'endingWon' | 'endingHolds' | 'leaderboard';
 export type Tension = 0 | 1 | 2;
 
@@ -79,37 +79,6 @@ const lobbyTracks: readonly Track[] = [
       '- - H -  - - H -  - - H -  - - H -',
       '- - H -  - - H -  - - H -  - - H -',
       '- - H -  - - H -  - - H -  - - H -',
-    ),
-  },
-];
-
-// travel: driving D dorian loop over Dm G Dm C, eighth-note bass arpeggio, lead over it, kick on the beat and hats between. 144 bpm.
-const travelTracks: readonly Track[] = [
-  {
-    wave: 'square', gain: 0.26,
-    steps: bars(
-      'D3 . A3 . D4 . A3 .  D3 . A3 . D4 . A3 .',
-      'G2 . D3 . G3 . D3 .  G2 . D3 . G3 . D3 .',
-      'D3 . A3 . D4 . A3 .  D3 . A3 . D4 . A3 .',
-      'C3 . G3 . C4 . G3 .  C3 . G3 . C4 . G3 .',
-    ),
-  },
-  {
-    wave: 'pulse', gain: 0.18,
-    steps: bars(
-      'A4 - - D5  - F5 - E5  D5 - - A4  - C5 - D5',
-      'B4 - - D5  - G5 - F5  E5 - - D5  - B4 - D5',
-      'A4 - - D5  - F5 - A5  G5 - F5 -  E5 - D5 -',
-      'E5 - - G5  - E5 - D5  C5 - - D5  E5 - - -',
-    ),
-  },
-  {
-    wave: 'noise', gain: 0.14,
-    steps: bars(
-      'K - H -  K - H -  K - H -  K - H -',
-      'K - H -  K - H -  K - H -  K - H -',
-      'K - H -  K - H -  K - H -  K - H -',
-      'K - H -  K - H -  K - H -  K - H -',
     ),
   },
 ];
@@ -332,7 +301,6 @@ const endingHoldsTracks: readonly Track[] = [
 
 const THEME_TABLE: Record<ThemeId, Theme> = {
   lobby: { bpm: [124, 124, 124], bars: 4, beatsPerBar: 4, tracks: lobbyTracks },
-  travel: { bpm: [144, 144, 144], bars: 4, beatsPerBar: 4, tracks: travelTracks },
   narration: { bpm: [80, 80, 80], bars: 4, beatsPerBar: 4, tracks: narrationTracks },
   vote: { bpm: [150, 170, 185], bars: 4, beatsPerBar: 4, tracks: voteTracks },
   locked: { bpm: [100, 100, 100], bars: 2, beatsPerBar: 4, tracks: lockedTracks },
