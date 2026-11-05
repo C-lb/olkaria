@@ -5,8 +5,8 @@
 // and every figure a boss carries is in the digits font, which leaves out any glyph it lacks without a word.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BOLT, BOLTS, CORE, coreParts, DIGIT_CELL, FOG, GOLEM, golemParts, HIT, INK, MOTE, PUFF_PX, SPARK, SPARKS, SPRITES,
-  wyrmParts, type BossId, type Figure, type Placed, type Span, type Stray,
+  BOLT, BOLTS, BOSS_IDS, CORE, coreParts, DIE, DIGIT_CELL, FOG, HIT, HYDRA, hydraParts, INK, MOTE, PUFF_PX, SAND, SPARK,
+  SPARKS, SPRITES, WRAITH_OF_RISK, wraithParts, wyrmParts, type BossId, type Figure, type Placed, type Span, type Stray,
 } from '../host/art/boss-data';
 import { DIGIT_CHARS } from '../host/art/placeholders';
 
@@ -77,7 +77,7 @@ const sized = (rows: readonly string[], scale = 1): { x: number; y: number } => 
 
 function extents(id: BossId): Extent[] {
   switch (id) {
-    case 'grid': {
+    case 'power': {
       const parts = wyrmParts();
       const sparks = parts.slice(0, SPARKS.links).map((link) => {
         const rows = SPRITES[link.key];
@@ -97,23 +97,35 @@ function extents(id: BossId): Extent[] {
       expect(BOLTS.lifeMs).toBeGreaterThan(0);
       return [...parts.map((p) => part(p, waved(p.across.x), waved(p.across.y))), ...sparks.flat()];
     }
-    case 'debt': {
-      const at = golemParts();
-      const breath = strayed(GOLEM.breath);
-      const sway = strayed(GOLEM.sway);
-      const { dust } = GOLEM;
-      const life = dust.lifeMs / 1000;
+    case 'competition': {
+      const at = hydraParts();
+      const body = strayed(HYDRA.breath);
       return [
-        part(at.legs),
-        part(at.body, breath.dx, breath.dy),
-        part(at.eyes, breath.dx, breath.dy),
-        ...at.carvings.map((c) => figure(c, breath.dx, breath.dy)),
-        ...at.shackles.map((s) => part(s, sway.dx, sway.dy)),
-        particles('dust', zone(at.body.x + dust.x, at.body.y + dust.y, dust.w, dust.h),
-          { dx: [-dust.speedX * life, dust.speedX * life], dy: [0, (dust.gravityY * life * life) / 2] }, sized(MOTE, dust.scale)),
+        part(at.body, body.dx, body.dy),
+        ...at.heads.map((h, i) => {
+          const sway = strayed(HYDRA.sway[i]);
+          // A head rides the body's breath as well as its own sway.
+          return part(h, [sway.dx[0] + body.dx[0], sway.dx[1] + body.dx[1]], [sway.dy[0] + body.dy[0], sway.dy[1] + body.dy[1]]);
+        }),
       ];
     }
-    case 'fog': {
+    case 'risk': {
+      const at = wraithParts();
+      const bob = strayed(WRAITH_OF_RISK.bob);
+      const { fall } = SAND;
+      const life = fall.lifeMs / 1000;
+      return [
+        part(at.glass, bob.dx, bob.dy),
+        part(at.sand, bob.dx, bob.dy),
+        ...at.arms.map((a) => {
+          const reach = strayed(WRAITH_OF_RISK.reach);
+          return part(a, [bob.dx[0] + reach.dx[0], bob.dx[1] + reach.dx[1]], [bob.dy[0] + reach.dy[0], bob.dy[1] + reach.dy[1]]);
+        }),
+        particles('sand', { x0: at.glass.x + fall.x + bob.dx[0], x1: at.glass.x + fall.x + bob.dx[1], y0: at.glass.y + fall.y + bob.dy[0], y1: at.glass.y + fall.y + bob.dy[1] },
+          { dx: still, dy: [0, fall.speedY * life] }, sized(MOTE, fall.scale)),
+      ];
+    }
+    case 'demand': {
       const bob = strayed(FOG.bob);
       const drift = strayed(FOG.figureDrift);
       const life = FOG.ms / 1000;
@@ -155,7 +167,13 @@ function faults(e: Extent): string[] {
 }
 
 describe('the bosses', () => {
-  for (const id of ['grid', 'debt', 'fog', 'core'] as const) {
+  it('are the five of the class edits, in round order, the Debt Golem gone', () => {
+    expect(BOSS_IDS).toEqual(['power', 'demand', 'competition', 'risk', 'core']);
+    expect(Object.keys(SPRITES).filter((key) => /debt|golem/.test(key))).toEqual([]);
+    expect(DIE.ms).toBe(900);
+  });
+
+  for (const id of BOSS_IDS) {
     it(`${id} stays in its box, under the HP bar and out of the strike lane, idling, recoiling and throwing particles`, () => {
       const all = extents(id);
       expect(all.length).toBeGreaterThan(0);
@@ -173,8 +191,8 @@ describe('the bosses', () => {
   });
 
   it('writes every figure in characters the digits font has', () => {
-    const texts = [...GOLEM.carvings.map((c) => c.text), ...FOG.figures.map((f) => f.text)];
-    expect(texts.length).toBe(5);
+    const texts = FOG.figures.map((f) => f.text);
+    expect(texts.length).toBe(3);
     for (const text of texts) expect([...text].filter((ch) => !DIGIT_CHARS.includes(ch)), text).toEqual([]);
   });
 });

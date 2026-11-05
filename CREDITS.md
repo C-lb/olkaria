@@ -1,6 +1,6 @@
 # Credits
 
-Every file under `host/art/assets/` comes from one of the packs below, and each section lists the files taken from it. The class figures, tiles, exhibit, gate, digits font and the four bosses are drawn in code (`host/art/placeholders.ts`, `host/art/bosses.ts` and `host/art/boss-data.ts`) and need no credit.
+Every file under `host/art/assets/` comes from one of the packs below, and each section lists the files taken from it. The class figures, tiles, exhibit, gate, digits font and the five bosses are drawn in code (`host/art/placeholders.ts`, `host/art/bosses.ts` and `host/art/boss-data.ts`) and need no credit.
 
 ## Superpowers backgrounds asset pack
 

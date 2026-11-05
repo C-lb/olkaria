@@ -2,8 +2,9 @@
 // running if an asset fails to load. The class figures are painted from shared/figures.ts, which the phone draws
 // too. Everything is whole pixels, so the textures stay crisp at any zoom.
 import Phaser from 'phaser';
-import { FIGURES, type FigureRect } from '../../shared/figures';
+import { FIGURE_H, FIGURE_W, FIGURES, type FigureRect } from '../../shared/figures';
 import { PALETTE } from '../../shared/palette';
+import { ROLES } from '../../shared/types';
 
 // The palette lives in shared/ so the phone paints from it too; host files go on importing it from here.
 export { PALETTE };
@@ -71,7 +72,7 @@ export function texture(scene: Phaser.Scene, key: string, width: number, height:
 
 const P = PALETTE;
 
-// ---- Bosses, 64 x 48 ------------------------------------------------------------------------------------
+// ---- Bosses, 64 x 48: what a boss falls back to if its own art is missing (bosses.ts) ----------------------
 
 function gridWyrm(p: Painter): void {
   // A serpent of chain coiling up to the right, its head raised, lightning above.
@@ -89,16 +90,26 @@ function gridWyrm(p: Painter): void {
   p.bits(36, 4, ['#....', '.#...', '.###.', '...#.', '....#'], P.boneDim);
 }
 
-function debtGolem(p: Painter): void {
+function hydraOfRivalry(p: Painter): void {
+  // Three heads on long necks over one body.
+  p.disc(36, 40, 12, P.outline);
+  p.disc(36, 40, 11, P.stone);
+  for (const [x, y] of [[12, 14], [26, 8], [42, 14]] as const) {
+    p.rects([[x + 2, y + 4, 4, 40 - y - 8, P.stone], [x - 3, y - 2, 10, 6, P.stoneLight], [x - 2, y, 2, 1, P.amber]]);
+  }
+}
+
+function wraithOfRisk(p: Painter): void {
+  // A hood over an hourglass, sand running through it.
   p.rects([
-    [19, 36, 10, 12, P.stoneDark], [35, 36, 10, 12, P.stoneDark],
-    [14, 14, 36, 23, P.stone], [20, 18, 24, 14, P.stoneLight],
-    [26, 3, 12, 11, P.stone], [27, 4, 10, 1, P.stoneLight], [29, 8, 2, 2, P.amber], [33, 8, 2, 2, P.amber],
-    [4, 15, 10, 21, P.stone], [50, 15, 10, 21, P.stone], [3, 33, 12, 9, P.stoneLight], [49, 33, 12, 9, P.stoneLight],
-    [24, 21, 1, 7, P.outline], [25, 27, 4, 1, P.outline], [38, 19, 1, 5, P.outline], [36, 24, 3, 1, P.outline],
+    [26, 2, 12, 10, P.clothDark], [28, 5, 8, 6, P.outline], [29, 7, 2, 1, P.amber], [33, 7, 2, 1, P.amber],
+    [20, 12, 24, 2, P.wood], [20, 44, 24, 2, P.wood], [21, 14, 1, 30, P.wood], [42, 14, 1, 30, P.wood],
   ]);
-  // A chain across the chest.
-  for (let i = 0; i < 9; i++) p.rects([[15 + i * 4, 30 - i, 2, 2, P.boneDim]]);
+  for (let y = 14; y < 44; y++) {
+    const r = Math.max(1, Math.round(9 * Math.abs(y - 28.5) / 15.5));
+    p.rects([[32 - r, y, r * 2, 1, P.stoneDeep]]);
+  }
+  p.rects([[30, 22, 4, 6, P.amber], [31, 28, 2, 8, P.amber], [26, 38, 12, 6, P.amber]]);
 }
 
 function fogOfDemand(p: Painter): void {
@@ -204,22 +215,20 @@ function digits(scene: Phaser.Scene): void {
 
 /**
  * Creates every placeholder texture once per game: `class-citizen`, `class-government`, `class-business`,
- * `class-microsoft` (12 x 16), `tile-ground` and `tile-platform` (16 x 16), `exhibit` (12 x 12), `gate` (32 x 48),
- * `boss-grid`, `boss-debt`, `boss-fog`, `boss-core` (64 x 48), and the bitmap font `digits` (6 px tall, white,
- * tint it). A key that already exists, a real asset loaded first say, is left alone.
+ * `class-microsoft` (16 x 20), `tile-ground` and `tile-platform` (16 x 16), `exhibit` (12 x 12), `gate` (32 x 48),
+ * `boss-power`, `boss-demand`, `boss-competition`, `boss-risk`, `boss-core` (64 x 48), and the bitmap font `digits`
+ * (6 px tall, white, tint it). A key that already exists, a real asset loaded first say, is left alone.
  */
 export function makePlaceholders(scene: Phaser.Scene): void {
-  texture(scene, 'class-citizen', 12, 16, (p) => p.rects(FIGURES.citizen));
-  texture(scene, 'class-government', 12, 16, (p) => p.rects(FIGURES.government));
-  texture(scene, 'class-business', 12, 16, (p) => p.rects(FIGURES.business));
-  texture(scene, 'class-microsoft', 12, 16, (p) => p.rects(FIGURES.microsoft));
+  for (const role of ROLES) texture(scene, `class-${role}`, FIGURE_W, FIGURE_H, (p) => p.rects(FIGURES[role]));
   texture(scene, 'tile-ground', 16, 16, (p) => p.rects(GROUND));
   texture(scene, 'tile-platform', 16, 16, (p) => p.rects(PLATFORM));
   texture(scene, 'exhibit', 12, 12, (p) => p.rects(EXHIBIT));
   texture(scene, 'gate', 32, 48, gate);
-  texture(scene, 'boss-grid', 64, 48, gridWyrm);
-  texture(scene, 'boss-debt', 64, 48, debtGolem);
-  texture(scene, 'boss-fog', 64, 48, fogOfDemand);
+  texture(scene, 'boss-power', 64, 48, gridWyrm);
+  texture(scene, 'boss-demand', 64, 48, fogOfDemand);
+  texture(scene, 'boss-competition', 64, 48, hydraOfRivalry);
+  texture(scene, 'boss-risk', 64, 48, wraithOfRisk);
   texture(scene, 'boss-core', 64, 48, deadlockCore);
   digits(scene);
 }
