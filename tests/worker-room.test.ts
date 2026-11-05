@@ -1,6 +1,7 @@
 // The room's Durable Object over a stand-in for its storage. A room saved by an earlier build, without the trip count
 // or with an infinite vote deadline, loads safe: its alarm locks the vote and arms the idle cleanup instead of throwing,
-// and a start counts its first road as trip 1. An alarm time that is not finite never reaches setAlarm. This file is
+// and a start counts its first road as trip 1. A room the scoring build left on its leaderboard loads as the ending
+// and loses its scoring fields. An alarm time that is not finite never reaches setAlarm. This file is
 // type-checked with the worker's program (worker/tsconfig.json), which knows the Workers types, and left out of the
 // page's (tsconfig.json).
 import { expect, it, vi } from 'vitest';
@@ -50,7 +51,7 @@ function earlier(state: RoomState, changes: Partial<Record<keyof RoomState, unkn
 /** A room with one player and its first vote open, by the reducer, at `now`. */
 function openVote(now: number): RoomState {
   const events: RoomEvent[] = [
-    { type: 'join', clientId: 'p1', name: 'Ann', role: 'citizen', now },
+    { type: 'join', clientId: 'p1', name: 'Ann', role: 'citizen', table: 'Team 1', now },
     { type: 'cmd', key: KEY, cmd: { k: 'start' }, now },
     { type: 'cmd', key: KEY, cmd: { k: 'openVote' }, now },
   ];
@@ -83,4 +84,20 @@ it('an alarm time that is not finite deletes the alarm instead of reaching setAl
   expect(storage.deleteAlarm).toHaveBeenCalledTimes(2);
   await run({ type: 'setAlarm', at: now + 5000 });
   expect(alarms).toEqual([now + 5000]);
+});
+
+it('a room an earlier build left on its leaderboard loads as the ending, and the next change stores no scoring fields', async () => {
+  const now = Date.now();
+  const old = {
+    ...earlier(openVote(now)), phase: 'leaderboard', round: 3, bossHp: 120, damageLog: [{ round: 0, total: 80 }], exhibits: { 0: ['t1a'] },
+    players: { p1: { id: 'p1', name: 'Ann', role: 'citizen', table: null, joinedAt: now, score: 90, lastPoints: 10, votes: { 0: { option: 'D', at: now, points: 10 } } } },
+  };
+  const { room, data } = roomOver({ state: old, lastActivity: now });
+  const host = { deserializeAttachment: () => ({ role: 'host', clientId: '' }), send: vi.fn() };
+  await room.webSocketMessage(host as unknown as WebSocket, JSON.stringify({ t: 'cmd', key: KEY, cmd: { k: 'hideNames', hide: true } }));
+  expect(host.send).not.toHaveBeenCalled();
+  const stored = data.get('state') as Record<string, unknown>;
+  expect(stored).toMatchObject({ phase: 'ending', round: 3, hideNames: true, players: { p1: { table: 'Team 1', votes: {} } } });
+  for (const key of ['bossHp', 'damageLog', 'exhibits']) expect(stored).not.toHaveProperty(key);
+  expect((stored.players as Record<string, object>).p1).not.toHaveProperty('score');
 });

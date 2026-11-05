@@ -1,4 +1,4 @@
-// Player names: a generated fallback, and the cleaning applied to typed names and table names.
+// Player names and teams: a generated fallback, the cleaning applied to typed names, and the eight teams a phone picks from.
 // Plain TypeScript with no DOM or Node globals, because shared/ is type-checked by both the DOM
 // program and the worker program.
 
@@ -44,7 +44,10 @@ export function sanitizeName(raw: string | undefined, seed: string): string {
   return clean(raw) || generateName(seed);
 }
 
-/** The cleaned table name, or null when nothing is left. */
-export function sanitizeTable(raw: string | undefined): string | null {
-  return clean(raw) || null;
+/** The teams of the join form's dropdown. A team is only a label: it shows on the phone and changes nothing else. */
+export const TEAMS: readonly string[] = ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6', 'Team 7', 'Team 8'];
+
+/** The team when `raw` is exactly one of TEAMS, else null. Nothing is trimmed, because the dropdown sends the value as it is. */
+export function sanitizeTeam(raw: unknown): string | null {
+  return typeof raw === 'string' && TEAMS.includes(raw) ? raw : null;
 }

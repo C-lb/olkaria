@@ -1,19 +1,24 @@
 // tests/names.test.ts
 import { it, expect } from 'vitest';
-import { generateName, sanitizeName, sanitizeTable } from '../shared/names';
+import { generateName, sanitizeName, sanitizeTeam, TEAMS } from '../shared/names';
 it('generates a stable two-word name per seed', () => {
   expect(generateName('abc')).toBe(generateName('abc'));
   expect(generateName('abc').split(' ')).toHaveLength(2);
   expect(generateName('abc')).not.toBe(generateName('abd'));
 });
-it('sanitises names and tables', () => {
+it('sanitises names', () => {
   expect(sanitizeName('  Sarah\u0007  ', 's')).toBe('Sarah');
   expect(sanitizeName('AVeryLongNameIndeed', 's')).toBe('AVeryLongNameInd');
   expect(sanitizeName('   ', 's')).toBe(generateName('s'));
   expect(sanitizeName(undefined, 's')).toBe(generateName('s'));
-  expect(sanitizeTable('  Table 3 ')).toBe('Table 3');
-  expect(sanitizeTable('')).toBeNull();
-  expect(sanitizeTable(undefined)).toBeNull();
+});
+it('lists Team 1 to Team 8 and accepts exactly those', () => {
+  expect(TEAMS).toEqual(['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6', 'Team 7', 'Team 8']);
+  for (const team of TEAMS) expect(sanitizeTeam(team)).toBe(team);
+  expect(sanitizeTeam('Team 3')).toBe('Team 3');
+  expect(sanitizeTeam('Team 9')).toBeNull();
+  expect(sanitizeTeam(undefined)).toBeNull();
+  for (const bad of ['', ' Team 3', 'team 3', 'Team 3 ', 'Table 3', 'Front row', 3, null, {}, ['Team 3']]) expect(sanitizeTeam(bad)).toBeNull();
 });
 
 import { NAME_FIRST_WORDS, NAME_SECOND_WORDS } from '../shared/names';
@@ -41,13 +46,10 @@ it('strips control characters wherever they sit and before counting the 16 chara
 });
 it('falls back when nothing but control characters and spaces is left', () => {
   expect(sanitizeName('\u0007\u0001', 's')).toBe(generateName('s'));
-  expect(sanitizeTable('\u0007 ')).toBeNull();
 });
-it('treats a name or table that is not a string as missing', () => {
+it('treats a name that is not a string as missing', () => {
   expect(sanitizeName(123 as unknown as string, 's')).toBe(generateName('s'));
-  expect(sanitizeTable({} as unknown as string)).toBeNull();
 });
 it('never leaves a trailing space after the 16-character cut', () => {
   expect(sanitizeName('Abcdefghijklmno pqr', 's')).toBe('Abcdefghijklmno');
-  expect(sanitizeTable('Abcdefghijklmno pqr')).toBe('Abcdefghijklmno');
 });

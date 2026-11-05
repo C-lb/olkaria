@@ -1,92 +1,44 @@
 import { z } from 'zod';
-import { ROLES, type OptionId, type Role } from './types';
-
-export type SynergyTable = Record<OptionId, OptionId[][]>;
+import { OPTION_IDS, ROLES, type OptionId, type Role } from './types';
 
 const nonEmpty = z.string().min(1);
-const nonNegative = z.number().nonnegative();
-const count = z.number().int().nonnegative();
 
-const optionId = z.enum(['A', 'B', 'C', 'D']);
+const optionId = z.enum(OPTION_IDS as [OptionId, ...OptionId[]]);
 const roleId = z.enum(ROLES as [Role, ...Role[]]);
 
 const role = z.object({
   id: roleId,
-  stakeholder: nonEmpty,
-  className: nonEmpty,
+  name: nonEmpty,
   blurb: nonEmpty,
 });
 
+// An option is its letter and its full text. There are no short labels: every screen shows the letter, the text, or both.
 const option = z.object({
   id: optionId,
-  screen: nonEmpty,
-  phone: nonEmpty.max(28),
-  score: z.number().min(0).max(100).nullable(),
-  debrief: z.string(),
-  projector: z.string().max(130),
+  text: nonEmpty,
 });
+
+// The screens put option i under letter OPTION_IDS[i], so the file must list A, B and C in that order.
+const options = z.array(option).length(OPTION_IDS.length)
+  .refine((list) => list.every((o, i) => o.id === OPTION_IDS[i]), { message: 'options must be A, B and C in order' });
 
 const round = z.object({
-  id: z.enum(['grid', 'debt', 'fog', 'core']),
+  id: z.enum(['power', 'demand', 'competition', 'risk', 'core']),
   boss: nonEmpty,
-  lead: roleId,
-  title: nonEmpty,
-  narration: nonEmpty,
-  discuss: nonEmpty,
-  options: z.array(option).length(4),
-});
-
-// Four named keys rather than z.record: Zod 3 types a record keyed by an enum as
-// Partial<Record<...>>, which is not a SynergyTable and accepts a table with a letter missing.
-const synergyRow = z.array(z.array(optionId)).length(3);
-const synergy: z.ZodType<SynergyTable> = z.object({ A: synergyRow, B: synergyRow, C: synergyRow, D: synergyRow });
-
-const ending = z.object({
-  title: nonEmpty,
-  mustBeTrue: z.array(nonEmpty).min(1),
-  risk: z.array(nonEmpty).min(1),
-});
-
-const exhibit = z.object({
-  id: nonEmpty,
-  text: nonEmpty,
-  source: nonEmpty,
-});
-
-const scoring = z.object({
-  roundHp: z.number().positive(),
-  focusThreshold: z.number().min(0).max(1),
-  focusBonus: nonNegative,
-  alignmentBonus: nonNegative,
-  casterBonus: nonNegative,
-  exhibitBonus: nonNegative,
-  maxExhibits: count,
-  calloutBonus: nonNegative,
-  maxCallouts: count,
-  calloutPointsSpoke: nonNegative,
-  calloutPointsAwarded: nonNegative,
-  decisionBase: nonNegative,
-  synergyBonus: nonNegative,
-  speedBonusMax: nonNegative,
-  voteSeconds: z.number().positive(),
-  tiers: z.object({ decisive: nonNegative, fragile: nonNegative }),
+  problem: nonEmpty,
+  question: nonEmpty,
+  options,
 });
 
 export const ContentSchema = z.object({
   title: nonEmpty,
   roles: z.array(role).length(4),
-  rounds: z.array(round).length(4),
-  synergy,
-  endings: z.object({
-    A: ending,
-    B: ending,
-    C: ending,
-    D: ending,
-    holds: z.object({ title: nonEmpty, text: nonEmpty }),
+  rounds: z.array(round).length(5),
+  ending: z.object({ title: nonEmpty, text: nonEmpty }),
+  settings: z.object({
+    voteSeconds: z.number().positive(),
+    maxCallouts: z.number().int().nonnegative(),
   }),
-  exhibits: z.array(z.array(exhibit).length(3)).length(4),
-  quotes: z.object({ tanui: nonEmpty, ruto: nonEmpty, smith: nonEmpty }),
-  scoring,
 });
 
 export type CaseContent = z.infer<typeof ContentSchema>;

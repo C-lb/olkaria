@@ -5,42 +5,33 @@ import { loadContent } from '../shared/content';
 
 describe('content/case.json', () => {
   const c = loadContent(raw);
-  it('has four roles and four rounds of four options, each round led by the next role', () => {
-    expect(c.roles.map(r => r.id)).toEqual(['citizen', 'government', 'business', 'microsoft']);
-    expect(c.roles.map(r => r.className)).toEqual(['Rogue', 'Knight', 'Bard', 'Wizard']);
-    expect(c.roles.map(r => r.stakeholder)).toEqual(['Citizen', 'Kenyan Government', 'Local Businesses', 'Microsoft']);
-    expect(c.rounds.map(r => r.id)).toEqual(['grid', 'debt', 'fog', 'core']);
-    expect(c.rounds.map(r => r.lead)).toEqual(['citizen', 'government', 'business', 'microsoft']);
-    for (const r of c.rounds) expect(r.options.map(o => o.id)).toEqual(['A', 'B', 'C', 'D']);
+  it('has four roles by their new names, blurbs kept', () => {
+    expect(c.roles.map((r) => r.id)).toEqual(['citizen', 'government', 'business', 'microsoft']);
+    expect(c.roles.map((r) => r.name)).toEqual(['Citizen', 'Government', 'Local Businessman', 'Satya Nadella']);
+    for (const r of c.roles) expect(r.blurb.length).toBeGreaterThan(10);
   });
-  it('scores evidence rounds only and pins the spec scores', () => {
-    const s = (ri: number) => c.rounds[ri].options.map(o => o.score);
-    expect(s(0)).toEqual([40, 80, 15, 55]);
-    expect(s(1)).toEqual([10, 45, 65, 60]);
-    expect(s(2)).toEqual([70, 80, 40, 35]);
-    expect(s(3)).toEqual([null, null, null, null]);
+  it('has five rounds of three options, each with its boss and problem', () => {
+    expect(c.rounds.map((r) => r.id)).toEqual(['power', 'demand', 'competition', 'risk', 'core']);
+    expect(c.rounds.every((r) => r.options.map((o) => o.id).join('') === 'ABC')).toBe(true);
+    expect(c.rounds.map((r) => r.boss)).toEqual(['Grid Wyrm', 'Fog of Demand', 'Hydra of Rivalry', 'Wraith of Risk', 'The Deadlock']);
+    expect(c.rounds.map((r) => r.problem)).toEqual(['Power', 'Demand', 'Competition', 'Risk', 'The Deadlock']);
   });
-  it('keeps phone labels and projector lines short, with debriefs on evidence rounds', () => {
-    for (const r of c.rounds) for (const o of r.options) {
-      expect(o.phone.length).toBeLessThanOrEqual(28);
-      expect(o.projector.length).toBeLessThanOrEqual(130);
-      if (o.score !== null) { expect(o.debrief.length).toBeGreaterThan(20); expect(o.projector.length).toBeGreaterThan(20); }
-    }
+  it('carries the spec text word for word', () => {
+    expect(c.rounds[0].question).toBe("What should Kenya do about the data centre's electricity needs?");
+    expect(c.rounds[2].question).toBe('AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?');
+    expect(c.rounds[4].options[1].text).toBe('Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first.');
   });
-  it('has a complete synergy table', () => {
-    for (const id of ['A', 'B', 'C', 'D'] as const) expect(c.synergy[id]).toHaveLength(3);
-    expect(c.synergy.B).toEqual([['B', 'D'], ['C', 'D'], ['A', 'B']]);
-    expect(c.synergy.C).toEqual([['A'], ['B'], ['C', 'D']]);
+  it('keeps no scoring, explanations, old endings or American spelling, and no em dash', () => {
+    expect(JSON.stringify(raw)).not.toMatch(/data center|score|debrief|"phone"|mustBeTrue|\u2014/);
   });
-  it('has scoring constants, endings, exhibits and quotes', () => {
-    expect(c.scoring).toMatchObject({ roundHp: 100, focusThreshold: 0.6, focusBonus: 15, alignmentBonus: 10, casterBonus: 10, exhibitBonus: 5, maxExhibits: 3, calloutBonus: 10, maxCallouts: 4, calloutPointsSpoke: 10, calloutPointsAwarded: 30, decisionBase: 50, synergyBonus: 15, speedBonusMax: 20, voteSeconds: 120 });
-    expect(c.scoring.tiers).toEqual({ decisive: 260, fragile: 180 });
-    expect(Object.keys(c.endings).sort()).toEqual(['A', 'B', 'C', 'D', 'holds']);
-    expect(c.exhibits).toHaveLength(4);
-    for (const set of c.exhibits) expect(set).toHaveLength(3);
-    expect(Object.keys(c.quotes).sort()).toEqual(['ruto', 'smith', 'tanui']);
+  it('has the congratulations ending and the vote settings', () => {
+    expect(c.ending).toEqual({ title: 'Congratulations!', text: 'The Deadlock is broken.' });
+    expect(c.settings).toEqual({ voteSeconds: 120, maxCallouts: 4 });
   });
   it('rejects a broken file', () => {
     expect(() => loadContent({ ...raw, rounds: [] })).toThrow();
+    expect(() => loadContent({ ...raw, settings: { voteSeconds: 0, maxCallouts: 4 } })).toThrow();
+    const swapped = raw.rounds.map((r, i) => (i === 0 ? { ...r, options: [r.options[1], r.options[0], r.options[2]] } : r));
+    expect(() => loadContent({ ...raw, rounds: swapped })).toThrow();
   });
 });

@@ -1,279 +1,135 @@
 {
   "title": "Olkaria: the Deadlock",
   "roles": [
-    { "id": "citizen", "stakeholder": "Citizen", "className": "Rogue", "blurb": "Households, businesses, workers and the Olkaria communities" },
-    { "id": "government", "stakeholder": "Kenyan Government", "className": "Knight", "blurb": "The Treasury, the ICT ministry and Parliament" },
-    { "id": "business", "stakeholder": "Local Businesses", "className": "Bard", "blurb": "Safaricom, the banks, the startups, EcoCloud and the local developers" },
-    { "id": "microsoft", "stakeholder": "Microsoft", "className": "Wizard", "blurb": "Azure and the capital-allocation decision, with G42 on the same side" }
+    {
+      "id": "citizen",
+      "name": "Citizen",
+      "blurb": "Households, businesses, workers and the Olkaria communities"
+    },
+    {
+      "id": "government",
+      "name": "Government",
+      "blurb": "The Treasury, the ICT ministry and Parliament"
+    },
+    {
+      "id": "business",
+      "name": "Local Businessman",
+      "blurb": "Safaricom, the banks, the startups, EcoCloud and the local developers"
+    },
+    {
+      "id": "microsoft",
+      "name": "Satya Nadella",
+      "blurb": "Azure and the capital-allocation decision, with G42 on the same side"
+    }
   ],
   "rounds": [
     {
-      "id": "grid",
+      "id": "power",
       "boss": "Grid Wyrm",
-      "lead": "citizen",
-      "title": "What will Kenyans accept on power?",
-      "narration": "Olkaria steam fields. The Grid Wyrm coils around the plants that make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced hundreds of Maasai families. Rogues, this is your strike: what will Kenyans accept?",
-      "discuss": "Why did the full 1 GW do so little damage, and what condition made 60 to 100 MW safe?",
+      "problem": "Power",
+      "question": "What should Kenya do about the data centre's electricity needs?",
       "options": [
         {
           "id": "A",
-          "screen": "Households first. No data-centre load until household and industrial supply is secure; the deal waits for new generation.",
-          "phone": "Households first, deal waits",
-          "score": 40,
-          "debrief": "Protects a grid the case shows is stretched: lines above 120% of design capacity, a 1 GW load worth 31% of installed capacity (The Analyst, 2026a; Exhibit 2). But it forgoes the hub, the skills and the regional position while Oracle, Huawei and Nxtra move (section 3.2).",
-          "projector": "Protects a stretched grid (lines above 120%), but forgoes the hub while Oracle and Huawei move (The Analyst, 2026a; 3.2)."
+          "text": "Protect households first. Delay the project until Kenya has enough reliable electricity for its residents."
         },
         {
           "id": "B",
-          "screen": "Accept a 60 to 100 MW first phase, about 4% of peak demand, on condition that new generation is tied to every expansion.",
-          "phone": "Yes to 60 to 100 MW, tied",
-          "score": 80,
-          "debrief": "100 MW is about 4% of peak demand and a tenth of Olkaria's output (Exhibit 2); EcoCloud talks are already at 60 MW (Vimal, 2026); the 10,000 MW plan becomes the condition for growth rather than the hope behind it (Kizito, 2025; The Star, 2026).",
-          "projector": "100 MW is about 4% of peak demand; 60 MW EcoCloud talks already exist; growth tied to new generation (Exhibit 2; Vimal, 2026)."
+          "text": "Prioritize economic growth. Give the data centre access to electricity to attract investment, even if it puts more pressure on the grid."
         },
         {
           "id": "C",
-          "screen": "Accept the full 1 GW for the jobs, the skills lab and the regional hub.",
-          "phone": "Full 1 GW for the hub",
-          "score": 15,
-          "debrief": "1 GW is about 31% of installed capacity and 41% of record peak (Exhibit 2). The development centre that was meant to deliver the skills is closing (Namunwa, 2026). Benefits would be concentrated while the risks are spread widely (Exhibit 9).",
-          "projector": "1 GW is 31% of installed capacity; the skills centre is closing; benefits concentrated, risks spread (Exhibit 2; Exhibit 9)."
-        },
-        {
-          "id": "D",
-          "screen": "Only with a community deal: Olkaria communities get compensation and a share of the benefit before any expansion.",
-          "phone": "Community deal first",
-          "score": 55,
-          "debrief": "Geothermal expansion displaced hundreds of Maasai families and drew a World Bank Inspection Panel investigation (Krebs, 2022; World Bank Inspection Panel, 2015). The right ask for Olkaria; it decides who benefits more than how much power there is.",
-          "projector": "Olkaria expansion displaced Maasai families; the right ask for who benefits, not for how much power (Krebs, 2022)."
+          "text": "Make Microsoft pay. Require Microsoft and its partners to secure additional electricity for the project."
         }
       ]
     },
     {
-      "id": "debt",
-      "boss": "Debt Golem",
-      "lead": "government",
-      "title": "What does the Government offer instead of a guarantee?",
-      "narration": "Nairobi, outside the Treasury. The Debt Golem is built from the numbers: public debt about 68% of GDP, debt service taking 48.5% of ordinary revenue, the IMF asking that commitments like an anchor-tenant guarantee be counted as debt. In June 2024, protests over the Finance Bill left people dead and the bill withdrawn. In September 2026 the High Court ruled that PPP liabilities need Parliament. Microsoft wants a guarantee. Knights, this is your strike: what does the Government offer?",
-      "discuss": "Two live offers, one honest refusal, one dead option. Which would you sign, and who carries the risk?",
-      "options": [
-        {
-          "id": "A",
-          "screen": "Sign the anchor-tenant guarantee. The hub is worth the risk.",
-          "phone": "Sign the guarantee",
-          "score": 10,
-          "debrief": "The IMF would count it as debt while 48.5% of revenue already goes to debt service (The Analyst, 2026b; People Daily, 2025). The Finance Bill protests show where the limit is (Al Jazeera, 2024). The High Court says Parliament must approve (Capital FM, 2026). Elections come in 2027.",
-          "projector": "IMF counts it as debt, 48.5% of revenue already services debt, Parliament must approve, elections 2027 (The Analyst, 2026b)."
-        },
-        {
-          "id": "B",
-          "screen": "No guarantee of any kind. Microsoft can build on market terms or not at all.",
-          "phone": "No guarantee, market terms",
-          "score": 45,
-          "debrief": "Protects taxpayers and matches Tanui's line that Kenya cannot guarantee procurement set by markets or other governments (Musau, 2026). But it leaves the deal where it is, stalled, while competitors build (section 3.2).",
-          "projector": "Protects taxpayers and matches Tanui's line, but leaves the deal stalled while competitors build (Musau, 2026; 3.2)."
-        },
-        {
-          "id": "C",
-          "screen": "KenGen signs a smaller power and capacity commitment for a 60 MW phase, kept off the national balance sheet.",
-          "phone": "KenGen signs, 60 MW",
-          "score": 65,
-          "debrief": "The compromise under discussion (The Analyst, 2026b). KenGen gains a long-term customer (KenGen, 2025). The state still ultimately stands behind KenGen, and the IMF may still count it.",
-          "projector": "The compromise on the table; KenGen gains a customer, but the state still stands behind it (The Analyst, 2026b)."
-        },
-        {
-          "id": "D",
-          "screen": "Be the customer, not the guarantor: move government services to the local region under the Cloud Policy, paid from annual budgets.",
-          "phone": "Government as customer",
-          "score": 60,
-          "debrief": "The Cloud Policy and the data-localisation rules already point this way (section 4.4), and it creates demand without a sovereign guarantee. But a multi-year cloud purchase may still face the High Court's PPP review (section 4.4), and implementation of digital plans has been uneven (Exhibit 6).",
-          "projector": "Cloud Policy demand without a guarantee, but multi-year purchases may face the PPP review (4.4; Capital FM, 2026)."
-        }
-      ]
-    },
-    {
-      "id": "fog",
+      "id": "demand",
       "boss": "Fog of Demand",
-      "lead": "business",
-      "title": "What do Kenya's businesses commit?",
-      "narration": "The Fog. Microsoft wants proof that Kenyans will pay before it builds. Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?",
-      "discuss": "What would Kenya's businesses need to see before they sign, and what would Microsoft need to see before it builds?",
+      "problem": "Demand",
+      "question": "How should Microsoft secure enough customers in Kenya?",
       "options": [
         {
           "id": "A",
-          "screen": "Commit now. Safaricom, the banks and the large startups sign letters of intent to move workloads to a Nairobi region if price and latency beat South Africa.",
-          "phone": "Sign letters of intent",
-          "score": 70,
-          "debrief": "This is the predictable demand Microsoft says it needs before it builds (Vimal, 2026). M-Pesa's 40 million monthly users and the data-localisation rules make local workloads real (sections 3.2, 4.4). But the case says demand outside government is limited and today's market is 20 MW (section 4.2), so the letters have to be conditional and staged.",
-          "projector": "The demand Microsoft wants; M-Pesa's 40m users and localisation rules make it real, but today's market is 20 MW (4.2)."
+          "text": "Secure business commitments. Ask major Kenyan companies to commit to using Microsoft's services before construction."
         },
         {
           "id": "B",
-          "screen": "Partner, don't just buy. EcoCloud and local developers co-build a 60 MW first phase and sell capacity to Kenyan firms as they migrate.",
-          "phone": "Co-build 60 MW with EcoCloud",
-          "score": 80,
-          "debrief": "The 60 MW EcoCloud talks already exist (Vimal, 2026), local partners stand to win construction, power and connectivity contracts (section 5), and 60 MW is a size the market can grow into. It turns local business from a hoped-for customer into a builder with its own money at stake.",
-          "projector": "The 60 MW EcoCloud talks exist; local partners win the contracts and become builders, not hoped-for customers (Vimal, 2026)."
+          "text": "Make the government a customer. Have Kenya purchase cloud services for government operations to help create demand."
         },
         {
           "id": "C",
-          "screen": "Wait and compare. Keep workloads with Oracle at iXAfrica, Huawei and South Africa until Azure's local pricing is known.",
-          "phone": "Wait, compare providers",
-          "score": 40,
-          "debrief": "Rational for any single buyer: Oracle's region through iXAfrica, Huawei's 100-plus clients and Nxtra's 44 MW are already here (section 3.2). But it leaves the fog exactly as thick as Microsoft found it, and hands the first-mover position to the others.",
-          "projector": "Rational for one buyer, but Oracle, Huawei and Nxtra are already here and the fog stays as thick as before (3.2)."
+          "text": "Bet on future growth. Microsoft invests now without any demand guarantee, trusting that Kenya's growing technology market will bring customers later."
+        }
+      ]
+    },
+    {
+      "id": "competition",
+      "boss": "Hydra of Rivalry",
+      "problem": "Competition",
+      "question": "AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Enter, but start small, so it is present without overspending."
         },
         {
-          "id": "D",
-          "screen": "Skills first. No commitments until the innovation lab and training promised in 2024 replace the development centre that is closing.",
-          "phone": "Skills lab before contracts",
-          "score": 35,
-          "debrief": "The development centre employed about 500 people and was meant to feed the innovation lab (Namunwa, 2026; Otieno, 2026), so the grievance is real. But it ties demand to a different problem and gives Microsoft no reason to build.",
-          "projector": "The closing development centre makes the grievance real, but it ties demand to a different problem (Namunwa, 2026)."
+          "id": "B",
+          "text": "Move fast, so firms get a nearby Azure region instead of relying on South Africa."
+        },
+        {
+          "id": "C",
+          "text": "Let rivals compete, because more providers could mean more choice and lower prices."
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "boss": "Wraith of Risk",
+      "problem": "Risk",
+      "question": "If Microsoft waits, what is the biggest thing lost?",
+      "options": [
+        {
+          "id": "A",
+          "text": "They don't lose out since the money works harder in markets that have present demand."
+        },
+        {
+          "id": "B",
+          "text": "Jobs and skills training, which are already weakened by the Nairobi centre closure."
+        },
+        {
+          "id": "C",
+          "text": "Investor trust, progress made in talks, and the chance to be East Africa's tech hub."
         }
       ]
     },
     {
       "id": "core",
-      "boss": "The core",
-      "lead": "microsoft",
-      "title": "What should Microsoft do?",
-      "narration": "The Deadlock's core is exposed. Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. Wizards, this is your strike, and the whole party casts with you: what should Microsoft do?",
-      "discuss": "What should Microsoft do, and why?",
+      "boss": "The Deadlock",
+      "problem": "The Deadlock",
+      "question": "What should Microsoft do in Kenya?",
       "options": [
         {
           "id": "A",
-          "screen": "Proceed with the full 1 GW build, taking a larger stake and securing dedicated generation.",
-          "phone": "Full 1 GW build",
-          "score": null,
-          "debrief": "",
-          "projector": ""
+          "text": "Build big. Build the full 1 GW data centre now. Microsoft gets in early, but may build before there are enough customers."
         },
         {
           "id": "B",
-          "screen": "Build a 24 to 60 MW facility now and expand in stages as contracts and power arrive.",
-          "phone": "Build small, expand later",
-          "score": null,
-          "debrief": "",
-          "projector": ""
+          "text": "Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first."
         },
         {
           "id": "C",
-          "screen": "Pause Kenya. Put the capital into South Africa and return when power, finances and demand improve.",
-          "phone": "Wait, invest elsewhere",
-          "score": null,
-          "debrief": "",
-          "projector": ""
-        },
-        {
-          "id": "D",
-          "screen": "Become the tenant. Local partners such as EcoCloud build and own the facility; Microsoft anchors it with Azure capacity.",
-          "phone": "Partners build, we rent",
-          "score": null,
-          "debrief": "",
-          "projector": ""
+          "text": "Wait. Focus on South Africa instead. This avoids the risk, but Microsoft could lose G42 and a rival could take the opportunity."
         }
       ]
     }
   ],
-  "synergy": {
-    "A": [["C"], ["A", "D"], ["A"]],
-    "B": [["B", "D"], ["C", "D"], ["A", "B"]],
-    "C": [["A"], ["B"], ["C", "D"]],
-    "D": [["B", "C"], ["C", "D"], ["B"]]
+  "ending": {
+    "title": "Congratulations!",
+    "text": "The Deadlock is broken."
   },
-  "endings": {
-    "A": {
-      "title": "Olkaria Colossus",
-      "mustBeTrue": [
-        "Microsoft takes a larger share if G42 turns cautious",
-        "dedicated geothermal separate from the grid",
-        "demand grows into 1 GW over a long payback"
-      ],
-      "risk": [
-        "stranded assets and public opposition over power (section 7, Exhibit 10)"
-      ]
-    },
-    "B": {
-      "title": "The Seed Plant",
-      "mustBeTrue": [
-        "KenGen or a commercial anchor signs a smaller commitment",
-        "24 to 60 MW fills within a few years",
-        "the expansion option stays open"
-      ],
-      "risk": [
-        "weak early returns",
-        "competitors build larger first"
-      ]
-    },
-    "C": {
-      "title": "The Long Road South",
-      "mustBeTrue": [
-        "Kenyan demand stays small enough that waiting costs little",
-        "the G42 and Kenyan relationships survive the pause"
-      ],
-      "risk": [
-        "Oracle, Huawei and Nxtra take the market",
-        "the deal lapses"
-      ]
-    },
-    "D": {
-      "title": "The Tenant",
-      "mustBeTrue": [
-        "local partners such as EcoCloud are willing and able to own the asset risk",
-        "Kenya still delivers power and land",
-        "Azure demand fills the rented capacity"
-      ],
-      "risk": [
-        "the demand risk is moved, not solved",
-        "the partners' goals diverge from Microsoft's"
-      ]
-    },
-    "holds": { "title": "The Deadlock holds", "text": "Your board sends the party back to Nairobi." }
-  },
-  "exhibits": [
-    [
-      { "id": "t1a", "text": "Olkaria generates about 950 MW", "source": "James, 2026" },
-      { "id": "t1b", "text": "Record peak demand 2,444 MW, January 2026", "source": "James, 2026" },
-      { "id": "t1c", "text": "1 GW = about 31% of installed capacity", "source": "Exhibit 2" }
-    ],
-    [
-      { "id": "t2a", "text": "Public debt about 68% of GDP, June 2025", "source": "Ecofin Agency, 2025" },
-      { "id": "t2b", "text": "48.5% of ordinary revenue goes to debt service", "source": "People Daily, 2025" },
-      { "id": "t2c", "text": "PPP liabilities need Parliament's approval, September 2026", "source": "Capital FM, 2026" }
-    ],
-    [
-      { "id": "t3a", "text": "Kenya's data-centre market is about 20 MW", "source": "The Analyst, 2026b" },
-      { "id": "t3b", "text": "Market worth US$266 million in 2025, US$805 million by 2031", "source": "Semafor, 2026" },
-      { "id": "t3c", "text": "97.5% of online Kenyans vs 8.7% of all Kenyans used AI", "source": "Whitehead, 2026" }
-    ],
-    [
-      { "id": "t4a", "text": "US$1 billion is 0.6% of Microsoft's FY2027 capex", "source": "Exhibit 4" },
-      { "id": "t4b", "text": "Nairobi development centre closing, October 2026", "source": "Namunwa, 2026" },
-      { "id": "t4c", "text": "Microsoft committed US$329 million more to South Africa, April 2026", "source": "Kamau, 2026" }
-    ]
-  ],
-  "quotes": {
-    "tanui": "not failed or withdrawn … requires some structuring",
-    "ruto": "shut off power for half the country",
-    "smith": "single biggest step to advance the availability of digital technology"
-  },
-  "scoring": {
-    "roundHp": 100,
-    "focusThreshold": 0.6,
-    "focusBonus": 15,
-    "alignmentBonus": 10,
-    "casterBonus": 10,
-    "exhibitBonus": 5,
-    "maxExhibits": 3,
-    "calloutBonus": 10,
-    "maxCallouts": 4,
-    "calloutPointsSpoke": 10,
-    "calloutPointsAwarded": 30,
-    "decisionBase": 50,
-    "synergyBonus": 15,
-    "speedBonusMax": 20,
+  "settings": {
     "voteSeconds": 120,
-    "tiers": { "decisive": 260, "fragile": 180 }
+    "maxCallouts": 4
   }
 }

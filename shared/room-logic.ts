@@ -5,15 +5,16 @@
 // the Durable Object and the offline client replay the same events to the same result. Inputs are never
 // mutated and every result state is a new object: a change copies what it touches and shares the rest,
 // a refusal or a no-op returns a copy of the state it was given.
-// `goto` jumps to a stage, undoing the points and damage of the rounds it clears; `trips` counts roads set off on.
+// Nothing is scored: a round records only its votes, its call-outs and its majority.
+// `goto` jumps to a stage, clearing the rounds from there on; `trips` counts the times the party set off for a boss.
 // sanitizeState makes a room saved by an earlier build safe for this one; the Durable Object loads every room through it.
 import type { CaseContent } from './content';
-import { sanitizeName, sanitizeTable } from './names';
-import { computeDamage, pointsFor } from './scoring';
+import { generateName, sanitizeName, sanitizeTeam, TEAMS } from './names';
+import { majorityOf } from './tally';
 import {
   OPTION_IDS, ROLES,
-  type Callout, type Effect, type HostCmd, type HostView, type Phase, type Player, type PlayerView,
-  type Role, type RoomEvent, type RoomState, type Tally,
+  type Callout, type Effect, type HostCmd, type HostView, type OptionId, type Phase, type Player, type PlayerView,
+  type Role, type RoomEvent, type RoomState, type Tally, type Vote,
 } from './types';
 
 type Result = { state: RoomState; effects: Effect[] };
@@ -21,29 +22,24 @@ type JoinEvent = Extract<RoomEvent, { type: 'join' }>;
 type VoteEvent = Extract<RoomEvent, { type: 'vote' }>;
 type CalloutCmd = Extract<HostCmd, { k: 'callout' }>;
 
-const REVEALED: readonly Phase[] = ['reveal', 'ending', 'leaderboard'];
+const PHASES: readonly Phase[] = ['lobby', 'travel', 'vote', 'locked', 'reveal', 'ending'];
 
-const zeroTally = (): Tally => ({ A: 0, B: 0, C: 0, D: 0 });
+const zeroTally = (): Tally => ({ A: 0, B: 0, C: 0 });
 
-const isRole = (role: string): role is Role => (ROLES as readonly string[]).includes(role);
+const isRole = (role: unknown): role is Role => (ROLES as readonly unknown[]).includes(role);
+
+const isOption = (option: unknown): option is OptionId => (OPTION_IDS as readonly unknown[]).includes(option);
 
 /** Own-key lookup, so an id such as "constructor" is never mistaken for a player. */
 const playerOf = (state: RoomState, id: string): Player | undefined =>
   Object.hasOwn(state.players, id) ? state.players[id] : undefined;
 
-/** The lead role of a round; undefined outside the four rounds, which means the lobby. */
-const leadOf = (content: CaseContent, round: number): Role | undefined => content.rounds[round]?.lead;
-
-/** The lead role the screens show: the current round's, or the first round's while still in the lobby. */
-const shownLead = (content: CaseContent, round: number): Role =>
-  content.rounds[Math.min(content.rounds.length - 1, Math.max(0, round))].lead;
-
 /**
  * The vote window in ms. A seconds value that is not a finite number above 0 counts as absent. The
- * result is never below 1, because the speed bonus divides by it.
+ * result is never below 1, so a window always has a deadline after its opening.
  */
 function windowMsFor(seconds: number | undefined, content: CaseContent): number {
-  const s = typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0 ? seconds : content.scoring.voteSeconds;
+  const s = typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0 ? seconds : content.settings.voteSeconds;
   return Math.max(1, Math.round(s * 1000));
 }
 
@@ -69,39 +65,64 @@ export function initialState(code: string, hostKey: string, now: number, content
   return {
     code, hostKey, createdAt: now, updatedAt: now,
     phase: 'lobby', round: -1, voteOpenedAt: null, voteDeadline: null, voteWindowMs: windowMsFor(undefined, content),
-    players: {}, banned: [], synthetic: {}, exhibits: {}, callouts: {},
-    bossHp: content.rounds.length * content.scoring.roundHp, damageLog: [], majorities: [], hideNames: false, trips: 0,
+    players: {}, banned: [], synthetic: {}, callouts: {}, majorities: [], hideNames: false, trips: 0,
   };
 }
 
 /**
- * A stored room made safe to load. A room saved by an earlier build can lack a field added since (`trips`) or hold a
- * value this build never writes (an infinite vote deadline, from before openVote's seconds were capped), and either one
- * wedges it: setAlarm refuses a time that is not finite, so every alarm throws and is retried, and `trips + 1` of
- * nothing is NaN, which matches no scene's trip. This is hardening, not the migration spec 4.3 does without: a field
- * of the right shape keeps its value, any other takes the value a new room starts with, and a deadline or an opening
- * time that is not a finite number becomes none. Earlier builds revealed every round in order, so the damage log and
- * the majorities of such a room already hold one entry per revealed round, as goto expects.
+ * A stored room made safe to load. A room saved by an earlier build can lack a field added since (`trips`), hold a
+ * value this build never writes (an infinite vote deadline, from before openVote's seconds were capped), or carry what
+ * the scoring build kept: a leaderboard phase, boss HP, a damage log, exhibits, player scores, option D, points on
+ * call-outs. Any of these could wedge it or reach a screen: setAlarm refuses a time that is not finite, so every alarm
+ * throws and is retried, `trips + 1` of nothing is NaN, and every field here goes out in the host view. This is
+ * hardening, not a migration: the room is rebuilt from the fields this build knows, a field of the right shape keeps
+ * its value and any other takes the value a new room starts with. The leaderboard came after the ending, so it loads
+ * as the ending; a vote, a call-out or a majority for a letter that no longer exists is dropped or becomes none; a
+ * player with no valid team joins the first. Earlier builds revealed every round in order, so the majorities of such
+ * a room already hold one entry per revealed round, as goto expects.
  */
 export function sanitizeState(stored: RoomState, content: CaseContent): RoomState {
-  const s: Partial<Record<keyof RoomState, unknown>> = stored;
+  const s: Partial<Record<keyof RoomState, unknown>> & { phase?: unknown } = stored;
   const fresh = initialState(stored.code, stored.hostKey, stored.createdAt, content);
   const time = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-  const record = <T>(v: unknown, fallback: T): T => (typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as T) : fallback);
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const record = <T>(v: unknown, fallback: T): T => (isRecord(v) ? (v as T) : fallback);
   const list = <T>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+  /** The entries of a stored record that `keep` can make good, each under its own key. */
+  const entries = <T>(v: unknown, keep: (x: unknown, key: string) => T | null): Record<string, T> =>
+    Object.fromEntries(Object.entries(record<Record<string, unknown>>(v, {})).flatMap(([k, x]) => {
+      const kept = keep(x, k);
+      return kept === null ? [] : [[k, kept]];
+    }));
+  const tally = (t: unknown): Tally | null => (isRecord(t) ? { A: wholeVotes(t.A), B: wholeVotes(t.B), C: wholeVotes(t.C) } : null);
+  const vote = (v: unknown): Vote | null => (isRecord(v) && isOption(v.option) ? { option: v.option, at: time(v.at) ?? 0 } : null);
+  const player = (p: unknown, id: string): Player | null => (isRecord(p) ? {
+    id,
+    name: typeof p.name === 'string' ? p.name : generateName(id),
+    role: isRole(p.role) ? p.role : ROLES[0],
+    table: sanitizeTeam(p.table) ?? TEAMS[0],
+    joinedAt: time(p.joinedAt) ?? 0,
+    votes: entries(p.votes, vote),
+  } : null);
+  const callout = (co: unknown): Callout | null => {
+    if (!isRecord(co)) return null;
+    const status = co.status === 'pending' || co.status === 'awarded' ? co.status : 'declined';
+    return { playerId: typeof co.playerId === 'string' ? co.playerId : null, option: isOption(co.option) ? co.option : null, status };
+  };
+  const phase: Phase = s.phase === 'leaderboard' ? 'ending' : PHASES.includes(s.phase as Phase) ? (s.phase as Phase) : 'lobby';
+  const round = Number.isInteger(s.round) ? Math.min(content.rounds.length - 1, Math.max(-1, s.round as number)) : -1;
   const windowMs = time(s.voteWindowMs);
   return {
-    ...stored,
+    code: stored.code, hostKey: stored.hostKey, createdAt: stored.createdAt, updatedAt: stored.updatedAt,
+    phase, round,
     voteOpenedAt: time(s.voteOpenedAt),
     voteDeadline: time(s.voteDeadline),
     voteWindowMs: windowMs !== null && windowMs > 0 ? windowMs : fresh.voteWindowMs,
-    players: record(s.players, fresh.players),
+    players: entries(s.players, player),
     banned: list(s.banned, fresh.banned),
-    synthetic: record(s.synthetic, fresh.synthetic),
-    exhibits: record(s.exhibits, fresh.exhibits),
-    callouts: record(s.callouts, fresh.callouts),
-    damageLog: list(s.damageLog, fresh.damageLog),
-    majorities: list(s.majorities, fresh.majorities),
+    synthetic: entries(s.synthetic, tally),
+    callouts: entries(s.callouts, (v) => (Array.isArray(v) ? v.flatMap((co) => callout(co) ?? []) : null)),
+    majorities: list<unknown>(s.majorities, fresh.majorities).map((m) => (isOption(m) ? m : null)),
     hideNames: typeof s.hideNames === 'boolean' ? s.hideNames : fresh.hideNames,
     trips: time(s.trips) ?? fresh.trips,
   };
@@ -109,31 +130,17 @@ export function sanitizeState(stored: RoomState, content: CaseContent): RoomStat
 
 // ---- Tallies ---------------------------------------------------------------------------------------
 
-/**
- * The one counting loop behind all three tallies. Synthetic votes (manual mode, bots) belong to the
- * support side and to the total, never to the lead class.
- */
-function countVotes(state: RoomState, round: number, lead: Role | undefined, group: 'lead' | 'support' | 'all'): Tally {
+/** Every vote of the round: the players' and the synthetic ones (hand counts, bots). */
+export function tallyFor(state: RoomState, round: number): Tally {
   const tally = zeroTally();
   for (const p of Object.values(state.players)) {
     const vote = p.votes[round];
-    if (vote && (group === 'all' || (p.role === lead) === (group === 'lead'))) tally[vote.option] += 1;
+    if (vote) tally[vote.option] += 1;
   }
   const synthetic = state.synthetic[round];
-  if (synthetic && group !== 'lead') for (const o of OPTION_IDS) tally[o] += synthetic[o];
+  if (synthetic) for (const o of OPTION_IDS) tally[o] += synthetic[o];
   return tally;
 }
-
-/** Every vote of the round, lead class, the rest and synthetic. */
-export const tallyFor = (state: RoomState, round: number): Tally => countVotes(state, round, undefined, 'all');
-
-/** Votes of the players whose role leads the round. */
-export const leadTallyFor = (state: RoomState, round: number, content: CaseContent): Tally =>
-  countVotes(state, round, leadOf(content, round), 'lead');
-
-/** Votes of everyone else, plus the synthetic votes. */
-export const supportTallyFor = (state: RoomState, round: number, content: CaseContent): Tally =>
-  countVotes(state, round, leadOf(content, round), 'support');
 
 // ---- Reducer ---------------------------------------------------------------------------------------
 
@@ -151,8 +158,9 @@ export function reduce(state: RoomState, ev: RoomEvent, content: CaseContent): {
 
 /**
  * A new phone joins. A known one rejoins: once the game has started that keeps everything the player had, because
- * roles are fixed once the game starts (spec 4.1); in the lobby it takes the name, role and table again, so a mis-tapped
- * role can be put right. Even the same details count as a change then, so the phone always hears back.
+ * roles are fixed once the game starts (spec 4.1); in the lobby it takes the name, role and team again, so a mis-tapped
+ * role can be put right. Even the same details count as a change then, so the phone always hears back. The team must
+ * be one of the eight the dropdown offers.
  */
 function join(state: RoomState, ev: JoinEvent): Result {
   const id = ev.clientId;
@@ -163,9 +171,11 @@ function join(state: RoomState, ev: JoinEvent): Result {
   const known = playerOf(state, id);
   if (known && state.phase !== 'lobby') return nothing(state);
   if (!isRole(ev.role)) return refuse(state, 'bad role', id);
-  const details = { name: sanitizeName(ev.name, id), role: ev.role, table: sanitizeTable(ev.table) };
+  const table = sanitizeTeam(ev.table);
+  if (table === null) return refuse(state, 'bad team', id);
+  const details = { name: sanitizeName(ev.name, id), role: ev.role, table };
   // A change keeps when the player joined and what they have, which in the lobby is nothing yet.
-  const player: Player = known ? { ...known, ...details } : { id, ...details, joinedAt: ev.now, score: 0, lastPoints: 0, votes: {} };
+  const player: Player = known ? { ...known, ...details } : { id, ...details, joinedAt: ev.now, votes: {} };
   return update(state, ev.now, { players: { ...state.players, [id]: player } });
 }
 
@@ -181,7 +191,7 @@ function castVote(state: RoomState, ev: VoteEvent): Result {
   const player = playerOf(state, id);
   if (!player) return refuse(state, 'unknown player', id);
   if (player.votes[ev.round]) return refuse(state, 'already voted', id);
-  if (!OPTION_IDS.includes(ev.option)) return nothing(state);   // no phone button sends this, so it gets no error string
+  if (!isOption(ev.option)) return nothing(state);   // no phone button sends this, so it gets no error string
   const voted: Player = { ...player, votes: { ...player.votes, [ev.round]: { option: ev.option, at: ev.now } } };
   const players = { ...state.players, [id]: voted };
   const everyone = Object.values(players);
@@ -211,16 +221,15 @@ function runCmd(state: RoomState, cmd: HostCmd, now: number, content: CaseConten
     case 'start': return start(state, now);
     case 'openVote': return openVote(state, now, cmd.seconds, content);
     case 'closeVote': return state.phase === 'vote' ? lock(state, now) : badPhase(state);
-    case 'reveal': return reveal(state, now, content);
+    case 'reveal': return reveal(state, now);
     case 'next': return next(state, now, content);
     case 'reopen': return reopen(state, now);
     case 'reset': return reset(state, now, content);
     case 'kick': return kick(state, now, cmd.playerId);
-    case 'exhibit': return addExhibit(state, now, cmd.exhibitId, content);
     case 'injectVotes': return injectVotes(state, now, cmd.counts);
     case 'hideNames': return update(state, now, { hideNames: Boolean(cmd.hide) });
     case 'callout': return callOut(state, now, cmd, content);
-    case 'judge': return judge(state, now, cmd.awarded, content);
+    case 'judge': return judge(state, now, cmd.awarded);
     case 'goto': return goto(state, now, cmd.stage, content);
     default: return nothing(state);
   }
@@ -246,65 +255,33 @@ function reopen(state: RoomState, now: number): Result {
 }
 
 /**
- * Settles a locked round: pending call-outs count as declined, the lead and support tallies become
- * damage, points are paid and the majority is recorded. Final, because reopen refuses a revealed round.
- * Each voter's points are written on their vote as well, so a goto that clears the round can take them back.
+ * Settles a locked round: a call-out still pending was never judged, so it counts as declined, and the round's
+ * majority is recorded (none for a round nobody voted in). Final, because reopen refuses a revealed round.
  */
-function reveal(state: RoomState, now: number, content: CaseContent): Result {
+function reveal(state: RoomState, now: number): Result {
   if (state.phase !== 'locked') return badPhase(state);
   const { round } = state;
-  const lead = leadOf(content, round);
-  const leadTally = leadTallyFor(state, round, content);
-  const supportTally = supportTallyFor(state, round, content);
-  const prior = state.majorities.slice(0, round);
-
-  // A call-out still pending at the reveal was never judged, so it counts as declined.
-  const callouts = (state.callouts[round] ?? []).map((co): Callout =>
-    co.status === 'pending' ? { ...co, status: 'declined', points: content.scoring.calloutPointsSpoke } : co);
-  const rallies = callouts.filter((co) => co.status === 'awarded').length;
-
-  const damage = computeDamage({
-    content, roundIndex: round, lead: leadTally, support: supportTally, prior,
-    exhibits: (state.exhibits[round] ?? []).length, rallies,
-  });
-
-  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => {
-    const vote = p.votes[round];
-    const calloutPoints = callouts.reduce((sum, co) => (co.playerId === id ? sum + co.points : sum), 0);
-    const lastPoints = vote === undefined ? 0 : pointsFor({
-      content, roundIndex: round, option: vote.option, responseMs: vote.at - (state.voteOpenedAt ?? vote.at),
-      windowMs: state.voteWindowMs, prior, isLead: p.role === lead,
-    }) + calloutPoints;
-    const votes = vote === undefined ? p.votes : { ...p.votes, [round]: { ...vote, points: lastPoints } };
-    return [id, { ...p, votes, lastPoints, score: p.score + lastPoints }];
-  }));
-
-  // A round nobody voted in has no majority: recording the empty-tally fallback (A) would hand out phantom synergy later.
-  const anyVotes = OPTION_IDS.some((o) => leadTally[o] + supportTally[o] > 0);
+  const callouts = (state.callouts[round] ?? []).map((co): Callout => (co.status === 'pending' ? { ...co, status: 'declined' } : co));
   return update(state, now, {
     phase: 'reveal',
-    players,
     callouts: { ...state.callouts, [round]: callouts },
-    bossHp: Math.max(0, state.bossHp - damage.total),
-    damageLog: [...state.damageLog.slice(0, round), damage],
-    majorities: [...state.majorities.slice(0, round), anyVotes ? damage.majority : null],
+    majorities: [...state.majorities.slice(0, round), majorityOf(tallyFor(state, round)).majority],
   });
 }
 
+/** From a reveal to the next boss, or to the ending after the last. The ending closes the game. */
 function next(state: RoomState, now: number, content: CaseContent): Result {
-  if (state.phase === 'ending') return update(state, now, { phase: 'leaderboard' });
   if (state.phase !== 'reveal') return badPhase(state);
   if (state.round >= content.rounds.length - 1) return update(state, now, { phase: 'ending' });
   return update(state, now, { phase: 'travel', round: state.round + 1, voteOpenedAt: null, voteDeadline: null, trips: state.trips + 1 });
 }
 
 /**
- * Back to the lobby from any phase: players, bans and the trip count stay, everything they earned goes. Trips only
- * ever go up, so no road after a reset shares its trip with one before it.
+ * Back to the lobby from any phase: players, bans and the trip count stay, their votes go. Trips only ever go up, so
+ * no boss's arrival after a reset shares its trip with one before it.
  */
 function reset(state: RoomState, now: number, content: CaseContent): Result {
-  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] =>
-    [id, { ...p, score: 0, lastPoints: 0, votes: {} }]));
+  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => [id, { ...p, votes: {} }]));
   const fresh = initialState(state.code, state.hostKey, state.createdAt, content);
   return {
     state: { ...fresh, updatedAt: stamp(state, now), players, banned: state.banned, hideNames: state.hideNames, trips: state.trips },
@@ -317,43 +294,31 @@ const pad = <T>(list: readonly T[], n: number, fill: (i: number) => T): T[] =>
   [...list, ...Array.from({ length: Math.max(0, n - list.length) }, (_, i) => fill(list.length + i))];
 
 /**
- * Jumps the room to a stage (spec 4.1): 0 to 3 is the road of that round and 4, the number of rounds, is the ending.
- * A round is settled once it is revealed or jumped over, so the settled rounds are the first damageLog.length. A jump to
- * a road keeps the settled rounds before it whole and clears every round from there on: their votes, synthetic votes,
- * exhibits and call-outs go, each score falls back to the points on the votes kept, lastPoints to the points of the
- * round before the stage (0 when that round was jumped over, since it paid nobody), and the boss gets their damage
- * back. Rounds jumped over without being settled get no majority and a round of zero damage, so the next reveal lands
- * at its own index. A jump to the ending clears only an unsettled current round and leaves every settled one as it was.
+ * Jumps the room to a stage (spec 4.1): 0 to 4 is the arrival of that round's boss and 5, the number of rounds, is the
+ * ending on the last round. A round is settled once it is revealed or jumped over, so the settled rounds are the first
+ * majorities.length. A jump to a round keeps the settled rounds before it whole and clears every round from there on:
+ * their votes, synthetic votes and call-outs go. Rounds jumped over without being settled get no majority, so the next
+ * reveal lands at its own index. A jump to the ending clears only an unsettled current round and leaves every settled
+ * one as it was.
  */
 function goto(state: RoomState, now: number, stage: number, content: CaseContent): Result {
   const rounds = content.rounds.length;
   if (!(Number.isInteger(stage) && stage >= 0 && stage <= rounds)) return refuse(state, 'bad stage');
   const effects: Effect[] = state.phase === 'vote' ? [{ type: 'clearAlarm' }] : [];
-  // damageLog holds one entry per revealed or padded round, so only the current round can lie past the settled ones,
+  // majorities hold one entry per revealed or padded round, so only the current round can lie past the settled ones,
   // and only in travel, vote or locked.
-  const settled = state.damageLog.length;
+  const settled = state.majorities.length;
   const cut = stage === rounds ? settled : Math.min(stage, settled);
-  // The round whose points stay as lastPoints: the one before a road, the last settled one at the ending.
-  const last = (stage === rounds ? cut : stage) - 1;
   const keep = <T>(entries: Record<number, T>): Record<number, T> =>
     Object.fromEntries(Object.entries(entries).filter(([r]) => Number(r) < cut));
-  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => {
-    const votes = keep(p.votes);
-    const score = Object.values(votes).reduce((sum, v) => sum + (v.points ?? 0), 0);
-    return [id, { ...p, votes, score, lastPoints: votes[last]?.points ?? 0 }];
-  }));
-  const kept = { players, synthetic: keep(state.synthetic), exhibits: keep(state.exhibits), callouts: keep(state.callouts) };
+  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]): [string, Player] => [id, { ...p, votes: keep(p.votes) }]));
+  const kept = { players, synthetic: keep(state.synthetic), callouts: keep(state.callouts) };
   if (stage === rounds) {
     return update(state, now, { phase: 'ending', round: rounds - 1, voteOpenedAt: null, voteDeadline: null, ...kept }, effects);
   }
-  const damageLog = pad(state.damageLog.slice(0, cut), stage, (r) => computeDamage({
-    content, roundIndex: r, lead: zeroTally(), support: zeroTally(), prior: [], exhibits: 0, rallies: 0,
-  }));
   return update(state, now, {
     phase: 'travel', round: stage, voteOpenedAt: null, voteDeadline: null, trips: state.trips + 1, ...kept,
-    damageLog,
     majorities: pad(state.majorities.slice(0, cut), stage, () => null),
-    bossHp: rounds * content.scoring.roundHp - damageLog.reduce((sum, d) => sum + d.total, 0),
   }, effects);
 }
 
@@ -363,13 +328,6 @@ function kick(state: RoomState, now: number, playerId: string): Result {
   const players = Object.fromEntries(Object.entries(state.players).filter(([id]) => id !== playerId));
   const banned = state.banned.includes(playerId) ? state.banned : [...state.banned, playerId];
   return update(state, now, { players, banned }, [{ type: 'kicked', clientId: playerId }]);
-}
-
-function addExhibit(state: RoomState, now: number, exhibitId: string, content: CaseContent): Result {
-  if (state.phase !== 'travel') return refuse(state, 'not in travel');
-  const have = state.exhibits[state.round] ?? [];
-  if (have.length >= content.scoring.maxExhibits) return nothing(state);
-  return update(state, now, { exhibits: { ...state.exhibits, [state.round]: [...have, exhibitId] } });
 }
 
 /** Whole, positive vote counts only; anything else adds nothing, so a bad number cannot poison a tally. */
@@ -417,56 +375,47 @@ function callOut(state: RoomState, now: number, cmd: CalloutCmd, content: CaseCo
   const { round } = state;
   const made = state.callouts[round] ?? [];
   if (made.some((co) => co.status === 'pending')) return refuse(state, 'call-out pending');
-  if (made.length >= content.scoring.maxCallouts) return refuse(state, 'call-out limit');
+  if (made.length >= content.settings.maxCallouts) return refuse(state, 'call-out limit');
   const voter = chooseVoter(state, made, cmd);
-  const entry: Callout = { playerId: voter?.id ?? null, option: voter?.votes[round].option ?? null, status: 'pending', points: 0 };
+  const entry: Callout = { playerId: voter?.id ?? null, option: voter?.votes[round].option ?? null, status: 'pending' };
   return update(state, now, { callouts: { ...state.callouts, [round]: [...made, entry] } });
 }
 
-function judge(state: RoomState, now: number, awarded: boolean, content: CaseContent): Result {
+/** Y or N on the pending call-out: Y flashes "Valid point" on the projector, N clears the banner. Neither awards anything. */
+function judge(state: RoomState, now: number, awarded: boolean): Result {
   const made = state.callouts[state.round] ?? [];
   const at = made.findIndex((co) => co.status === 'pending');
   if (at < 0) return refuse(state, 'no pending call-out');
-  const { calloutPointsAwarded, calloutPointsSpoke } = content.scoring;
-  const settled: Callout = { ...made[at], status: awarded ? 'awarded' : 'declined', points: awarded ? calloutPointsAwarded : calloutPointsSpoke };
+  const settled: Callout = { ...made[at], status: awarded ? 'awarded' : 'declined' };
   return update(state, now, { callouts: { ...state.callouts, [state.round]: made.map((co, i) => (i === at ? settled : co)) } });
 }
 
 // ---- Views -----------------------------------------------------------------------------------------
 
-/** Everything the projector needs: the state without the host key, the lead role and the three tallies of the current round. */
-export function hostView(state: RoomState, now: number, content: CaseContent): HostView {
+// Both views take the content like the reducer does, so the Durable Object and the offline client call them alike,
+// though neither reads it now that no round has a lead role.
+
+/** Everything the projector needs: the state without the host key, and the tally of the current round. */
+export function hostView(state: RoomState, now: number, _content: CaseContent): HostView {
   const { hostKey: _hostKey, ...rest } = state;
-  return {
-    ...rest,
-    serverNow: now,
-    lead: shownLead(content, state.round),
-    leadTally: leadTallyFor(state, state.round, content),
-    supportTally: supportTallyFor(state, state.round, content),
-    tally: tallyFor(state, state.round),
-  };
+  return { ...rest, serverNow: now, tally: tallyFor(state, state.round) };
 }
 
-/** What one phone gets. Null for a client the room does not know (never joined, or kicked). Tallies stay hidden until the reveal. */
-export function playerView(state: RoomState, clientId: string, now: number, content: CaseContent): PlayerView | null {
+/**
+ * What one phone gets. Null for a client the room does not know (never joined, or kicked). No tally: the split is
+ * the projector's to show, and the phone only says what this student picked.
+ */
+export function playerView(state: RoomState, clientId: string, now: number, _content: CaseContent): PlayerView | null {
   const me = playerOf(state, clientId);
   if (!me) return null;
   const { round } = state;
-  const lead = shownLead(content, round);
-  const shown = REVEALED.includes(state.phase);
   const pending = (state.callouts[round] ?? []).find((co) => co.status === 'pending');
   const calledId = pending?.playerId ?? null;
   const calledName = calledId === null ? null : (playerOf(state, calledId)?.name ?? null);
-  const everyone = Object.values(state.players);
   return {
     phase: state.phase, round, serverNow: now, voteDeadline: state.voteDeadline, voteWindowMs: state.voteWindowMs,
-    name: me.name, role: me.role, table: me.table, lead, isLead: me.role === lead,
-    myVote: me.votes[round]?.option ?? null, lastPoints: me.lastPoints, score: me.score,
-    rank: 1 + everyone.filter((p) => p.score > me.score).length, playerCount: everyone.length,
-    tally: shown ? tallyFor(state, round) : null,
-    leadTally: shown ? leadTallyFor(state, round, content) : null,
-    supportTally: shown ? supportTallyFor(state, round, content) : null,
-    majorities: [...state.majorities],
+    name: me.name, role: me.role, table: me.table, myVote: me.votes[round]?.option ?? null,
+    playerCount: Object.keys(state.players).length,
     picks: Array.from({ length: Math.max(0, round + 1) }, (_, i) => me.votes[i]?.option ?? null),
     callout: pending ? { name: calledName, option: pending.option, isMe: pending.playerId === clientId } : null,
   };
