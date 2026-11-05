@@ -373,9 +373,14 @@ section{ margin-bottom:var(--s5); }
         t('p', { 'class': 'sub options-sub' }, p + 'optionsLabel'), opts));
     });
 
-    var lines = h('div', { 'class': 'lines' });
-    for (var n = 0; n < data.planLines; n++) lines.appendChild(h('p', { 'class': 'line' }, h('span', { 'class': 'k' }, String(n + 1))));
-    frag.appendChild(h('section', { 'class': 'plan' }, t('h2', null, 'planHeading'), t('p', { 'class': 'measure intro' }, 'planIntro'), lines));
+    // The plan section only when it has something to show: lines, a heading or an intro. While editing it stays, so
+    // an empty heading or intro can still be filled in.
+    var planLines = Number(data.planLines) || 0;
+    if (editing || planLines > 0 || String(data.planHeading || '') !== '' || String(data.planIntro || '') !== '') {
+      var lines = h('div', { 'class': 'lines' });
+      for (var n = 0; n < planLines; n++) lines.appendChild(h('p', { 'class': 'line' }, h('span', { 'class': 'k' }, String(n + 1))));
+      frag.appendChild(h('section', { 'class': 'plan' }, t('h2', null, 'planHeading'), t('p', { 'class': 'measure intro' }, 'planIntro'), lines));
+    }
 
     app.textContent = '';
     app.appendChild(frag);

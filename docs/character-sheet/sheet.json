@@ -122,7 +122,7 @@
     "Microsoft and G42 want to build a US$1 billion data centre at Olkaria, Kenya's geothermal steam fields, with a headline capacity of 1 GW. Microsoft president Brad Smith called it the “single biggest step to advance the availability of digital technology”. However, the project is now deadlocked for three reasons. First, President Ruto has said that switching it on would “shut off power for half the country”, and some lines already run above 120% of their design capacity. Second, the Treasury will not sign the anchor-tenant guarantee Microsoft wants, which is a government promise to cover demand for the data centre's capacity. Third, Kenya's whole data-centre market is about 20 MW, so 1 GW would be about 50 times its current size.",
     "Principal Secretary John Tanui says the project is “not failed or withdrawn” but “requires some structuring”, so your party's job is to find that structure."
   ],
-  "strikesHeading": "ROUNDS",
+  "strikesHeading": "QUESTIONS",
   "strikesIntro": "",
   "rounds": [
     {
@@ -223,5 +223,5 @@
   ],
   "planHeading": "",
   "planIntro": "",
-  "planLines": 5
+  "planLines": 0
 }
