@@ -28,8 +28,8 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "community",
-        "name": "Power of Friendship"
+        "icon": "people",
+        "name": "People Power"
       }
     },
     {
@@ -56,8 +56,8 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "wall",
-        "name": "Sovereign Wall"
+        "icon": "order",
+        "name": "Executive Order"
       }
     },
     {
@@ -84,8 +84,8 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "song",
-        "name": "Song of Development"
+        "icon": "deal",
+        "name": "Close the Deal"
       }
     },
     {
@@ -112,8 +112,8 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "fireball",
-        "name": "FIREBALL"
+        "icon": "bsod",
+        "name": "Blue Screen of Death"
       }
     }
   ],
@@ -128,7 +128,7 @@
     {
       "label": "",
       "question": "Q1. What should Kenya do about the data centre's electricity needs?",
-      "optionsLabel": "Your Options",
+      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -147,7 +147,7 @@
     {
       "label": "",
       "question": "Q2. How should Microsoft secure enough customers in Kenya?",
-      "optionsLabel": "Your Options",
+      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -166,7 +166,7 @@
     {
       "label": "",
       "question": "Q3. AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?",
-      "optionsLabel": "Your Options",
+      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -185,7 +185,7 @@
     {
       "label": "",
       "question": "Q4. If Microsoft waits, what is the biggest thing lost?",
-      "optionsLabel": "Your Options",
+      "optionsLabel": "",
       "options": [
         {
           "letter": "A",
@@ -204,7 +204,7 @@
     {
       "label": "",
       "question": "Q5. What should Microsoft do in Kenya?",
-      "optionsLabel": "Your Options",
+      "optionsLabel": "",
       "options": [
         {
           "letter": "A",

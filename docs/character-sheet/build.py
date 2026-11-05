@@ -82,14 +82,16 @@ ICONS = {
     "attack": [[3, 0, 2, 1, "bone"], [3, 1, 2, 4, "steel"], [1, 5, 6, 1, "leather"], [3, 6, 2, 1, "wood"], [3, 7, 2, 1, "amber"]],
     "defense": [[0, 0, 8, 1, "steel"], [0, 1, 8, 3, "sky"], [1, 4, 6, 1, "sky"], [2, 5, 4, 1, "sky"], [3, 6, 2, 1, "sky"],
                 [3, 1, 2, 4, "bone"]],
-    "community": [[1, 0, 2, 3, "skin"], [0, 3, 4, 3, "amber"], [0, 6, 1, 2, "ember"], [3, 6, 1, 2, "ember"],
-                  [5, 0, 2, 3, "skin"], [4, 3, 4, 3, "steel"], [4, 6, 1, 2, "steelDark"], [7, 6, 1, 2, "steelDark"]],
-    "wall": [[0, 0, 3, 2, "boneDim"], [4, 0, 4, 2, "boneDim"], [0, 2, 1, 2, "stonePale"], [2, 2, 3, 2, "stonePale"],
-             [6, 2, 2, 2, "stonePale"], [0, 4, 3, 2, "boneDim"], [4, 4, 4, 2, "boneDim"], [0, 6, 1, 2, "stonePale"],
-             [2, 6, 3, 2, "stonePale"], [6, 6, 2, 2, "stonePale"]],
-    "song": [[2, 5, 3, 2, "amber"], [4, 0, 1, 6, "bone"], [5, 0, 2, 1, "bone"], [6, 1, 1, 2, "bone"]],
-    "fireball": [[2, 2, 4, 1, "steel"], [1, 3, 6, 4, "sky"], [2, 7, 4, 1, "sky"], [3, 4, 2, 2, "bone"], [6, 1, 1, 1, "amber"],
-                 [7, 0, 1, 1, "amber"], [7, 2, 1, 1, "amber"]],
+    # The four specials, one per role, in that role's own colours: a bolt for the Citizen (people power), a sealed
+    # order for the Government, a briefcase for the Local Businessman, a blue error screen for Satya Nadella.
+    "people": [[4, 0, 2, 1, "amber"], [3, 1, 2, 1, "amber"], [2, 2, 2, 1, "amber"], [1, 3, 5, 1, "amber"],
+               [3, 4, 2, 1, "amber"], [2, 5, 2, 1, "amber"], [1, 6, 2, 1, "amber"], [1, 7, 1, 1, "amber"]],
+    "order": [[1, 0, 5, 8, "bone"], [2, 1, 3, 1, "stoneLight"], [2, 3, 3, 1, "stoneLight"], [4, 5, 3, 2, "flagRed"],
+              [4, 7, 1, 1, "flagGreen"], [6, 7, 1, 1, "flagGreen"]],
+    "deal": [[2, 0, 4, 1, "steel"], [2, 1, 1, 1, "steel"], [5, 1, 1, 1, "steel"], [0, 2, 8, 6, "ember"],
+             [0, 4, 8, 1, "leather"], [3, 3, 2, 3, "amber"]],
+    "bsod": [[0, 0, 8, 6, "msBlue"], [2, 1, 1, 1, "white"], [2, 4, 1, 1, "white"], [5, 1, 1, 1, "white"],
+             [4, 2, 1, 2, "white"], [5, 4, 1, 1, "white"], [3, 6, 2, 1, "steelDark"], [2, 7, 4, 1, "steel"]],
 }
 
 PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
