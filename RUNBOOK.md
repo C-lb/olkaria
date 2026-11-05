@@ -36,7 +36,7 @@ The game is five boss fights, one question each. Every question has three option
 
 ## Run of show
 
-? opens How to play: five slides, Space next, ? closes (Esc too, outside fullscreen). Show it while the phones join.
+? opens How to play: seven slides in the team's words, six numbered steps (groups of 4, roles and their interests, the 2 minutes of team discussion, sabotage, being called to defend) and a closing slide on the monsters as the case's problems. Space next, ? closes (Esc too, outside fullscreen). Show it while the phones join.
 
 | Beat | On the projector | You |
 |---|---|---|
@@ -70,7 +70,7 @@ The roles are Citizen, Government, Local Businessman and Satya Nadella. The team
 | H | Hide or show names in the lobby list and on the ending |
 | F | Fullscreen on or off |
 | S | Sound off or on |
-| ? | How to play, five slides. Space next, ? closes (Esc too, outside fullscreen). |
+| ? | How to play, seven slides. Space next, ? closes (Esc too, outside fullscreen). |
 | M or Esc | Open or close the menu: restart the question, back to the lobby, reload, sound off or on, go to Q1 to Q5 or the Ending. In fullscreen, Chrome takes Esc to leave fullscreen, so use M. |
 | Shift+R twice | Within 3 s: back to the lobby. Players stay; their votes go. |
 | Cmd+R | Reload. Needs the network. The same room and question come back. |

@@ -66,7 +66,7 @@ const TITLE = `${NAME}: ${SUBTITLE}`;
 /** How long a toast stays when no time is given. */
 const TOAST_MS = 4000;
 /** How long a flash stays when no time is given. */
-const FLASH_MS = 1500;
+const FLASH_MS = 2500;
 
 /** The facilitator's keys (spec 6.5), for the key map in the menu: exactly the ones that work. */
 const KEYS: readonly (readonly [string, string])[] = [

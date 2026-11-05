@@ -216,6 +216,21 @@ describe('what is gone', () => {
     expect(Object.keys(OPTION_COLORS)).toEqual(['A', 'B', 'C']);
   });
 
+  it('never cuts a role name or a joiner\'s row in the lobby', () => {
+    const sheet = css('../host/hud/hud.css');
+    for (const name of ['.count-name', '.recent li']) {
+      const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.split(',').some((s) => s.trim() === name));
+      expect(rules.length, name).toBeGreaterThan(0);
+      for (const [, , body] of rules) expect(body, name).not.toMatch(/text-overflow|nowrap|overflow:\s*hidden/);
+    }
+  });
+
+  it('flashes on a solid panel, never the see-through one', () => {
+    const rule = [...css('../host/hud/hud.css').matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(([, selector]) => selector.trim() === '.flash');
+    expect(rule?.[2]).toMatch(/background: var\(--surface-1\)/);
+    expect(rule?.[2]).toMatch(/color: var\(--accent-bright\)/);
+  });
+
   it('never clamps an option\'s text in the stylesheet', () => {
     const sheet = css('../host/hud/hud.css');
     const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.includes('.card-text'));

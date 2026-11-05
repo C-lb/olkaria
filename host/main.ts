@@ -6,7 +6,7 @@
 // Battle set so that a press's rest holds across a scene switch. The facilitator's hotkeys work in
 // every scene (S among them turns the sound off or on), and M or Esc opens the menu over any screen (menu.ts): restart
 // the question, back to the lobby, reload the page, sound off or on, go to a stage, and the key map. The ? key opens How
-// to play over any screen (howto.ts): five slides on how the game is played.
+// to play over any screen (howto.ts): seven slides on how the session runs.
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
 import { createSound } from './audio/sound';

@@ -58,6 +58,8 @@ const BACK_DELAY_MS = 200;
 const STRIKES = 3;
 const SHAKE_MS = 220;
 const SHAKE = 0.012;
+/** How far the floor runs past the canvas on every side: more than the shake moves the camera (SHAKE x 320 is under 4 px). */
+const SHAKE_BLEED = 8;
 /** How often the vote clock is redrawn. */
 const TICK_MS = 250;
 
@@ -166,9 +168,12 @@ export class Battle extends Phaser.Scene {
   // ---- The world ------------------------------------------------------------------------------------------
 
   private drawArena(): void {
-    // One row of floor tiles over flat stone: stacked rows of the tile would stripe the lower canvas like a wall.
-    this.add.tileSprite(0, GROUND_Y, 320, FLOOR_H, 'tile-ground').setOrigin(0, 0).setDepth(0);
-    this.add.rectangle(0, GROUND_Y + FLOOR_H, 320, 180 - GROUND_Y - FLOOR_H, hex(PALETTE.stoneDeep)).setOrigin(0, 0).setDepth(0);
+    // One row of floor tiles over flat stone: stacked rows of the tile would stripe the lower canvas like a wall. Both
+    // run SHAKE_BLEED past each edge, so the camera shake at the kill never shows the edge of the floor.
+    const left = -SHAKE_BLEED;
+    const width = 320 + 2 * SHAKE_BLEED;
+    this.add.tileSprite(left, GROUND_Y, width, FLOOR_H, 'tile-ground').setOrigin(0, 0).setDepth(0);
+    this.add.rectangle(left, GROUND_Y + FLOOR_H, width, 180 - GROUND_Y - FLOOR_H + SHAKE_BLEED, hex(PALETTE.stoneDeep)).setOrigin(0, 0).setDepth(0);
     this.boss = buildBoss(this, BOSSES[Math.min(BOSSES.length - 1, Math.max(0, this.round))], BOSS_X, GROUND_Y).setDepth(10);
     this.boss.idle();
     ROLES.forEach((role, i) => {
