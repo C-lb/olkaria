@@ -27,8 +27,9 @@ import { fileURLToPath } from 'node:url';
 // ---- Settings ---------------------------------------------------------------------------------------
 
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const HOST_PORT = 9333;
-const PHONE_PORT = 9335;
+/** The DevTools ports; SMOKE_HOST_PORT and SMOKE_PHONE_PORT override them when another Chrome holds one. */
+const HOST_PORT = Number(process.env.SMOKE_HOST_PORT ?? 9333);
+const PHONE_PORT = Number(process.env.SMOKE_PHONE_PORT ?? 9335);
 const DEFAULT_BASE = 'https://olkaria.sparkbot-worker.workers.dev';
 
 /** host/strikers.ts: Space rests SEND_LOCK_MS after a send and AUTO_LOCK_MS after the vote locks; the kill takes KILL_MS. */
@@ -42,7 +43,15 @@ const SLACK_MS = 400;
 const HOST_LOCKED = 'calls a student out';               // CLOCK/EVERYONE_LOCK_NOTE and optionsFooter in `locked`
 const HOST_VOTE_OPEN = ['still to vote', 'Space locks the vote', 'Everyone has voted'];
 const HOST_VALID = 'Valid point, ';                        // judgeFlash: "Valid point, Ann!"
-const HOST_PERCENT = /\d+\s*%/;                            // the split's shares
+const HOST_PERCENT = /\d+\s*%/;                            // shares: on the split, but on the locked cards too
+/**
+ * optionsFooter in `reveal`, the only text that exists only after the strike. The boss dying is canvas pixels and
+ * cannot be read as text, so this footer is the proof that the strike Space was taken.
+ */
+const HOST_REVEAL_NEXT = 'Space: next question';          // questions 1 to 4
+const HOST_REVEAL_LAST = 'Space: the ending';             // question 5
+/** optionsFooter in `locked`: "C calls a student out, Space strikes", or "Space strikes" once the call-outs are used up. */
+const HOST_LOCKED_FOOTERS = ['calls a student out', 'Space strikes'];
 const PHONE_LOOK = 'Look at the screen now.';
 const PHONE_CALLED = "You're up.";
 
@@ -55,7 +64,7 @@ const ROLE = 'citizen';
 
 const [outArg, baseArg] = process.argv.slice(2);
 if (!outArg) {
-  console.error('Usage: node scripts/live-smoke.mjs <out dir> [base url]');
+  console.error(`Usage: node scripts/live-smoke.mjs <out dir> [base url]\nWith no base url it runs against production, ${DEFAULT_BASE}, and creates a real room there.`);
   process.exit(2);
 }
 const OUT = resolve(outArg);
@@ -141,7 +150,7 @@ async function launchChrome(label, port, width, height) {
     await sleep(150);
   }
   if (!(await portAnswers(port))) throw new StepError(`${label}: Chrome never opened port ${port}.\n${stderr}`);
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) })).json();
   const page = targets.find((t) => t.type === 'page');
   if (!page) throw new StepError(`${label}: no page target on port ${port}.`);
   const cdp = await Cdp.connect(label, page.webSocketDebuggerUrl);
@@ -155,8 +164,12 @@ class Cdp {
   static connect(label, url) {
     return new Promise((ok, fail) => {
       const ws = new WebSocket(url);
-      ws.addEventListener('open', () => ok(new Cdp(label, ws)), { once: true });
-      ws.addEventListener('error', () => fail(new StepError(`${label}: could not open the DevTools socket ${url}`)), { once: true });
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch { /* never opened */ }
+        fail(new StepError(`${label}: the DevTools socket ${url} did not open in 10 s`));
+      }, 10000);
+      ws.addEventListener('open', () => { clearTimeout(timer); ok(new Cdp(label, ws)); }, { once: true });
+      ws.addEventListener('error', () => { clearTimeout(timer); fail(new StepError(`${label}: could not open the DevTools socket ${url}`)); }, { once: true });
     });
   }
 
@@ -455,9 +468,17 @@ async function run() {
     // Space strikes; the boss dies; the split shows.
     await space(`Q${n}: strike`);
     const struckAt = Date.now();
-    await sleep(KILL_MS + 600);
-    await poll(`Q${n}: the host shows the split (a percentage)`, async () => HOST_PERCENT.test(await host.text()), 10000);
-    pass(`Q${n}: the boss died and the split shows (${Date.now() - struckAt} ms after the strike)`);
+    const revealFooter = n < ROUNDS.length ? HOST_REVEAL_NEXT : HOST_REVEAL_LAST;
+    // The reveal footer is the proof the strike was taken (the boss's death is canvas pixels, not text). A percentage
+    // alone proves nothing, because the locked cards show shares before the strike.
+    await poll(`Q${n}: after the strike the host shows "${revealFooter}"`, hostHas(revealFooter), KILL_MS + 10000);
+    pass(`Q${n}: the strike was taken and the split shows "${revealFooter}" (${Date.now() - struckAt} ms after the strike)`);
+    const splitText = await host.text();
+    await expect(`Q${n}: the locked footer is gone from the split`, !HOST_LOCKED_FOOTERS.some((m) => has(splitText, m)));
+    await expect(`Q${n}: the split shows a percentage`, HOST_PERCENT.test(splitText));
+    // Let the kill finish before the screenshot, and before Space (which during the kill would skip, not go on).
+    const killLeft = struckAt + KILL_MS + 600 - Date.now();
+    if (killLeft > 0) await sleep(killLeft);
     await screenIs('look')().then((ok) => expect(`Q${n}: the phone still says "${PHONE_LOOK}" on the split`, ok));
     await host.screenshot(`q${n}-4-split-host.png`);
     // The kill's end rests Space too (SKIP_LOCK_MS), well inside the time already waited.
