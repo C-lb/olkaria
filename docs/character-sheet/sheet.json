@@ -28,8 +28,9 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "people",
-        "name": "People Power"
+        "icon": "megaphone",
+        "name": "People's Veto",
+        "tone": "amber"
       }
     },
     {
@@ -56,8 +57,9 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "order",
-        "name": "Executive Order"
+        "icon": "gavel",
+        "name": "Regulator's Gavel",
+        "tone": "green"
       }
     },
     {
@@ -84,8 +86,9 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "deal",
-        "name": "Close the Deal"
+        "icon": "contract",
+        "name": "Anchor Contract",
+        "tone": "gold"
       }
     },
     {
@@ -112,8 +115,9 @@
       ],
       "special": {
         "k": "Special",
-        "icon": "bsod",
-        "name": "Blue Screen of Death"
+        "icon": "cloudburst",
+        "name": "Cloudburst",
+        "tone": "blue"
       }
     }
   ],

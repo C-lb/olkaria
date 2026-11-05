@@ -82,16 +82,16 @@ ICONS = {
     "attack": [[3, 0, 2, 1, "bone"], [3, 1, 2, 4, "steel"], [1, 5, 6, 1, "leather"], [3, 6, 2, 1, "wood"], [3, 7, 2, 1, "amber"]],
     "defense": [[0, 0, 8, 1, "steel"], [0, 1, 8, 3, "sky"], [1, 4, 6, 1, "sky"], [2, 5, 4, 1, "sky"], [3, 6, 2, 1, "sky"],
                 [3, 1, 2, 4, "bone"]],
-    # The four specials, one per role, in that role's own colours: a bolt for the Citizen (people power), a sealed
-    # order for the Government, a briefcase for the Local Businessman, a blue error screen for Satya Nadella.
-    "people": [[4, 0, 2, 1, "amber"], [3, 1, 2, 1, "amber"], [2, 2, 2, 1, "amber"], [1, 3, 5, 1, "amber"],
-               [3, 4, 2, 1, "amber"], [2, 5, 2, 1, "amber"], [1, 6, 2, 1, "amber"], [1, 7, 1, 1, "amber"]],
-    "order": [[1, 0, 5, 8, "bone"], [2, 1, 3, 1, "stoneLight"], [2, 3, 3, 1, "stoneLight"], [4, 5, 3, 2, "flagRed"],
-              [4, 7, 1, 1, "flagGreen"], [6, 7, 1, 1, "flagGreen"]],
-    "deal": [[2, 0, 4, 1, "steel"], [2, 1, 1, 1, "steel"], [5, 1, 1, 1, "steel"], [0, 2, 8, 6, "ember"],
-             [0, 4, 8, 1, "leather"], [3, 3, 2, 3, "amber"]],
-    "bsod": [[0, 0, 8, 6, "msBlue"], [2, 1, 1, 1, "white"], [2, 4, 1, 1, "white"], [5, 1, 1, 1, "white"],
-             [4, 2, 1, 2, "white"], [5, 4, 1, 1, "white"], [3, 6, 2, 1, "steelDark"], [2, 7, 4, 1, "steel"]],
+    # The four specials, one per role: a megaphone for the Citizen, a gavel for the Government, a signed contract for
+    # the Local Businessman, a storm cloud for Satya Nadella.
+    "megaphone": [[0, 3, 2, 2, "ember"], [2, 2, 2, 4, "amber"], [4, 1, 2, 6, "amber"], [6, 0, 2, 8, "bone"],
+                  [1, 5, 1, 2, "leather"]],
+    "gavel": [[0, 1, 5, 3, "wood"], [0, 1, 1, 3, "leather"], [4, 1, 1, 3, "leather"], [5, 2, 3, 1, "boneDim"],
+              [2, 6, 6, 2, "stonePale"]],
+    "contract": [[0, 0, 8, 1, "boneDim"], [1, 1, 6, 6, "bone"], [0, 7, 8, 1, "boneDim"], [2, 2, 4, 1, "steelDark"],
+                 [2, 4, 3, 1, "steelDark"], [5, 5, 2, 2, "rose"]],
+    "cloudburst": [[2, 0, 3, 1, "bone"], [1, 1, 6, 1, "steel"], [0, 2, 8, 2, "steel"], [4, 4, 1, 1, "amber"],
+                   [3, 5, 2, 1, "amber"], [4, 6, 1, 1, "amber"], [3, 7, 1, 1, "amber"]],
 }
 
 PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
@@ -180,6 +180,13 @@ section{ margin-bottom:var(--s5); }
 .stat-v{ font-size:var(--t-h3); line-height:var(--lh-tight); letter-spacing:var(--tr-h3); font-weight:700; font-variant-numeric:tabular-nums; }
 .stat.special{ grid-column:1 / -1; }
 .stat.special .stat-title{ font-size:var(--t-body); line-height:var(--lh-tight); font-weight:700; }
+/* Each role's special carries its own tone: a tinted bar with a coloured edge, set by special.tone in the data. */
+.stat.special[data-tone]{ background:color-mix(in srgb, var(--tone) 14%, var(--surface-2)); box-shadow:inset 3px 0 0 var(--tone); }
+.stat.special[data-tone] .stat-title{ letter-spacing:var(--tr-h3); }
+.stat.special[data-tone="amber"]{ --tone:#d98a2b; }
+.stat.special[data-tone="green"]{ --tone:#1f7a35; }
+.stat.special[data-tone="gold"]{ --tone:#b8912a; }
+.stat.special[data-tone="blue"]{ --tone:#2f7fd8; }
 .measure{ max-width:var(--measure); }
 .rules{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s5); break-inside:avoid; }
 .steps{ margin:0; padding-left:var(--s4); }
@@ -325,7 +332,7 @@ section{ margin-bottom:var(--s5); }
   }
   /** The special, a bar under the three stats: the icon, then the move's title. */
   function special(s, p) {
-    return h('div', { 'class': 'stat special', role: 'group', 'aria-label': String(get(p + 'special.k')) },
+    return h('div', { 'class': 'stat special', 'data-tone': s.tone || null, role: 'group', 'aria-label': String(get(p + 'special.k')) },
       h('span', { 'class': 'ico' }, icon(s.icon)),
       t('b', { 'class': 'stat-title' }, p + 'special.name'));
   }
