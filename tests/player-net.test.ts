@@ -20,7 +20,7 @@ class FakeSocket {
   private emit(type: string, ev: unknown): void { for (const fn of this.listeners[type] ?? []) fn(ev); }
 }
 
-const view: PlayerView = { phase: 'lobby', round: -1, serverNow: 1000, voteDeadline: null, voteWindowMs: 30000, name: 'Ann', role: 'citizen', table: null, lead: 'citizen', isLead: true, myVote: null, lastPoints: 0, score: 0, rank: 1, playerCount: 1, tally: null, leadTally: null, supportTally: null, majorities: [], picks: [], callout: null };
+const view: PlayerView = { phase: 'lobby', round: -1, serverNow: 1000, voteDeadline: null, voteWindowMs: 120000, name: 'Ann', role: 'citizen', table: 'Team 1', myVote: null, playerCount: 1, picks: [], callout: null };
 
 function connect() {
   const socket = new PlayerSocket('ABCD', 'client 1');
@@ -162,6 +162,16 @@ describe('player socket', () => {
     vi.advanceTimersByTime(4000);
     last().drop();
     expect(socket.unreachable).toBe(true);
+  });
+
+  it('hands a refused join (bad team) to the page as an error, and keeps the connection', () => {
+    const { ws, statuses, errors } = connect();
+    ws().open();
+    ws().say({ t: 'error', msg: 'bad team' });
+    vi.advanceTimersByTime(120_000);
+    expect(errors).toEqual(['bad team']);
+    expect(statuses).toEqual(['open']);
+    expect(FakeSocket.all).toHaveLength(1);
   });
 
   it('treats a removed error as a kick, because the room refuses a banned client that way', () => {
