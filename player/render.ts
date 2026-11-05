@@ -4,7 +4,7 @@
 import { clockText } from '../shared/clock';
 import type { CaseContent } from '../shared/content';
 import { figureSvg } from '../shared/figures';
-import { synergyHits } from '../shared/scoring';
+import { TEAMS } from '../shared/names';
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../shared/shapes';
 import { OPTION_IDS, type OptionId, type PlayerView, type Role } from '../shared/types';
 
@@ -13,6 +13,7 @@ export type UiState = {
   status: 'connecting' | 'joining' | 'joined' | 'kicked' | 'offline';
   name: string;
   role: Role | null;
+  /** The team, one of TEAMS. An empty string means none is chosen yet, and the form opens on its placeholder. */
   table: string;
   /** What the room last refused, for example "already voted". Shown under the screen until the next view. */
   error?: string | null;
@@ -49,11 +50,11 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ...
 }
 
 // Icons are drawn inline in one family: 24 px grid, 2 px stroke, round caps and joins. No icon font and no request.
-// The four option shapes come from shared/shapes.ts, which the projector's badges draw from too. A class is shown by
+// The three option shapes come from shared/shapes.ts, which the projector's badges draw from too. A class is shown by
 // its pixel figure, not an icon: figure() below draws it from shared/figures.ts, the pixels the projector paints.
 const GLYPHS = {
   ...SHAPE_MARKUP,
-  check: '<path d="M5 12.5 10 17.5 19 7"/>',
+  chevron: '<path d="M6 9.5 12 15.5 18 9.5"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
 } as const;
 type Glyph = keyof typeof GLYPHS;
@@ -84,9 +85,13 @@ const sentence = (text: string): string => {
   return /[.!?]$/.test(s) ? s : `${s}.`;
 };
 
-const phoneLabel = (content: CaseContent, round: number, option: OptionId): string =>
-  content.rounds[round]?.options.find((o) => o.id === option)?.phone ?? '';
-const roundName = (view: PlayerView, content: CaseContent): string => `Round ${view.round + 1} of ${content.rounds.length}`;
+/** An option's full text. There are no short labels: every screen that names an option shows all of it. */
+const optionText = (content: CaseContent, round: number, option: OptionId): string =>
+  content.rounds[round]?.options.find((o) => o.id === option)?.text ?? '';
+const questionName = (view: PlayerView, content: CaseContent): string => `Question ${view.round + 1} of ${content.rounds.length}`;
+const roleName = (content: CaseContent, role: Role): string => content.roles.find((r) => r.id === role)?.name ?? role;
+
+const LOOK = 'Look at the screen now.';
 
 /** "1:23" from the room's clock: the deadline minus the time the view said it was, minus the time since the view arrived. */
 export function formatCountdown(deadline: number, serverNow: number, localNow: number, localAtServerNow: number): string {
@@ -108,8 +113,18 @@ function screen(kind: string, kids: Kid[], centered = false): HTMLElement {
   return h('section', { class: centered ? 'screen is-centered' : 'screen', 'data-screen': kind }, ...kids);
 }
 
-function field(id: string, label: string, input: HTMLInputElement): HTMLElement {
-  return h('div', { class: 'field' }, h('label', { class: 'eyebrow', for: id }, label), h('div', { class: 'control' }, input));
+function field(id: string, label: string, ...control: Kid[]): HTMLElement {
+  return h('div', { class: 'field' }, h('label', { class: 'eyebrow', for: id }, label), h('div', { class: 'control' }, ...control));
+}
+
+/** The team dropdown: a placeholder that cannot be picked again, then the eight teams. It opens on `team` when that is one of them. */
+function teamPicker(team: string): HTMLSelectElement {
+  const select = h('select', { id: 'team', name: 'team', required: true },
+    h('option', { value: '', disabled: true, selected: true }, 'Choose your team'),
+    ...TEAMS.map((t) => h('option', { value: t }, t)));
+  // By index, because the placeholder is disabled and a value of '' cannot pick it.
+  select.selectedIndex = TEAMS.indexOf(team) + 1;
+  return select;
 }
 
 function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
@@ -119,19 +134,16 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
     autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', enterkeyhint: 'done',
   });
   nickname.value = ui.name;
-  const table = h('input', {
-    id: 'table', name: 'table', type: 'text', maxlength: '16', placeholder: 'Optional',
-    autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', enterkeyhint: 'done',
-  });
-  table.value = ui.table;
+  const team = teamPicker(ui.table);
   const submit = h('button', { type: 'submit', class: 'btn btn-accent btn-block' }, 'Join');
 
   const roleButtons = content.roles.map((r) =>
     h('button', { type: 'button', class: 'role', 'data-role': r.id, 'aria-pressed': String(r.id === chosen) },
-      figure(r.id, 3), h('span', { class: 'role-name' }, r.className), h('span', { class: 'role-sub' }, r.stakeholder)));
+      figure(r.id, 3), h('span', { class: 'role-name' }, r.name)));
 
+  const picked = (): string => (TEAMS.includes(team.value) ? team.value : '');
   const refresh = (): void => {
-    const ready = nickname.value.trim() !== '' && chosen !== null;
+    const ready = nickname.value.trim() !== '' && chosen !== null && picked() !== '';
     submit.disabled = !ready;
   };
   roleButtons.forEach((button, i) => button.addEventListener('click', () => {
@@ -140,6 +152,7 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
     refresh();
   }));
   nickname.addEventListener('input', refresh);
+  team.addEventListener('change', refresh);
 
   const form = h('form', { class: 'screen', 'data-screen': 'join', novalidate: true },
     h('header', {}, h('h1', { class: 'title is-lg' }, 'Join the game')),
@@ -147,49 +160,50 @@ function joinForm(content: CaseContent, ui: UiState, ref: Ref): HTMLElement {
     h('div', { class: 'field', role: 'group', 'aria-labelledby': 'role-label' },
       h('span', { class: 'eyebrow', id: 'role-label' }, 'Role'),
       h('div', { class: 'roles' }, ...roleButtons)),
-    field('table', 'Table', table),
+    // The chevron sits over the select's right edge and lets taps through, so the whole field opens the list.
+    field('team', 'Team', team, icon('chevron')),
     submit);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const who = nickname.value.trim();
-    if (who === '' || chosen === null) return;
+    const which = picked();
+    if (who === '' || chosen === null || which === '') return;
     submit.classList.add('is-loading');
     submit.setAttribute('aria-busy', 'true');
     submit.disabled = true;
-    ref.actions.join(who, chosen, table.value.trim());
+    ref.actions.join(who, chosen, which);
   });
   refresh();
   return form;
 }
 
 /**
- * Who you are while you wait, in the lobby and between rounds: your class figure, your name, your class and stakeholder,
- * and your table when you gave one. In the lobby a flat Change button under the card opens the join form again,
- * because roles are fixed only once the game has started.
+ * Who you are while you wait, in the lobby and between questions: your class figure, your name, your role and your
+ * team. In the lobby a flat Change button under the card opens the join form again, because roles are fixed only once
+ * the game has started.
  */
 function waiting(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement {
-  const role = content.roles.find((r) => r.id === view.role);
   let change: HTMLElement | null = null;
   if (view.phase === 'lobby') {
-    change = h('button', { type: 'button', class: 'btn btn-block', 'data-change': true, title: 'Change your name, role or table' }, 'Change');
+    change = h('button', { type: 'button', class: 'btn btn-block', 'data-change': true, title: 'Change your name, role or team' }, 'Change');
     change.addEventListener('click', () => ref.actions.change());
   }
   return screen('waiting', [
     h('div', { class: 'card card-lifted' },
       h('span', { class: 'glyph' }, figure(view.role, 5)),
       h('h1', { class: 'title' }, view.name),
-      h('p', { class: 'cap' }, role ? `${role.className}, ${role.stakeholder}` : view.role),
-      view.table ? h('p', { class: 'cap' }, `Table: ${view.table}`) : null),
+      h('p', { class: 'cap' }, roleName(content, view.role)),
+      view.table ? h('p', { class: 'cap' }, view.table) : null),
     change,
   ], true);
 }
 
-function roundRow(view: PlayerView, content: CaseContent, clock: boolean): HTMLElement {
+function questionRow(view: PlayerView, content: CaseContent): HTMLElement {
   return h('div', { class: 'round-row' },
-    h('span', { class: 'eyebrow' }, roundName(view, content)),
+    h('span', { class: 'eyebrow' }, questionName(view, content)),
     // Left empty here: render() and updateCountdown() write the time, so the markup never depends on the clock.
-    // With no clock the span stays, empty and hidden, so the row keeps its height and what sits under it does not move.
-    clock && view.voteDeadline !== null
+    // With no clock the span stays, empty and hidden, so the row keeps its height and the question does not move.
+    view.voteDeadline !== null
       ? h('span', { class: 'countdown', 'data-countdown': '', role: 'timer', 'aria-label': 'Time left' })
       : h('span', { class: 'countdown', 'aria-hidden': 'true' }));
 }
@@ -197,13 +211,15 @@ function roundRow(view: PlayerView, content: CaseContent, clock: boolean): HTMLE
 /** How long the vote buttons stay greyed after a tap before they are handed back, if the room has said nothing. */
 const SENT_MS = 4000;
 
+/** The question and its three options, one full-width card each, so the full text wraps as long as it needs to. */
 function voteButtons(view: PlayerView, content: CaseContent, ref: Ref): HTMLElement {
   const group = h('div', { class: 'votes', role: 'group', 'aria-label': 'Your vote' });
   const buttons = OPTION_IDS.map((option) => {
     const button = h('button', { type: 'button', class: 'vote', 'data-option': option },
-      h('span', { class: 'vote-letter' }, option), icon(OPTION_GLYPH[option]), h('span', { class: 'vote-label' }, phoneLabel(content, view.round, option)));
+      h('span', { class: 'vote-mark' }, h('span', { class: 'vote-letter' }, option), icon(OPTION_GLYPH[option])),
+      h('span', { class: 'vote-label' }, optionText(content, view.round, option)));
     button.addEventListener('click', () => {
-      // One tap per screen. The other three grey out until the room answers with the locked view or an error.
+      // One tap per screen. The other two grey out until the room answers with the next view or an error.
       if (group.classList.contains('is-sent')) return;
       group.classList.add('is-sent');
       button.setAttribute('aria-pressed', 'true');
@@ -223,33 +239,29 @@ function voteButtons(view: PlayerView, content: CaseContent, ref: Ref): HTMLElem
   });
   group.append(...buttons);
   return screen('vote', [
-    roundRow(view, content, true),
-    view.isLead ? h('p', { class: 'note' }, figure(view.role, 2), 'Your class leads this round') : null,
+    questionRow(view, content),
+    h('h1', { class: 'title' }, content.rounds[view.round]?.question ?? ''),
     group,
   ]);
 }
 
-function locked(view: PlayerView, content: CaseContent): HTMLElement {
-  if (view.myVote === null) {
-    return screen('skipped', [h('div', { class: 'card card-lifted' },
-      h('h1', { class: 'title' }, 'You did not vote this round.'),
-      h('p', { class: 'cap' }, 'Watch the screen.'))], true);
-  }
-  const open = view.phase === 'vote';
-  // Top-aligned under the round row in both phases, so the card stays put when voting closes and the clock goes.
-  return screen('locked', [
-    roundRow(view, content, open),
-    h('div', { class: 'card card-lifted' },
-      h('span', { class: 'glyph' }, icon('check')),
-      h('h1', { class: 'title' }, `Locked: ${view.myVote}. ${phoneLabel(content, view.round, view.myVote)}.`),
-      h('p', { class: 'cap' }, open ? 'Waiting for the others.' : 'Voting is closed. Watch the screen.')),
-  ]);
+/**
+ * After this phone has voted, and through the lock and the reveal: send the eyes to the projector, then say what was
+ * picked. The same markup in all three phases, so the screen does not flicker when voting closes.
+ */
+function look(view: PlayerView, content: CaseContent): HTMLElement {
+  const mine = view.myVote;
+  return screen('look', [h('div', { class: 'card card-lifted' },
+    h('h1', { class: 'title is-lg' }, LOOK),
+    mine === null ? null : h('p', { class: 'subtitle' }, `You picked ${mine}.`),
+    mine === null ? null : h('p', { class: 'cap look-text' }, optionText(content, view.round, mine)))], true);
 }
 
 function calledOut(view: PlayerView, content: CaseContent): HTMLElement {
   const option = view.callout?.option ?? view.myVote;
-  const text = option === null ? "You're up." : `You're up. Defend ${option}: ${phoneLabel(content, view.round, option)}.`;
-  return screen('called', [h('div', { class: 'card card-lifted' }, h('h1', { class: 'title is-lg' }, text))], true);
+  return screen('called', [h('div', { class: 'card card-lifted' },
+    h('h1', { class: 'title is-lg' }, option === null ? "You're up." : `You're up. Defend ${option}.`),
+    option === null ? null : h('p', { class: 'look-text' }, optionText(content, view.round, option)))], true);
 }
 
 function someoneCalled(view: PlayerView): HTMLElement {
@@ -258,48 +270,21 @@ function someoneCalled(view: PlayerView): HTMLElement {
   return screen('someone', [h('div', { class: 'card card-lifted' }, h('h1', { class: 'title' }, text))], true);
 }
 
-function stat(label: string, value: string, rest: string): HTMLElement {
-  return h('p', { class: 'stat' }, h('span', { class: 'eyebrow' }, label), h('span', { class: 'stat-line' }, h('b', {}, value), ` ${rest}`));
-}
-
-function result(view: PlayerView, content: CaseContent): HTMLElement {
-  const finalRound = view.round === content.rounds.length - 1;
-  const mine = view.myVote;
-  let detail: Kid[];
-  if (mine === null) {
-    detail = [h('p', {}, finalRound ? 'You did not vote in the final round.' : 'You did not vote this round.')];
-  } else if (finalRound) {
-    const hits = synergyHits(mine, view.majorities.slice(0, 3), content.synergy);
-    detail = [h('p', {}, `Your pick ${mine} fits ${hits} of the three earlier decisions.`)];
-  } else {
-    const debrief = content.rounds[view.round]?.options.find((o) => o.id === mine)?.debrief ?? '';
-    detail = [h('h2', { class: 'subtitle' }, `Why ${mine} scored what it did`), h('p', {}, debrief)];
-  }
-  return screen('result', [h('div', { class: 'card card-lifted' },
-    h('span', { class: 'eyebrow' }, roundName(view, content)),
-    h('h1', { class: 'hero' }, `+${view.lastPoints} `, h('span', { class: 'unit' }, 'this round')),
-    h('div', { class: 'stats' }, stat('Score', String(view.score), 'total'), stat('Rank', String(view.rank), `of ${view.playerCount}`)),
-    h('div', { class: 'card-sep' }),
-    ...detail)]);
-}
-
+/** The end of the game: the projector's congratulations, and this phone's own pick for every question, in full. */
 function ending(view: PlayerView, content: CaseContent): HTMLElement {
-  const picks = content.rounds.map((_, i) => view.picks[i] ?? null);
-  const final = picks[picks.length - 1];
-  const earlier = picks.slice(0, -1);
-  const coherence = final === null
-    ? 'You did not vote in the final round.'
-    : `Coherence: ${synergyHits(final, earlier, content.synergy)} of ${earlier.length}`;
-  const rows = picks.map((pick, i) => h('li', { class: 'pick' },
-    h('span', { class: 'pick-round' }, `Round ${i + 1}`),
-    h('b', { class: 'pick-letter' }, pick ?? ''),
-    h('span', { class: 'pick-label' }, pick === null ? 'No vote' : phoneLabel(content, i, pick))));
+  const rows = content.rounds.map((_, i) => {
+    const pick = view.picks[i] ?? null;
+    return h('li', { class: 'pick' },
+      h('span', { class: 'pick-round' }, `Q${i + 1}`),
+      h('b', { class: 'pick-letter' }, pick ?? ''),
+      h('span', { class: pick === null ? 'pick-label is-empty' : 'pick-label' }, pick === null ? 'No vote' : optionText(content, i, pick)));
+  });
   return screen('ending', [h('div', { class: 'card card-lifted' },
-    h('h1', { class: 'title' }, 'Your four picks'),
-    h('ol', { class: 'picks' }, ...rows),
+    h('h1', { class: 'title is-lg' }, content.ending.title),
+    h('p', {}, LOOK),
     h('div', { class: 'card-sep' }),
-    h('p', {}, coherence),
-    h('div', { class: 'stats' }, stat('Score', String(view.score), 'total'), stat('Rank', String(view.rank), `of ${view.playerCount}`)))]);
+    h('h2', { class: 'subtitle' }, 'Your five picks'),
+    h('ol', { class: 'picks' }, ...rows))]);
 }
 
 function kicked(): HTMLElement {
@@ -352,15 +337,14 @@ function choose(view: PlayerView | null, content: CaseContent, ui: UiState, ref:
     case 'travel':
       return { kind: 'waiting', node: waiting(view, content, ref) };
     case 'vote':
-      return view.myVote === null ? { kind: 'vote', node: voteButtons(view, content, ref) } : { kind: 'locked', node: locked(view, content) };
+      return view.myVote === null ? { kind: 'vote', node: voteButtons(view, content, ref) } : { kind: 'look', node: look(view, content) };
     case 'locked':
       if (view.callout?.isMe) return { kind: 'called', node: calledOut(view, content) };
       if (view.callout) return { kind: 'someone', node: someoneCalled(view) };
-      return { kind: 'locked', node: locked(view, content) };
+      return { kind: 'look', node: look(view, content) };
     case 'reveal':
-      return { kind: 'result', node: result(view, content) };
+      return { kind: 'look', node: look(view, content) };
     case 'ending':
-    case 'leaderboard':
       return { kind: 'ending', node: ending(view, content) };
   }
 }
@@ -380,7 +364,8 @@ export function render(root: HTMLElement, view: PlayerView | null, content: Case
   const message = ui.status === 'kicked' || ui.status === 'offline' ? '' : sentence(ui.error ?? '');
   if (message) node.append(h('p', { class: 'msg', role: 'alert' }, icon('alert'), message));
 
-  // The join form keeps what the player is typing, so it is told apart by its error line alone, not by its markup.
+  // The join form keeps what the player is typing and the team they chose, so it is told apart by its error line
+  // alone, not by its markup.
   const sig = kind === 'join' ? `join|${message}` : node.outerHTML;
   if (sig !== slot.sig || root.firstElementChild === null) {
     root.replaceChildren(node);

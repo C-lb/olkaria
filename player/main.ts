@@ -2,6 +2,7 @@
 // socket, and a render on every change. The tab keeps no other state; the room is the source of truth.
 import raw from '../content/case.json';
 import type { CaseContent } from '../shared/content';
+import { sanitizeTeam } from '../shared/names';
 import { ROLES, type PlayerView, type Role } from '../shared/types';
 import { PlayerSocket } from './net';
 import { render, updateCountdown, type Actions, type UiState } from './render';
@@ -12,7 +13,10 @@ const content = raw as unknown as CaseContent;
 const ID_KEY = 'olkaria.clientId';
 const JOIN_KEY = 'olkaria.join';
 
-/** What this phone told the room it is. Stored with its room code, so last week's details never join this week's room. */
+/**
+ * What this phone told the room it is. Stored with its room code, so last week's details never join this week's room.
+ * `table` is the team, one of TEAMS, or an empty string while none is chosen.
+ */
 type Draft = { code: string; name: string; role: Role; table: string };
 
 // Storage can be blocked (private windows, strict settings). The page still works for the life of the tab without it.
@@ -50,8 +54,9 @@ function loadDraft(code: string): Draft | null {
   if (!text) return null;
   try {
     const d = JSON.parse(text) as Partial<Draft> | null;
-    if (d && d.code === code && typeof d.name === 'string' && typeof d.table === 'string' && ROLES.includes(d.role as Role)) {
-      return { code, name: d.name, role: d.role as Role, table: d.table };
+    if (d && d.code === code && typeof d.name === 'string' && ROLES.includes(d.role as Role)) {
+      // Details saved before teams carry a free-text table, which the room now refuses: keep the name and role, drop the team.
+      return { code, name: d.name, role: d.role as Role, table: sanitizeTeam(d.table) ?? '' };
     }
   } catch {
     // a corrupt entry is the same as none
@@ -65,8 +70,8 @@ function start(app: HTMLElement, code: string): void {
   const socket = new PlayerSocket(code, clientId);
 
   let draft = loadDraft(code);
-  /** True for a returning phone that rejoins without showing the form. */
-  let restored = draft !== null;
+  /** True for a returning phone that rejoins without showing the form. One without a team gets the form, filled in. */
+  let restored = draft !== null && draft.table !== '';
   let view: PlayerView | null = null;
   let receivedAt = 0;
   let link: 'connecting' | 'open' | 'closed' = 'connecting';
@@ -129,7 +134,7 @@ function start(app: HTMLElement, code: string): void {
       // Roles are fixed once the game has started, so only the lobby offers this.
       if (kicked || view === null || view.phase !== 'lobby') return;
       // The form opens on what the room has, which is what the waiting screen showed.
-      draft = { code, name: view.name, role: view.role, table: view.table ?? '' };
+      draft = { code, name: view.name, role: view.role, table: sanitizeTeam(view.table) ?? '' };
       changing = 'open';
       error = null;
       paint();
@@ -151,6 +156,13 @@ function start(app: HTMLElement, code: string): void {
   });
   socket.onError((msg) => {
     error = { msg, on: where(view) };
+    // A refused team (details saved by an older page, or an older page itself) puts the phone back on the form, the name
+    // and role kept and the team cleared, with the message under it. Without this a returning phone sits on Connecting.
+    if (msg === 'bad team' && draft) {
+      draft = { ...draft, table: '' };
+      restored = false;
+      if (view?.phase === 'lobby') changing = 'open';
+    }
     paint();
   });
   socket.onStatus((s) => {
@@ -160,7 +172,8 @@ function start(app: HTMLElement, code: string): void {
       link = 'open';
       // Every connection announces who this is again. A repeat join is a rejoin: in the lobby the room takes the details
       // again, once the game has started it changes nothing.
-      if (draft) sendJoin(draft);
+      // A draft without a team would only be refused, so it waits for the form.
+      if (draft && draft.table !== '') sendJoin(draft);
     } else {
       link = 'closed';
     }
