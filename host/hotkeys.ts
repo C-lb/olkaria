@@ -67,7 +67,7 @@ function pendingCallout(view: HostView | null): boolean {
 }
 
 /**
- * 1 to 3 add a vote to A to C and Shift+1 to 3 add ten; B adds 30 bot votes; C calls a student out; Y and N judge a
+ * 1 to 3 add a vote to A to C and Shift+1 to 3 add ten; B adds 30 bot votes, offline only; C calls a student out; Y and N judge a
  * pending call-out, Y a valid point and N moving on, only while one is pending in `locked`; R reopens; H hides or shows
  * names; F toggles fullscreen; S turns the sound off or on (Shift+S does nothing); Shift+R twice within 3 s resets to the lobby, and any other key in between
  * calls the reset off, as opening the menu or the how-to does (callOffReset). Escape is the menu's (menu.ts), not one

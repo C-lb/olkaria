@@ -81,7 +81,7 @@ The roles are Citizen, Government, Local Businessman and Satya Nadella. The team
 Y and N do nothing unless a call-out is waiting. Neither gives anything to anyone.
 Space rests about a second after each press, and a second and a half once the vote locks. A second press inside the rest is ignored without a note, so if Space seems to do nothing, wait a moment and press it again.
 A key the room refuses, such as C before the vote locks, shows a short note such as "Bad phase" and changes nothing.
-The vote keys (1 to 3, Shift, B) work while a vote is open or locked.
+The vote keys (1 to 3, Shift) work while a vote is open or locked. B does the same in practice (offline) only.
 
 ### Every question
 
