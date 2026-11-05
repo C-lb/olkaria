@@ -7,7 +7,7 @@
     {
       "id": "citizen",
       "stakeholder": "Citizens, households, Olkaries communities represent:",
-      "className": "Family Rogue",
+      "className": "Citizen",
       "who": "",
       "stats": [
         {
@@ -30,13 +30,12 @@
         "k": "Special",
         "icon": "community",
         "name": "Power of Friendship"
-      },
-      "strike": " Round 1: How much data-centre power use will Kenyans accept?"
+      }
     },
     {
       "id": "government",
       "stakeholder": "Kenyan Government & Treasury represent:",
-      "className": "Kenyan Knight",
+      "className": "Government",
       "who": "",
       "stats": [
         {
@@ -59,13 +58,12 @@
         "k": "Special",
         "icon": "wall",
         "name": "Sovereign Wall"
-      },
-      "strike": " Round 2: What will the Government offer instead of a guarantee?"
+      }
     },
     {
       "id": "business",
       "stakeholder": "Local businesses, banks, startups represent:",
-      "className": "Busy Bard",
+      "className": "Local Businessman",
       "who": "",
       "stats": [
         {
@@ -88,13 +86,12 @@
         "k": "Special",
         "icon": "song",
         "name": "Song of Development"
-      },
-      "strike": " Round 3: What will Kenya's businesses commit to?"
+      }
     },
     {
       "id": "microsoft",
       "stakeholder": "Microsoft & G42 represent:",
-      "className": "Page Wizard",
+      "className": "Satya Nadella",
       "who": "",
       "stats": [
         {
@@ -117,192 +114,114 @@
         "k": "Special",
         "icon": "fireball",
         "name": "FIREBALL"
-      },
-      "strike": " Round 4: What should Microsoft do?"
+      }
     }
   ],
   "briefHeading": "PREAMBLE",
   "briefing": [
     "Microsoft and G42 want to build a US$1 billion data centre at Olkaria, Kenya's geothermal steam fields, with a headline capacity of 1 GW. Microsoft president Brad Smith called it the “single biggest step to advance the availability of digital technology”. However, the project is now deadlocked for three reasons. First, President Ruto has said that switching it on would “shut off power for half the country”, and some lines already run above 120% of their design capacity. Second, the Treasury will not sign the anchor-tenant guarantee Microsoft wants, which is a government promise to cover demand for the data centre's capacity. Third, Kenya's whole data-centre market is about 20 MW, so 1 GW would be about 50 times its current size.",
-    "Principal Secretary John Tanui says the project is “not failed or withdrawn” but “requires some structuring”, so your party's job is to find that structure. In rounds 1 to 3 one stakeholder sets its terms, and in round 4 Microsoft decides."
+    "Principal Secretary John Tanui says the project is “not failed or withdrawn” but “requires some structuring”, so your party's job is to find that structure."
   ],
   "strikesHeading": "ROUNDS",
   "strikesIntro": "",
   "rounds": [
     {
       "label": "",
-      "question": "Q1. How much data-centre power use will Kenyans accept?",
-      "narration": "Current plants make about 950 MW. President Ruto has told the country that switching on the data centre would mean switching off power for half of it. Some lines already run above 120% of their design capacity. Geothermal expansion here once displaced 155 Maasai families. Rogues, this is your strike: what will Kenyans accept?",
+      "question": "Q1. What should Kenya do about the data centre's electricity needs?",
       "optionsLabel": "Your Options",
       "options": [
         {
           "letter": "A",
-          "screen": "Prioritise households first. The deal waits for new generation, and no data-centre load connects until household and industrial supply is secure.",
-          "phone": "On your phone: Prioritise households, stall the deal."
+          "screen": "Protect households first. Delay the project until Kenya has enough reliable electricity for its residents."
         },
         {
           "letter": "B",
-          "screen": "Accept a first phase of 60 to 100 MW, about 4% of peak demand, on condition that new generation is tied to every expansion.",
-          "phone": "On your phone: Rolling progression of 60 to 100 MW each generation."
+          "screen": "Prioritize economic growth. Give the data centre access to electricity to attract investment, even if it puts more pressure on the grid."
         },
         {
           "letter": "C",
-          "screen": "Accept the full 1 GW in return for the jobs, the skills lab and the regional hub.",
-          "phone": "On your phone: Full 1 GW for greater opportunities."
-        },
-        {
-          "letter": "D",
-          "screen": "Accept only with a community deal, which gives Olkaria communities compensation and a share of the benefit before any expansion.",
-          "phone": "On your phone: Enact a community deal: Receive compensation before expansion."
-        }
-      ],
-      "factsLabel": "The Facts",
-      "facts": [
-        {
-          "text": "Olkaria generates about 950 MW",
-          "source": "James, 2026"
-        },
-        {
-          "text": "Record peak demand 2,444 MW, January 2026",
-          "source": "James, 2026"
-        },
-        {
-          "text": "1 GW = about 31% of installed capacity",
-          "source": "Exhibit 2"
+          "screen": "Make Microsoft pay. Require Microsoft and its partners to secure additional electricity for the project."
         }
       ]
     },
     {
       "label": "",
-      "question": "Q2. What will the Government offer instead of a guarantee?",
-      "narration": "Under an anchor-tenant guarantee, the Government would cover any shortfall in demand for the data centre's capacity, so the demand risk would move from Microsoft to Kenyan public finances. Microsoft wants this because Kenya's whole data-centre market is a low 20 MW. Government is worried as in June 2024, protests over the Finance Bill left people dead and the bill withdrawn. KenGen, Kenya's largest power producer, is about 70% government-owned and runs much of the geothermal capacity at Olkaria could be of help. Knights, this is your strike: what does the Government offer?",
-      "optionsLabel": "The options",
+      "question": "Q2. How should Microsoft secure enough customers in Kenya?",
+      "optionsLabel": "Your Options",
       "options": [
         {
           "letter": "A",
-          "screen": "Sign the anchor-tenant guarantee, because the hub is worth the risk.",
-          "phone": "On your phone: Sign the guarantee."
+          "screen": "Secure business commitments. Ask major Kenyan companies to commit to using Microsoft's services before construction."
         },
         {
           "letter": "B",
-          "screen": "Offer no guarantee of any kind, so Microsoft either builds on market terms or doesn't build.",
-          "phone": "On your phone: No guarantee, Microsoft builds on market terms"
+          "screen": "Make the government a customer. Have Kenya purchase cloud services for government operations to help create demand."
         },
         {
           "letter": "C",
-          "screen": "KenGen sign a smaller power and capacity commitment for a 60 MW phase, which stays off the national balance sheet.",
-          "phone": "On your phone: KenGen signs for 60 MW"
-        },
-        {
-          "letter": "D",
-          "screen": "Offer no guarantee and buy services instead. Government services move to the local region under the Cloud Policy, and annual budgets pay for them.",
-          "phone": "On your phone: Government becomes the customer instead of covering demand."
-        }
-      ],
-      "factsLabel": "The Facts",
-      "facts": [
-        {
-          "text": "Public debt about 68% of GDP, June 2025",
-          "source": "Ecofin Agency, 2025"
-        },
-        {
-          "text": "48.5% of ordinary revenue goes to debt service",
-          "source": "People Daily, 2025"
-        },
-        {
-          "text": "1 GW = 50 x 20 MW",
-          "source": "Exhibit 2"
+          "screen": "Bet on future growth. Microsoft invests now without any demand guarantee, trusting that Kenya's growing technology market will bring customers later."
         }
       ]
     },
     {
       "label": "",
-      "question": "Q3. What will Kenya's businesses commit to?",
-      "narration": "Kenya's entire data-centre market is about 20 MW; iXAfrica's flagship runs 4.5 MW. The market was worth about US$266 million in 2025 and may reach US$805 million by 2031, still below the project's headline. One survey says 97.5% of online Kenyans use AI; Microsoft's own measure says 8.7% of the population. Oracle, Huawei and Nxtra are already selling. Bards, this is your strike: what do Kenya's businesses put on the table?",
+      "question": "Q3. AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?",
       "optionsLabel": "Your Options",
       "options": [
         {
           "letter": "A",
-          "screen": "Safaricom, the banks and the large startups sign letters of intent now. They will move workloads to a Nairobi region if its price and latency beat South Africa's.",
-          "phone": "On your phone: Sign letters of intent"
+          "screen": "Enter, but start small, so it is present without overspending."
         },
         {
           "letter": "B",
-          "screen": "Partner with Microsoft. EcoCloud and local developers co-build a 60 MW first phase and sell capacity to Kenyan firms as they migrate.",
-          "phone": "On your phone: Co-build 60 MW with EcoCloud"
+          "screen": "Move fast, so firms get a nearby Azure region instead of relying on South Africa."
         },
         {
           "letter": "C",
-          "screen": "Keep workloads with Oracle at iXAfrica, Huawei and South Africa until Azure's local pricing is known, then compare.",
-          "phone": "On your phone: Wait, compare providers"
-        },
-        {
-          "letter": "D",
-          "screen": "Make no commitments until the innovation lab and training promised in 2024 replace the development centre that is closing.",
-          "phone": "On your phone: Skills lab before contracts"
-        }
-      ],
-      "factsLabel": "The Facts",
-      "facts": [
-        {
-          "text": "Kenya's data-centre market is about 20 MW",
-          "source": "The Analyst, 2026b"
-        },
-        {
-          "text": "Market worth US$266 million in 2025, US$805 million by 2031",
-          "source": "Semafor, 2026"
-        },
-        {
-          "text": "97.5% of online Kenyans vs 8.7% of all Kenyans used AI",
-          "source": "Whitehead, 2026"
+          "screen": "Let rivals compete, because more providers could mean more choice and lower prices."
         }
       ]
     },
     {
       "label": "",
-      "question": "Q4. What should Microsoft do?",
-      "narration": "Kenya's Treasury will not guarantee demand. The Nairobi development centre is closing. Competitors are building. Microsoft must decide how much risk to take, and when. Wizards, this is your strike, and the whole party casts with you: what should Microsoft do?",
+      "question": "Q4. If Microsoft waits, what is the biggest thing lost?",
       "optionsLabel": "Your Options",
       "options": [
         {
           "letter": "A",
-          "screen": "Continue pushing for the full 1 GW, take a larger stake and secure dedicated generation.",
-          "phone": "On your phone: Full 1 GW build"
+          "screen": "They don't lose out since the money works harder in markets that have present demand."
         },
         {
           "letter": "B",
-          "screen": "Build a 24 to 60 MW facility now, then expand in stages as contracts and power arrive.",
-          "phone": "On your phone: Build small, expand later"
+          "screen": "Jobs and skills training, which are already weakened by the Nairobi centre closure."
         },
         {
           "letter": "C",
-          "screen": "Pause Kenya and put the capital into South Africa, then return when power, finances and demand improve.",
-          "phone": "On your phone: Wait, invest elsewhere (South Africa)"
-        },
-        {
-          "letter": "D",
-          "screen": "Local partners such as EcoCloud build and own the facility, and Microsoft rents Azure capacity there as the anchor tenant.",
-          "phone": "On your phone: Partners build centres that we can rent"
+          "screen": "Investor trust, progress made in talks, and the chance to be East Africa's tech hub."
         }
-      ],
-      "factsLabel": "The Facts",
-      "facts": [
+      ]
+    },
+    {
+      "label": "",
+      "question": "Q5. What should Microsoft do in Kenya?",
+      "optionsLabel": "Your Options",
+      "options": [
         {
-          "text": "US$1 billion is 0.6% of Microsoft's FY2027 capex",
-          "source": "Exhibit 4"
+          "letter": "A",
+          "screen": "Build big. Build the full 1 GW data centre now. Microsoft gets in early, but may build before there are enough customers."
         },
         {
-          "text": "Nairobi development centre closing, October 2026",
-          "source": "Namunwa, 2026"
+          "letter": "B",
+          "screen": "Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first."
         },
         {
-          "text": "Microsoft committed US$329 million more to South Africa, April 2026",
-          "source": "Kamau, 2026"
+          "letter": "C",
+          "screen": "Wait. Focus on South Africa instead. This avoids the risk, but Microsoft could lose G42 and a rival could take the opportunity."
         }
       ]
     }
   ],
   "planHeading": "",
   "planIntro": "",
-  "planLines": 4
+  "planLines": 5
 }

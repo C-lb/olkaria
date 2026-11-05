@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Build the character sheet for Olkaria: the Deadlock, as a printable PDF and as an editable artifact page.
 
-One data model, built from content/case.json plus the sheet's own copy (the briefing and the rules in plain words),
-feeds one HTML page that renders itself from embedded JSON. Headless Chrome prints that page to Letter for the PDF;
-the same page, published as an artifact with the `artifact` capability, lets Caleb edit every line in place and save
-the result as `data/sheet.json` next to the page. `--data` rebuilds the PDF from such a saved file. No evidence
-scores, debriefs, discuss lines or endings appear: those are the reveal.
+One data model, docs/character-sheet/sheet.json (Caleb's own wording, saved back from the artifact), feeds one HTML
+page that renders itself from embedded JSON. Headless Chrome prints that page to Letter for the PDF; the same page,
+published as an artifact with the `artifact` capability, lets Caleb edit every line in place and save the result as
+`data/sheet.json` next to the page. `--data` builds from another such saved file. The role figures are read from
+shared/figures.ts and shared/palette.ts at build time, so the sheet draws the same pixels as the game.
 
 Run from anywhere:
-  python3 docs/character-sheet/build.py                      # the PDF beside this script
+  python3 docs/character-sheet/build.py                      # the PDF beside this script, from sheet.json
   python3 docs/character-sheet/build.py --data sheet.json    # the PDF from an edited data file
   python3 docs/character-sheet/build.py --artifact DIR       # DIR/index.html and DIR/data/sheet.json to publish
 """
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -22,55 +23,57 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HERE = pathlib.Path(__file__).resolve().parent
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-ROLE_ORDER = ["citizen", "government", "business", "microsoft"]
-LETTERS = "ABCD"
-
-# The class figures, 12 by 16, copied from shared/figures.ts, with their colours from shared/palette.ts:
-# [x, y, w, h, palette key], drawn in order.
-PALETTE = {
-    "night": "#15141c", "outline": "#0c0b10", "stoneDeep": "#1f2230", "stoneDark": "#2a2e3a", "stone": "#3d4352",
-    "stoneLight": "#59606f", "stonePale": "#7d8494", "bone": "#ddd7c7", "boneDim": "#b0aa9a", "steel": "#a4abb8",
-    "steelDark": "#6f7686", "clothDark": "#2e2b38", "cloth": "#4a4556", "leather": "#6b4f3a", "wood": "#7a5a3a",
-    "skin": "#b8957a", "ember": "#a8682c", "amber": "#eda34f",
-    # Option colours A and B from host/hud/Hud.ts, used here by the stat icons only.
-    "rose": "#b5473d", "sky": "#3f6fa3",
-}
-FIGURES = {
-    "citizen": [  # Rogue: hood and cloak, a dagger in each hand
-        [5, 0, 2, 1, "cloth"], [4, 1, 4, 1, "cloth"], [3, 2, 6, 5, "cloth"],
-        [4, 4, 4, 2, "outline"], [5, 5, 1, 1, "bone"], [7, 5, 1, 1, "bone"],
-        [3, 7, 6, 5, "clothDark"], [2, 10, 8, 2, "clothDark"], [3, 9, 6, 1, "leather"],
-        [4, 12, 1, 3, "cloth"], [7, 12, 1, 3, "cloth"], [3, 15, 2, 1, "leather"], [7, 15, 2, 1, "leather"],
-        [1, 6, 1, 4, "steel"], [0, 10, 3, 1, "leather"], [1, 11, 1, 1, "leather"],
-        [10, 6, 1, 4, "steel"], [9, 10, 3, 1, "leather"], [10, 11, 1, 1, "leather"],
-    ],
-    "government": [  # Knight: plumed helmet with a visor, plate, a shield on the left arm, a sword in the right
-        [5, 0, 2, 1, "bone"], [4, 1, 4, 1, "steel"], [3, 2, 6, 5, "steel"], [4, 4, 4, 1, "outline"],
-        [4, 7, 4, 1, "steelDark"], [3, 8, 6, 4, "steel"], [3, 10, 6, 1, "steelDark"],
-        [4, 12, 2, 3, "steelDark"], [6, 12, 2, 3, "steelDark"], [3, 15, 3, 1, "stone"], [6, 15, 3, 1, "stone"],
-        [0, 7, 4, 6, "stonePale"], [0, 7, 4, 1, "bone"], [1, 9, 2, 2, "bone"], [1, 12, 2, 1, "stoneLight"],
-        [10, 3, 1, 8, "steel"], [9, 11, 3, 1, "leather"], [10, 12, 1, 1, "leather"],
-    ],
-    "business": [  # Bard: feathered cap, tunic, a lute across the body and a coin purse at the belt
-        [3, 1, 6, 2, "cloth"], [8, 0, 3, 1, "bone"], [10, 1, 1, 1, "bone"],
-        [4, 3, 4, 3, "skin"], [5, 4, 1, 1, "outline"], [7, 4, 1, 1, "outline"],
-        [3, 6, 6, 6, "cloth"], [4, 6, 4, 1, "boneDim"], [3, 10, 6, 1, "leather"],
-        [4, 12, 1, 3, "clothDark"], [7, 12, 1, 3, "clothDark"], [3, 15, 2, 1, "leather"], [7, 15, 2, 1, "leather"],
-        [6, 8, 4, 4, "wood"], [7, 9, 1, 1, "outline"], [9, 5, 1, 3, "leather"], [10, 4, 1, 1, "leather"],
-        [10, 3, 2, 1, "wood"], [1, 10, 2, 2, "ember"], [1, 9, 2, 1, "leather"],
-    ],
-    "microsoft": [  # Wizard: pointed hat, beard, robe to the ground, a staff with a lit stone and a tome
-        [5, 0, 2, 1, "cloth"], [4, 1, 4, 2, "cloth"], [3, 3, 6, 1, "cloth"], [2, 4, 8, 1, "clothDark"],
-        [4, 5, 4, 2, "skin"], [5, 5, 1, 1, "outline"], [7, 5, 1, 1, "outline"], [4, 7, 4, 2, "bone"],
-        [3, 9, 6, 2, "cloth"], [2, 11, 8, 4, "cloth"], [2, 15, 8, 1, "clothDark"],
-        [9, 8, 1, 2, "skin"], [10, 2, 1, 14, "wood"], [10, 1, 1, 1, "amber"], [9, 1, 1, 1, "ember"], [11, 1, 1, 1, "ember"],
-        [1, 9, 3, 3, "leather"], [1, 9, 1, 3, "bone"],
-    ],
-}
 
 
-def plural(class_name: str) -> str:
-    return class_name + "s"
+def read_palette() -> dict:
+    """shared/palette.ts as {name: hex}: every `name: '#rrggbb'` line inside PALETTE."""
+    text = (ROOT / "shared/palette.ts").read_text()
+    body = text[text.index("export const PALETTE"):]
+    body = body[:body.index("} as const")]
+    pal = dict(re.findall(r"^\s*(\w+):\s*'(#[0-9a-fA-F]{6})'", body, re.M))
+    if not pal:
+        sys.exit("no colours found in shared/palette.ts")
+    return pal
+
+
+def read_figures(pal: dict) -> dict:
+    """shared/figures.ts as {role: [[x, y, w, h, hex], ...]}, run-length encoded the way its drawn() does it: each
+    `const NAME = drawn('skin', [rows])` is FIGURE_H rows of FIGURE_W keys, a key's colour comes from INK (or the
+    figure's skin for `k`), `.` is empty, and each run of one key along a row is one rectangle."""
+    text = (ROOT / "shared/figures.ts").read_text()
+    w = int(re.search(r"FIGURE_W\s*=\s*(\d+)", text).group(1))
+    h = int(re.search(r"FIGURE_H\s*=\s*(\d+)", text).group(1))
+    ink_src = re.search(r"const INK[^=]*=\s*\{(.*?)\};", text, re.S).group(1)
+    ink = dict(re.findall(r"(\w):\s*'(\w+)'", ink_src))
+    consts = {}
+    for name, skin, rows_src in re.findall(r"const (\w+) = drawn\('(\w+)',\s*\[(.*?)\]\);", text, re.S):
+        rows = re.findall(r"'([^']*)'", rows_src)
+        if len(rows) != h or any(len(r) != w for r in rows):
+            sys.exit(f"figure {name} in shared/figures.ts is not {w} x {h}")
+        rects = []
+        for y, row in enumerate(rows):
+            x = 0
+            while x < w:
+                key, end = row[x], x + 1
+                while end < w and row[end] == key:
+                    end += 1
+                if key != ".":
+                    shade = skin if key == "k" else ink.get(key)
+                    if shade not in pal:
+                        sys.exit(f"no colour for {key!r} in figure {name}")
+                    rects.append([x, y, end - x, 1, pal[shade]])
+                x = end
+        consts[name] = rects
+    table = re.search(r"export const FIGURES[^=]*=\s*\{(.*?)\};", text, re.S).group(1)
+    figs = {role: consts[const] for role, const in re.findall(r"(\w+):\s*(\w+)", table)}
+    if sorted(figs) != sorted(["citizen", "government", "business", "microsoft"]):
+        sys.exit("shared/figures.ts does not give the four role figures")
+    return {"w": w, "h": h, "figures": figs}
+
+
+# The world's palette from shared/palette.ts, plus option colours A and B from host/hud/Hud.ts for the stat icons.
+PALETTE = {**read_palette(), "rose": "#b5473d", "sky": "#3f6fa3"}
+FIGURES = read_figures(PALETTE)
 
 # Stat and special icons, 8 by 8 pixel grids in the palette, drawn on a dark tile so they read in both themes.
 ICONS = {
@@ -89,138 +92,13 @@ ICONS = {
                  [7, 0, 1, 1, "amber"], [7, 2, 1, 1, "amber"]],
 }
 
-# Card stats, flavour only: the game never reads them. The special sits between the stakeholder and the class
-# (Caleb, 3 November): the citizens' Rogue rallies the community, the Government's Knight holds a sovereign wall,
-# the businesses' Bard sings up trade, Microsoft's Wizard throws an Azure fireball.
-STATS = {
-    "citizen": {"health": 90, "attack": 95, "defense": 80, "special": ("Community", "community")},
-    "government": {"health": 95, "attack": 85, "defense": 100, "special": ("Sovereign wall", "wall")},
-    "business": {"health": 85, "attack": 90, "defense": 85, "special": ("Trade song", "song")},
-    "microsoft": {"health": 85, "attack": 100, "defense": 80, "special": ("Azure fireball", "fireball")},
-}
-
-
-def stats_of(rid: str) -> list:
-    s = STATS[rid]
-    return [{"k": "Health", "icon": "health", "v": str(s["health"])},
-            {"k": "Attack", "icon": "attack", "v": str(s["attack"])},
-            {"k": "Defense", "icon": "defense", "v": str(s["defense"])}]
-
-
-def special_of(rid: str) -> dict:
-    name, icon = STATS[rid]["special"]
-    return {"k": "Special", "icon": icon, "name": name}
-
-
-def model(content: dict) -> dict:
-    """The sheet as data: every line the page shows, composed once here so the page only renders."""
-    roles = {r["id"]: r for r in content["roles"]}
-    rounds = content["rounds"]
-    s = content["scoring"]
-    total_hp = s["roundHp"] * len(rounds)
-    focus_pct = round(s["focusThreshold"] * 100)
-    tiers = s.get("tiers")
-    nums = [v for v in tiers.values() if isinstance(v, (int, float))] if isinstance(tiers, dict) else []
-    holds = f" Below {min(nums)} in total, the Deadlock holds." if nums else ""
-    lead_round = {rd["lead"]: i for i, rd in enumerate(rounds)}
-    last_i = len(rounds) - 1
-    wizards = plural(roles["microsoft"]["className"])
-
-    role_cards = []
-    for rid in ROLE_ORDER:
-        r = roles[rid]
-        i = lead_round[rid]
-        rd = rounds[i]
-        strike = f"Round {i + 1}, {rd['boss']}: {rd['title']}" + ("" if rd["title"].endswith("?") else ".")
-        if i == last_i:
-            strike += " The whole party casts with you, and Microsoft is the case's decision maker, so it decides last."
-        role_cards.append({"id": rid, "stakeholder": r["stakeholder"], "className": r["className"],
-                           "who": r["blurb"] + ".", "stats": stats_of(rid), "special": special_of(rid), "strike": strike})
-
-    q = content["quotes"]
-    briefing = [
-        "Microsoft, with G42 of Abu Dhabi on the same side, wants to build a US$1 billion data centre at Olkaria, "
-        "Kenya's geothermal steam fields, with a headline of 1 GW. Brad Smith called it the "
-        f"“{q['smith']}”. Today the project is deadlocked. President Ruto has said that switching it on "
-        f"would “{q['ruto']}”, and some lines already run above 120% of their design capacity. The "
-        "Treasury will not sign the anchor-tenant guarantee Microsoft wants: the IMF would count it as debt, and the "
-        "High Court has ruled that PPP liabilities need Parliament. Kenya's whole data-centre market is about 20 MW, "
-        "and Oracle, Huawei and Nxtra are already selling. Microsoft's Nairobi development centre is closing, and "
-        "the company has committed US$329 million more to South Africa.",
-        "PS John Tanui says the project is “not failed or withdrawn” but “requires some "
-        "structuring”. Your party's job is to find that structure. In rounds 1 to 3 one stakeholder sets its "
-        "terms; in round 4 Microsoft decides.",
-    ]
-    secs = s["voteSeconds"]
-    window = f"{secs // 60} minute{'s' if secs // 60 != 1 else ''}" if secs % 60 == 0 else f"{secs} seconds"
-    steps = [
-        "The narration sets the scene and names the lead class.",
-        f"Everyone votes on their phone within {window}. The vote closes as soon as everyone has voted. The lead "
-        "class's votes are half the attack; the rest of the party's are the other half.",
-        f"The vote locks. The facilitator calls out up to {s['maxCallouts']} voters, each for an option the round has "
-        "not heard yet, to defend their pick in one breath. A defence the room finds convincing earns a rally strike.",
-        "The party strikes. The damage shows on the boss, number by number.",
-        "The debrief shows what each option did, then one question to argue over at your table.",
-    ]
-    scoring = [
-        {"k": "Damage.", "text": "How well the case's evidence supports the options the party chose, plus bonuses: "
-         f"focus ({focus_pct}% or more of the blended vote on one option), alignment (the lead class and the rest of "
-         f"the party pick the same option), exhibits collected on the road before the round (up to "
-         f"{s['maxExhibits']}), and rally strikes (up to {s['maxCallouts']}). Each boss has {s['roundHp']} HP, "
-         f"{total_hp} in all.{holds}"},
-        {"k": f"Round {len(rounds)}.", "text": f"The whole party casts with the {wizards}. Its options score on how "
-         f"well they fit what the party chose in rounds 1 to {last_i}. The majority option decides the ending."},
-        {"k": "Your points.", "text": "Your option's evidence weight, a speed bonus for voting early, "
-         f"{s['casterBonus']} more when your class leads the round, and {s['calloutPointsSpoke']} for answering a "
-         f"call-out ({s['calloutPointsAwarded']} if you win the rally). The leaderboard names the top five, the most "
-         "consistent strategist and the top table."},
-    ]
-    round_blocks = []
-    for i, rd in enumerate(rounds):
-        lead = roles[rd["lead"]]
-        who = f"{plural(lead['className'])} ({lead['stakeholder']}) lead"
-        who += ", and the whole party casts with them." if i == last_i else "; the rest of the party supports."
-        round_blocks.append({
-            "label": f"Round {i + 1}: {rd['boss']}. {who}",
-            "question": rd["title"],
-            "narration": rd["narration"],
-            "optionsLabel": "The options",
-            "options": [{"letter": LETTERS[k], "screen": o["screen"], "phone": "On your phone: " + o["phone"]}
-                        for k, o in enumerate(rd["options"])],
-            "factsLabel": "Facts in play, the three exhibits on the road to this boss",
-            "facts": [{"text": x["text"], "source": x["source"]} for x in content["exhibits"][i]],
-        })
-    return {
-        "eyebrow": "BUSI611 case game",
-        "title": content["title"],
-        "lead": "Character sheet. One sheet per table: four players, one of each class. You vote on your phone; "
-                "the sheet is for the argument in between.",
-        "partyHeading": "Your party",
-        "roles": role_cards,
-        "briefHeading": "The case in brief",
-        "briefing": briefing,
-        "stepsHeading": "How a round plays",
-        "steps": steps,
-        "scoringHeading": "How it is scored",
-        "scoring": scoring,
-        "strikesHeading": "The four strikes",
-        "strikesIntro": "The same questions and options that will come up on the projector, in order. The option "
-                        "text is what the screen shows; the shorter line is the button on your phone.",
-        "rounds": round_blocks,
-        "planHeading": "Your table's plan",
-        "planIntro": "Before each vote, agree what your stakeholder needs to be true and what you will not accept. "
-                     "One line per round; the fourth is Microsoft's call.",
-        "planLines": len(rounds),
-    }
-
-
 PAGE = r"""<meta name="claude:viewport-fit-sides" content="cover">
 <title>Olkaria character sheet</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: one reading column; a 2 by 2 party grid, a two-column rules block, each round a stacked block with its
-   options in a 2 by 2 grid like the projector's cards and its road facts as a strip. Print collapses to Letter and
-   adds the plan's writing lines; on screen there are no blank fields (Caleb, 3 November). */
+/* Layout: one reading column; a 2 by 2 party grid, then each question a stacked block with its three options in a
+   grid. Print collapses to Letter and adds the plan's writing lines; on screen there are no blank fields (Caleb,
+   3 November). */
 :root{
   --accent:#2f5bd8;
   --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f3f0; --tile:#e9e7e1; --tile-dark:#2a2e3a; --line:rgba(17,17,19,.10); --rule:rgba(17,17,19,.35);
@@ -283,14 +161,14 @@ section{ margin-bottom:var(--s5); }
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s3); }
 .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--card-pad); break-inside:avoid; }
 .role{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s3); align-content:start; }
-.role .tile{ align-self:center; width:48px; height:48px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
-.role .tile svg{ width:30px; height:40px; shape-rendering:crispEdges; display:block; }
+/* The figure is 16 by 20 pixels, drawn at 2 or 2.5 screen pixels each, inside a tile with room on every side. */
+.role .tile{ align-self:center; width:58px; height:58px; border-radius:var(--r-sm); background:var(--tile); display:grid; place-items:center; }
+.role .tile svg{ width:40px; height:50px; shape-rendering:crispEdges; display:block; }
 /* The eyebrow and title sit centred on the figure. The height fits a two-line eyebrow, so every card's stats line up. */
 .role .head{ display:flex; flex-direction:column; justify-content:center; min-height:calc(var(--t-cap) * var(--lh-tight) * 2 + 2px + var(--t-h3) * var(--lh-h3)); }
 .role .sub{ margin-bottom:2px; }
 .role .body{ grid-column:1 / -1; margin-top:var(--s2); }
 .role .who{ color:var(--ink-2); }
-.role .strike{ margin-top:var(--s2); }
 /* Three stat cells under the blurb, each an icon on a dark tile with its number beside it, then the special as a bar:
    the icon and the move's title. */
 .role .stats{ margin-top:var(--s3); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2); }
@@ -308,21 +186,18 @@ section{ margin-bottom:var(--s5); }
 .strikes{ margin-bottom:var(--s4); }
 .intro{ color:var(--ink-2); }
 
-/* Rounds */
+/* Questions: three options side by side */
 .round{ break-inside:avoid; border-top:1px solid var(--line); padding-top:var(--s3); margin-bottom:var(--s4); }
 .round-head{ margin-bottom:var(--s2); }
 .round-head .sub:empty{ display:none; }
 .round-head h2{ color:var(--ink); margin:0; }
-.narration{ max-width:84ch; }
-.options-sub, .facts-sub{ margin-top:var(--s2); }
-.options{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--s2) var(--s5); }
+.options-sub{ margin-top:var(--s2); }
+.options{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s2) var(--s4); }
+/* A line left empty takes no room on the sheet; while editing it stays visible so it can be filled in. */
+#app:not(.editing) [data-path]:empty{ display:none; }
 .options li{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:var(--s2); align-items:start; }
 .options p{ margin:0; }
 .letter{ display:inline-flex; align-items:center; justify-content:center; width:1.9em; height:1.9em; border-radius:var(--r-sm); background:var(--surface-2); font-weight:700; margin-top:1px; }
-.phone{ margin-top:2px !important; font-size:var(--t-cap); line-height:var(--lh-tight); color:var(--ink-2); }
-.facts{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--s4); }
-.facts li p{ margin:0; }
-.facts li p + p{ margin-top:2px; }
 
 /* The plan box */
 .plan{ break-inside:avoid; border-top:1px solid var(--line); padding-top:var(--s4); }
@@ -332,7 +207,7 @@ section{ margin-bottom:var(--s5); }
 .line + .line{ margin-top:0; }
 
 @media (max-width:560px){
-  .grid2, .rules, .options, .facts{ grid-template-columns:minmax(0,1fr); }
+  .grid2, .rules, .options{ grid-template-columns:minmax(0,1fr); }
 }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 
@@ -346,7 +221,8 @@ section{ margin-bottom:var(--s5); }
   }
   .page{ max-width:none; padding:0; }
   .toolbar{ display:none !important; }
-  .role .tile{ width:44px; height:44px; }
+  .role .tile{ width:48px; height:48px; }
+  .role .tile svg{ width:32px; height:40px; }
   .lines{ display:block; }
 }
 </style>
@@ -411,16 +287,17 @@ section{ margin-bottom:var(--s5); }
     el.setAttribute('data-path', path);
     return el;
   }
+  /** A role's figure from shared/figures.ts: rectangles with their colours already resolved to hex. */
   function figure(role) {
     var svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', '0 0 12 16');
+    svg.setAttribute('viewBox', '0 0 ' + FIGURES.w + ' ' + FIGURES.h);
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', role + ' figure');
-    (FIGURES[role] || []).forEach(function (r) {
+    (FIGURES.figures[role] || []).forEach(function (r) {
       var rect = document.createElementNS(SVG, 'rect');
       rect.setAttribute('x', r[0]); rect.setAttribute('y', r[1]);
       rect.setAttribute('width', r[2]); rect.setAttribute('height', r[3]);
-      rect.setAttribute('fill', PALETTE[r[4]]);
+      rect.setAttribute('fill', r[4]);
       svg.appendChild(rect);
     });
     return svg;
@@ -473,8 +350,7 @@ section{ margin-bottom:var(--s5); }
         h('div', { 'class': 'head' }, t('p', { 'class': 'sub' }, p + 'stakeholder'), t('h3', null, p + 'className')),
         h('div', { 'class': 'body' },
           t('p', { 'class': 'who' }, p + 'who'),
-          stats,
-          h('p', { 'class': 'strike' }, h('span', { 'class': 'k' }, 'Your strike'), ' ', t('span', null, p + 'strike')))));
+          stats)));
     });
     frag.appendChild(h('section', null, t('h2', null, 'partyHeading'), cards));
 
@@ -490,18 +366,11 @@ section{ margin-bottom:var(--s5); }
       rd.options.forEach(function (o, k) {
         var op = p + 'options.' + k + '.';
         opts.appendChild(h('li', null, t('span', { 'class': 'letter' }, op + 'letter'),
-          h('div', null, t('p', null, op + 'screen'), t('p', { 'class': 'phone' }, op + 'phone'))));
-      });
-      var facts = h('ul', { 'class': 'facts' });
-      rd.facts.forEach(function (f, k) {
-        var fp = p + 'facts.' + k + '.';
-        facts.appendChild(h('li', null, t('p', null, fp + 'text'), t('p', { 'class': 'cite' }, fp + 'source')));
+          h('div', null, t('p', null, op + 'screen'))));
       });
       frag.appendChild(h('section', { 'class': 'round' },
         h('div', { 'class': 'round-head' }, t('p', { 'class': 'sub' }, p + 'label'), t('h2', null, p + 'question')),
-        t('p', { 'class': 'narration' }, p + 'narration'),
-        t('p', { 'class': 'sub options-sub' }, p + 'optionsLabel'), opts,
-        t('p', { 'class': 'sub facts-sub' }, p + 'factsLabel'), facts));
+        t('p', { 'class': 'sub options-sub' }, p + 'optionsLabel'), opts));
     });
 
     var lines = h('div', { 'class': 'lines' });
@@ -645,13 +514,10 @@ def print_pdf(fragment: str, out: pathlib.Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(HERE / "Olkaria character sheet.pdf"))
-    ap.add_argument("--data", help="a saved data/sheet.json to build from instead of content/case.json")
+    ap.add_argument("--data", default=str(HERE / "sheet.json"), help="a saved data/sheet.json to build from")
     ap.add_argument("--artifact", help="write index.html and data/sheet.json into this directory")
     a = ap.parse_args()
-    if a.data:
-        m = json.loads(pathlib.Path(a.data).read_text())
-    else:
-        m = model(json.loads((ROOT / "content/case.json").read_text()))
+    m = json.loads(pathlib.Path(a.data).read_text())
     fragment = page_html(m)
     guard(fragment)
     if a.artifact:
