@@ -1,6 +1,6 @@
 # Olkaria class edits: design
 
-Date: 4 November 2026. For the BUSI611 session on 5 November 2026, so this ships tonight.
+Date: 4 November 2026. For the BUSI611 session on 5 November 2026, so this ships tonight. Approved by Caleb with the amendments marked "Caleb's ruling".
 
 ## Why
 
@@ -16,6 +16,7 @@ Caleb's team rewrote the case discussion around five questions and four problems
 - New role sprites holding weapons, including Satya Nadella for Microsoft.
 - No walking levels and no fact collecting between bosses.
 - Team 1 to Team 8 dropdown instead of the free-text table.
+- An ending that congratulates the room and shows who picked A, B and C.
 - The character sheet matches the new game.
 
 ## Non-goals
@@ -26,70 +27,60 @@ Caleb's team rewrote the case discussion around five questions and four problems
 
 ## Anti-goals
 
-- A score, rank, damage number, HP bar or "points" word left visible on any screen, including the how-to slides.
+- A score, rank, damage number, HP bar or "points" word left visible on any screen, including the how-to slides. The one allowed use of the word is the flash "Valid point, Ann!".
 - A phone showing an explanation of why an option is good or bad.
-- A question or option paraphrased on the vote screens.
-- The live URL breaking before class. The current version stays live until the new one passes a smoke test on production.
+- A question or option paraphrased or shortened anywhere. There are no short labels (Caleb's ruling): an option is shown as its letter, its full text, or both.
+- The live URL breaking before class. The current version stays live until the new one passes a smoke test.
 
 ## The questions
 
-"data center" is normalised to "data centre", because the source used both and the case uses "centre". Everything else is verbatim. `Phone label` is the short form used wherever the full text will not fit (locked screen, call-out banner, phone's final list). The labels are the builder's short forms, not Caleb's text.
+"data center" is normalised to "data centre", because the source used both and the case uses "centre". Everything else is verbatim, including "SSA" in Q3 (Caleb's ruling).
 
 ### Q1. Boss: Grid Wyrm (Power)
 What should Kenya do about the data centre's electricity needs?
 
-| | Option | Phone label |
-|---|---|---|
-| A | Protect households first. Delay the project until Kenya has enough reliable electricity for its residents. | Protect households first |
-| B | Prioritize economic growth. Give the data centre access to electricity to attract investment, even if it puts more pressure on the grid. | Prioritize economic growth |
-| C | Make Microsoft pay. Require Microsoft and its partners to secure additional electricity for the project. | Make Microsoft pay |
+- A. Protect households first. Delay the project until Kenya has enough reliable electricity for its residents.
+- B. Prioritize economic growth. Give the data centre access to electricity to attract investment, even if it puts more pressure on the grid.
+- C. Make Microsoft pay. Require Microsoft and its partners to secure additional electricity for the project.
 
 ### Q2. Boss: Fog of Demand (Demand)
 How should Microsoft secure enough customers in Kenya?
 
-| | Option | Phone label |
-|---|---|---|
-| A | Secure business commitments. Ask major Kenyan companies to commit to using Microsoft's services before construction. | Secure business commitments |
-| B | Make the government a customer. Have Kenya purchase cloud services for government operations to help create demand. | Government as a customer |
-| C | Bet on future growth. Microsoft invests now without any demand guarantee, trusting that Kenya's growing technology market will bring customers later. | Bet on future growth |
+- A. Secure business commitments. Ask major Kenyan companies to commit to using Microsoft's services before construction.
+- B. Make the government a customer. Have Kenya purchase cloud services for government operations to help create demand.
+- C. Bet on future growth. Microsoft invests now without any demand guarantee, trusting that Kenya's growing technology market will bring customers later.
 
-### Q3. Boss: new, Competition
-AWS, Google and Oracle are already investing in Kenya. How should Microsoft respond?
+### Q3. Boss: Hydra of Rivalry (Competition)
+AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?
 
-| | Option | Phone label |
-|---|---|---|
-| A | Enter, but start small, so it is present without overspending. | Enter, but start small |
-| B | Move fast, so firms get a nearby Azure region instead of relying on South Africa. | Move fast |
-| C | Let rivals compete, because more providers could mean more choice and lower prices. | Let rivals compete |
+- A. Enter, but start small, so it is present without overspending.
+- B. Move fast, so firms get a nearby Azure region instead of relying on South Africa.
+- C. Let rivals compete, because more providers could mean more choice and lower prices.
 
-### Q4. Boss: new, Risk
+### Q4. Boss: Wraith of Risk (Risk)
 If Microsoft waits, what is the biggest thing lost?
 
-| | Option | Phone label |
-|---|---|---|
-| A | They don't lose out since the money works harder in markets that have present demand. | They don't lose out |
-| B | Jobs and skills training, which are already weakened by the Nairobi centre closure. | Jobs and skills training |
-| C | Investor trust, progress made in talks, and the chance to be East Africa's tech hub. | Investor trust and the hub |
+- A. They don't lose out since the money works harder in markets that have present demand.
+- B. Jobs and skills training, which are already weakened by the Nairobi centre closure.
+- C. Investor trust, progress made in talks, and the chance to be East Africa's tech hub.
 
-### Q5. Boss: the Deadlock core (final)
+### Q5. Boss: The Deadlock (final)
 What should Microsoft do in Kenya?
 
-| | Option | Phone label |
-|---|---|---|
-| A | Build big. Build the full 1 GW data centre now. Microsoft gets in early, but may build before there are enough customers. | Build big |
-| B | Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first. | Start small |
-| C | Wait. Focus on South Africa instead. This avoids the risk, but Microsoft could lose G42 and a rival could take the opportunity. | Wait |
+- A. Build big. Build the full 1 GW data centre now. Microsoft gets in early, but may build before there are enough customers.
+- B. Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first.
+- C. Wait. Focus on South Africa instead. This avoids the risk, but Microsoft could lose G42 and a rival could take the opportunity.
 
 ## The flow
 
 1. **Lobby.** As now: address, QR, player count. Space starts.
 2. **Boss arrives.** The Battle scene comes up at once with the party, the boss, the problem's name (Power, Demand, Competition, Risk, The Deadlock) and the question. No road, no walking, no gate, no facts to collect, no narration. Space opens the vote.
 3. **Vote.** Projector: question, three option cards with full text, the clock, how many still have to vote. Phone: "Question N of 5", the clock, the question, three buttons with the full option text. The 2:00 window and the early lock when everyone has voted stay.
-4. **After a phone votes.** The phone shows "Look at the screen now." as the main line, with a smaller "You picked B. Start small." It stays there through the lock and the reveal. A phone that did not vote shows "Look at the screen now." only.
-5. **Locked.** Projector shows a single share bar per option, because the lead/support split goes. Call-outs work as now from C: the game names a student, the phone says "You're up. Defend B: Start small." The other phones say who is defending.
-6. **Space: the boss dies.** All four party members strike, the boss flashes and dies. Always, whatever the vote, including a vote with no votes. A few seconds at most, and Space skips it. No numbers rise and there is no HP bar. The arena then shows the dead boss's spot, the question and the final A/B/C split as counts and shares. Nothing else: no explanations and no citations.
+4. **After a phone votes.** The phone shows "Look at the screen now." as the main line, then "You picked B." and the option's full text in smaller type. It stays there through the lock and the reveal. A phone that did not vote shows "Look at the screen now." only.
+5. **Locked.** Projector shows one share bar per option, because the lead/support split goes. C calls a student out as now: the banner names the student and the letter ("Ann, defend B"), the phone says "You're up. Defend B." over the option's full text, and the other phones say "Ann is defending B." Y and N stay (Caleb's ruling). Y flashes "Valid point, Ann!" on the projector, or "Valid point!" for a hand call-out with no name. N shows nothing and clears the banner. Neither awards anything. One call-out at a time, up to 4 a round, as now.
+6. **Space: the boss dies.** All four party members strike, the boss flashes and dies. Always, whatever the vote, including a round with no votes. A few seconds at most, and Space skips it. No numbers rise and there is no HP bar. The arena then shows the dead boss's spot, the question and the final A/B/C split as counts and shares. No explanations and no citations.
 7. **Space: next boss,** back to step 2. After Q5 Space goes to the ending.
-8. **Ending.** The core cracks. The Q5 majority names the ending, with its existing title, must-be-true lines and risk lines, over the Q5 split. It closes the game: Space does nothing further. A tie goes to the earlier letter and says so ("tied with C"), as now. With no Q5 votes it says "No one voted in the final round." and names no ending. The phones show "Look at the screen now." above the student's five picks, each by letter and phone label.
+8. **Ending (Caleb's ruling).** The projector says "Congratulations!" with "The Deadlock is broken." under it. The four characters jump on the spot, in a loop. Below, Q5's question and three columns, one per option: the letter, the option's full text, how many picked it, and the names of the students who picked it, in the order they joined. With names hidden (H), a column shows its count only. Hand counts and bot votes add to the count and have no names. A column shows at most 30 names, then "and N more". There are no ending titles, no "what must be true" and no "risk" lines. It closes the game: Space does nothing further. The phones show "Congratulations!", "Look at the screen now.", and the student's five picks, each as its letter and full option text, or "No vote".
 
 ## Join
 
@@ -119,17 +110,17 @@ No role leads a round any more: the "your class leads" note, lead and support ta
 |---|---|---|---|
 | Q1 | power | Grid Wyrm | Existing |
 | Q2 | demand | Fog of Demand | Existing |
-| Q3 | competition | Name and design left to the builder. A suggestion: a three-headed Rival Hydra, one head per rival. No real company logos | New, same style and box as the others |
-| Q4 | risk | Name and design left to the builder. A suggestion: an hourglass-bodied Risk Wraith, for the cost of waiting | New, same style and box as the others |
+| Q3 | competition | Hydra of Rivalry (Caleb's ruling). Three heads, one per rival. No real company logos | New, same style and box as the others |
+| Q4 | risk | Wraith of Risk (Caleb's ruling). An hourglass body, for the cost of waiting | New, same style and box as the others |
 | Q5 | core | The Deadlock | Existing core |
 
 The Debt Golem goes. All five share a death animation, added to the boss class alongside `idle`, `hit` and `reset`.
 
 ## What gets removed
 
-- `Travel` scene, roads, gates, the party's follow logic, exhibits and their commands, and the hotkeys that only drive these (N, A and the arrows).
+- `Travel` scene, roads, gates, the party's follow logic, exhibits and their commands, and the hotkeys that only drive these (N as the road's skip, A and the arrows).
 - `Leaderboard` scene and its phase, both scoring awards, player scores and ranks.
-- Damage, HP, bonuses, synergy, tiers, the "Deadlock holds" ending, option scores, debriefs and projector lines, the debrief panel, the narration panel, the old quotes if nothing else uses them. The call-out Y/N judging goes too, since it only awarded damage and points: C calling the next student moves on, and Space ends the round.
+- Damage, HP, bonuses, synergy, tiers, every ending title with its bullets, the "Deadlock holds" ending, option scores, debriefs and projector lines, short phone labels, the debrief panel, the narration panel, the old quotes. Call-out points and the rally damage go; the Y/N judging itself stays.
 - Option D from every type, tally, schema, colour lookup, offline hotkey (1 to 3 now) and bot draw. Bots draw evenly, since there are no scores to lean on.
 
 Call-outs: the limit stays 4 per round, but only 3 options now exist. The picker prefers a voter of an option not yet heard and, once every chosen option has been heard, takes any voter not yet called.
@@ -154,9 +145,9 @@ Caleb's saved edits live in the artifact at https://claude.ai/artifact/XvnuWqZre
 
 ## Builder's calls, for Caleb to check
 
-- The phone labels in the tables above.
-- The ending screen keeps its must-be-true and risk lines, because the request removed per-question explanations and not the closing discussion prompt.
 - "Look at the screen now." appears as soon as a student votes, not only at the reveal, following "after the user selects".
+- The ending lists names under each of Q5's options, reading "who picked A/B/C" as the students by name. The 30-name cap per column, and the line "The Deadlock is broken.", are the builder's.
+- N on a call-out shows nothing.
 - Boss art and sprite detail.
 
 ## Verification

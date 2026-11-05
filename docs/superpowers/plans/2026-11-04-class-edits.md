@@ -13,7 +13,8 @@
 ## Global Constraints
 
 - Question and option text is copied character for character from the spec's tables into `content/case.json`. Never retyped from memory, never paraphrased, never clamped with an ellipsis on a vote screen.
-- No visible "points", "score", "rank", "damage", "HP", "leaderboard", "Rogue", "Knight", "Bard" or "Wizard" on any screen, how-to slide, toast or menu label.
+- No visible "points", "score", "rank", "damage", "HP", "leaderboard", "Rogue", "Knight", "Bard" or "Wizard" on any screen, how-to slide, toast or menu label. The one exception is the flash "Valid point, Ann!".
+- There are no short option labels. An option is shown as its letter, its full `text`, or both.
 - No em dashes in any copy, comment or doc. No red in toasts.
 - All copy that changes with the case lives in `content/case.json`, not in code.
 - Icons are inline SVG only. UI follows the styles already in `player/styles.css` and `host/hud/hud.css`: flat fills, one accent, labels never wrap on buttons that are single words.
@@ -31,6 +32,7 @@
 2. A round locked with no votes at all: the boss still dies and the split shows 0 for every option, never `NaN`. Tests in Task 1 (`shares`) and Task 5 (HUD).
 3. A phone still running the old page sends a join with a free-text table or none: the room refuses with `bad team` and the phone shows its join form with the message, not a spinner. Tests in Task 1 and Task 3.
 4. The longest option (Q2 C, 150 characters) on a 390 px phone and on a projector card: the whole text shows, no horizontal scroll, no clamp. Test in Task 3 (no clamp class, wraps), checked by eye in Task 7.
+6. Sixty students on one Q5 option, or names hidden with H: the ending caps a column at 30 names with "and N more", and shows counts only when hidden. Tests in Task 4.
 5. The host reloads during `reveal`, or Space is pressed twice fast: the boss is shown dead with the split, the kill is not replayed, and one press sends one `next`. Tests in Task 4 (`spaceAction`, `sceneFor`).
 
 ---
@@ -52,15 +54,15 @@ export const OPTION_IDS: readonly OptionId[] = ['A', 'B', 'C'];
 export type Phase = 'lobby' | 'travel' | 'vote' | 'locked' | 'reveal' | 'ending';
 export interface Vote { option: OptionId; at: number }
 export interface Player { id: string; name: string; role: Role; table: string; joinedAt: number; votes: Record<number, Vote> }
-/** The student a call-out landed on; null for a hand call-out. The round's last entry is the one on screen. */
-export interface Callout { playerId: string | null; option: OptionId | null }
+/** The student a call-out landed on; null for a hand call-out. Y makes it 'awarded', N or the reveal 'declined'. No points. */
+export interface Callout { playerId: string | null; option: OptionId | null; status: 'pending' | 'awarded' | 'declined' }
 export interface RoomState {
   code: string; hostKey: string; createdAt: number; updatedAt: number;
   phase: Phase; round: number; voteOpenedAt: number | null; voteDeadline: number | null; voteWindowMs: number;
   players: Record<string, Player>; banned: string[]; synthetic: Record<number, Tally>;
   callouts: Record<number, Callout[]>; majorities: (OptionId | null)[]; hideNames: boolean; trips: number;
 }
-// HostCmd loses 'exhibit' and 'judge'. Everything else stays.
+// HostCmd loses 'exhibit'. Everything else stays, 'judge' included.
 export type HostView = Omit<RoomState, 'hostKey'> & { serverNow: number; tally: Tally };
 export interface PlayerView {
   phase: Phase; round: number; serverNow: number; voteDeadline: number | null; voteWindowMs: number;
@@ -80,21 +82,22 @@ export function majorityOf(t: Tally): { majority: OptionId | null; tiedWith: Opt
 // shared/content.ts (CaseContent)
 // { title, roles: [{ id: Role, name, blurb }] x4,
 //   rounds: [{ id: 'power'|'demand'|'competition'|'risk'|'core', boss, problem, question,
-//              options: [{ id: OptionId, text, phone (max 28) }] x3 }] x5,
-//   endings: { A, B, C: { title, mustBeTrue: string[], risk: string[] } },
+//              options: [{ id: OptionId, text }] x3 }] x5,
+//   ending: { title, text },
 //   settings: { voteSeconds: number > 0, maxCallouts: integer >= 0 } }
 ```
 
-`shared/shapes.ts` drops `square` and `D`. `content/case.json`: `roles[].name` is "Citizen", "Government", "Local Businessman", "Satya Nadella" (ids `citizen`, `government`, `business`, `microsoft`, blurbs kept); `rounds[].boss` is "Grid Wyrm", "Fog of Demand", the two new boss names Task 2 chose (start with "Rival Hydra" and "Risk Wraith"; Task 2 may rename), "The Deadlock"; `problem` is "Power", "Demand", "Competition", "Risk", "The Deadlock"; endings A, B, C keep today's titles and bullets; `settings` is `{ "voteSeconds": 120, "maxCallouts": 4 }`. `synergy`, `exhibits`, `quotes`, `scoring`, `endings.D` and `endings.holds` go.
+`shared/shapes.ts` drops `square` and `D`. `content/case.json`: `roles[].name` is "Citizen", "Government", "Local Businessman", "Satya Nadella" (ids `citizen`, `government`, `business`, `microsoft`, blurbs kept); `rounds[].boss` is "Grid Wyrm", "Fog of Demand", "Hydra of Rivalry", "Wraith of Risk", "The Deadlock"; `problem` is "Power", "Demand", "Competition", "Risk", "The Deadlock"; `ending` is `{ "title": "Congratulations!", "text": "The Deadlock is broken." }`; `settings` is `{ "voteSeconds": 120, "maxCallouts": 4 }`. `synergy`, `exhibits`, `quotes`, `scoring`, `endings` and every option's `phone`, `score`, `debrief` and `projector` go.
 
 Reducer rules that change:
 - `join`: refuses with `bad team` when `sanitizeTeam(ev.table)` is null. Otherwise as now.
-- `reveal`: `locked` to `reveal`, appends `majorityOf(tallyFor(state, round)).majority` to `majorities`. Nothing else.
+- `reveal`: `locked` to `reveal`, appends `majorityOf(tallyFor(state, round)).majority` to `majorities`, and a call-out still pending becomes `declined`. Nothing else.
 - `next`: `reveal` to `travel` on the next round (trips + 1), or to `ending` after the last. In `ending` it is `bad phase`.
-- `callOut`: only in `locked`, at most `settings.maxCallouts` a round, appends `{ playerId, option }`. No pending check. `chooseVoter` keeps its rule (an unheard option first, then anyone not yet called).
+- `callOut`: as now (only in `locked`, refused while one is pending, at most `settings.maxCallouts` a round), appending `{ playerId, option, status: 'pending' }`. `chooseVoter` keeps its rule (an unheard option first, then anyone not yet called).
+- `judge`: as now, setting the pending call-out to `awarded` or `declined`. No points.
 - `goto(stage)`: 0 to 5. Keeps votes, synthetic votes and call-outs of rounds below the cut, `majorities` sliced then padded with null. Stage 5 is the ending on round 4.
-- `playerView.callout`: the round's last call-out while the phase is `locked`, otherwise null.
-- `sanitizeState`: phase `leaderboard` becomes `ending`, any other unknown phase `lobby`; `round` clamped to -1..4; votes whose option is not in `OPTION_IDS` are dropped; a player with no valid team gets `'Team 1'`; `callouts` entries reduced to `{ playerId, option }` with a non-option becoming null; `majorities` entries not in `OPTION_IDS` become null.
+- `playerView.callout`: the pending call-out, as now.
+- `sanitizeState`: phase `leaderboard` becomes `ending`, any other unknown phase `lobby`; `round` clamped to -1..4; votes whose option is not in `OPTION_IDS` are dropped; a player with no valid team gets `'Team 1'`; `callouts` entries reduced to `{ playerId, option, status }` with a non-option becoming null and an unknown status `declined`; `majorities` entries not in `OPTION_IDS` become null.
 
 - [ ] **Step 1: Write the failing tests.** Rewrite `tests/content.test.ts`, `tests/names.test.ts`, the affected parts of `tests/room-logic.test.ts` and `tests/worker-room.test.ts`, and add `tests/tally.test.ts`. They must include:
 
@@ -104,8 +107,10 @@ const c = loadContent(raw);
 expect(c.rounds.map((r) => r.id)).toEqual(['power', 'demand', 'competition', 'risk', 'core']);
 expect(c.rounds.every((r) => r.options.map((o) => o.id).join('') === 'ABC')).toBe(true);
 expect(c.rounds[0].question).toBe("What should Kenya do about the data centre's electricity needs?");
+expect(c.rounds[2].question).toBe('AWS, Google and Oracle are already investing in SSA. How should Microsoft respond?');
+expect(c.rounds.map((r) => r.boss)).toEqual(['Grid Wyrm', 'Fog of Demand', 'Hydra of Rivalry', 'Wraith of Risk', 'The Deadlock']);
 expect(c.rounds[4].options[1].text).toBe('Start small. Build a smaller facility (24-60 MW) and grow later. Less money is at risk, but rivals may build bigger first.');
-expect(JSON.stringify(raw)).not.toMatch(/data center|score|debrief|—/);
+expect(JSON.stringify(raw)).not.toMatch(/data center|score|debrief|"phone"|mustBeTrue|—/);
 // tally
 expect(shares({ A: 0, B: 0, C: 0 })).toEqual({ A: 0, B: 0, C: 0 });
 expect(majorityOf({ A: 0, B: 0, C: 0 })).toEqual({ majority: null, tiedWith: [] });
@@ -118,7 +123,8 @@ expect(sanitizeTeam('Team 9')).toBeNull(); expect(sanitizeTeam(undefined)).toBeN
 // a vote for 'D' (cast through `as never`) adds no vote
 // reveal of a locked round with no votes -> phase 'reveal', majorities [null]
 // five rounds of start/openVote/vote/closeVote/reveal/next end in phase 'ending'; next in 'ending' -> 'bad phase'
-// four call-outs in a round with voters on A, B, C: the first three cover A, B and C in some order, the fifth is refused 'call-out limit'
+// call-out then judge, four times, in a round with voters on A, B, C: the first three cover A, B and C in some order, a fifth is refused 'call-out limit'
+// judge(true) -> the call-out's status 'awarded' and no key named points on it; a call-out pending at reveal -> 'declined'
 // playerView never has the keys score, rank, lastPoints, tally, isLead; hostView never has bossHp, damageLog, leadTally
 // sanitizeState({ ...oldRoom, phase: 'leaderboard', round: 3, damageLog: [...], players: { p: { ...old, table: null, score: 90, votes: { 0: { option: 'D', at: 1 } } } } })
 //   -> phase 'ending', players.p.votes {} and players.p.table 'Team 1'; reduce(tick) on the result does not throw
@@ -146,7 +152,6 @@ export const FIGURES: Readonly<Record<Role, readonly FigureRect[]>>;
 export function figureSvg(role: Role, scale: number): string;   // same markup contract, viewBox "0 0 16 20"
 // host/art/boss-data.ts
 export type BossId = 'power' | 'demand' | 'competition' | 'risk' | 'core';
-export const BOSS_NAMES: Readonly<Record<'competition' | 'risk', string>>;   // what the builder named the two new bosses
 export const DIE = { ms: 900 } as const;
 // host/art/bosses.ts, on Boss
 die(onDone?: () => void): this;   // flash, then fall apart or sink and fade within DIE.ms; onDone once
@@ -154,14 +159,14 @@ lieDead(): this;                  // the state die() ends in, at once, no tween
 // reset() also undoes die() and lieDead()
 ```
 
-Figures per the spec's Roles table: citizen in everyday clothes with a working tool, government in formal dress with a sash in the Kenyan flag's black, red and green and a large gavel, business in a suit and tie with a briefcase or sword, microsoft as Satya Nadella (short dark hair, glasses, trim beard, dark jacket, a 2 x 2 logo of four squares in `#f25022`, `#7fba00`, `#00a4ef`, `#ffb900` on the chest, a sword). Every figure faces right and holds its weapon on the right, toward the boss. The existing rigs for the wyrm, the fog and the core keep their art under the ids `power`, `demand`, `core`. The Debt Golem's data and rig are deleted. The two new bosses are built like the others (rows in `boss-data.ts`, a rig with an idle loop in `bosses.ts`), fit the same box (`tests/bosses.test.ts` holds each to it), and use no real company logo. Texture keys follow the ids (`boss-power` and so on); class textures stay `class-${role}` at 16 x 20.
+Figures per the spec's Roles table: citizen in everyday clothes with a working tool, government in formal dress with a sash in the Kenyan flag's black, red and green and a large gavel, business in a suit and tie with a briefcase or sword, microsoft as Satya Nadella (short dark hair, glasses, trim beard, dark jacket, a 2 x 2 logo of four squares in `#f25022`, `#7fba00`, `#00a4ef`, `#ffb900` on the chest, a sword). Every figure faces right and holds its weapon on the right, toward the boss. The existing rigs for the wyrm, the fog and the core keep their art under the ids `power`, `demand`, `core`. The Debt Golem's data and rig are deleted. The two new bosses are the Hydra of Rivalry (id `competition`: three heads on one body) and the Wraith of Risk (id `risk`: an hourglass for a body). They are built like the others (rows in `boss-data.ts`, a rig with an idle loop in `bosses.ts`), fit the same box (`tests/bosses.test.ts` holds each to it), and use no real company logo. Texture keys follow the ids (`boss-power` and so on); class textures stay `class-${role}` at 16 x 20.
 
 - [ ] **Step 1: Write the failing tests.** In `tests/figures.test.ts`: every role's rects lie inside 16 x 20; the microsoft figure contains all four logo colours; each figure's rightmost third contains a rect in a weapon colour (`steel`, `wood` or `leather`); `figureSvg('citizen', 3)` has `width="48" height="60" viewBox="0 0 16 20"`. In `tests/bosses.test.ts`: the id list is exactly the five above, each new boss's parts stay inside the box the file already enforces, no `debt` key remains in `SPRITES`.
 - [ ] **Step 2:** Run `npx vitest run tests/figures.test.ts tests/bosses.test.ts`. Expected: FAIL.
 - [ ] **Step 3:** Draw the figures and bosses, add `die`, `lieDead`, remove the golem.
 - [ ] **Step 4:** Run the same command. Expected: PASS.
 - [ ] **Step 5: Look at the figures.** Write a throwaway HTML page in the scratchpad with the four `figureSvg(role, 12)` outputs and each boss's still rows painted as `<rect>`s on `#15141c`, screenshot it with headless Chrome, and read the PNG. Redraw until each role is recognisable at a glance, the logo reads as four squares and each weapon is clearly a weapon. Save the final PNG as `docs/superpowers/plans/assets/2026-11-04-figures.png` for the review.
-- [ ] **Step 6:** If the new boss names differ from "Rival Hydra" and "Risk Wraith", update `rounds[2].boss` and `rounds[3].boss` in `content/case.json`. Commit: `feat(art): role figures with weapons, the competition and risk bosses, a boss death`.
+- [ ] **Step 6:** Commit: `feat(art): role figures with weapons, the competition and risk bosses, a boss death`.
 
 ---
 
@@ -173,20 +178,20 @@ Figures per the spec's Roles table: citizen in everyday clothes with a working t
 
 **Interfaces:** Consumes `PlayerView`, `TEAMS`, `CaseContent`, `figureSvg` from Tasks 1 and 2. `Actions.join(name, role, team)` keeps its shape.
 
-Screens, with their exact copy (`N` is the round plus 1, `label` the option's `phone`, `text` its `text`):
+Screens, with their exact copy (`N` is the round plus 1, `text` the option's full `text`):
 
 | When | `data-screen` | Shows |
 |---|---|---|
 | Join | `join` | "Join the game", Name, Role (figure, `roles[].name`), Team: `select#team` with a disabled first option "Choose your team" then `TEAMS`. Join enabled only with name, role and team |
 | `lobby`, `travel` | `waiting` | figure, name, role name, the team. "Change" in the lobby only |
 | `vote`, no vote yet | `vote` | eyebrow "Question N of 5", the clock, `h1` the question, three buttons each with letter, shape and the full `text` |
-| `vote`, `locked` or `reveal` with a vote, and no call-out | `look` | `h1` "Look at the screen now.", then "You picked B. Start small." |
+| `vote`, `locked` or `reveal` with a vote, and no call-out | `look` | `h1` "Look at the screen now.", then "You picked B." and, under it in smaller type, the option's `text` |
 | `locked` or `reveal` without a vote | `look` | `h1` "Look at the screen now." only |
-| `locked`, call-out is me | `called` | "You're up. Defend B: Start small." and the vibration as now |
+| `locked`, call-out is me | `called` | `h1` "You're up. Defend B.", the option's `text` under it, and the vibration as now |
 | `locked`, call-out is someone else | `someone` | "Ann is defending B." |
-| `ending` | `ending` | `h1` "Look at the screen now.", `h2` "Your five picks", five rows "Q1", letter, label or "No vote" |
+| `ending` | `ending` | `h1` "Congratulations!", then "Look at the screen now.", `h2` "Your five picks", five rows: "Q1", the letter and the option's `text`, or "No vote" |
 
-No screen contains a number that is not a question number, a clock or "Team N". The `result` screen, `stat()`, `synergyHits` and the "class leads" note are deleted. An error from the room (`bad team`) puts the phone back on the join form with the message under it.
+No screen contains a number that is not a question number, a clock, "Team N" or part of an option's own text. The `result` screen, `stat()`, `synergyHits` and the "class leads" note are deleted. An error from the room (`bad team`) puts the phone back on the join form with the message under it.
 
 - [ ] **Step 1: Write the failing tests** in `tests/player-render.test.ts`: one per row of the table asserting `data-screen` and the exact strings; plus
 
@@ -225,24 +230,29 @@ export function questionFor(content: CaseContent, round: number): QuestionArgs;
 //   eyebrow "Question 2 of 5: Demand", footer "Space opens the vote"
 export function optionsFooter(content: CaseContent, view: Pick<HostView, 'phase' | 'round' | 'callouts'>): string;
 //   vote: "Space locks the vote"
-//   locked, call-outs left: "C calls a student out, Space strikes"; none left: "Space strikes"
+//   locked, a call-out pending: "" (the banner carries the keys); call-outs left: "C calls a student out, Space strikes"; none left: "Space strikes"
 //   reveal: "Space: next question", on the last round "Space: the ending"
-export function calledNotes(content: CaseContent, callouts: readonly Callout[], players: Record<string, Player>, hideNames: boolean): string[];
-//   one per call-out before the last: "Ann defended B"
-export function bannerFor(...): BannerArgs | null;   // the round's last call-out while locked, as now, without a judging footer
+export function validNotes(callouts: readonly Callout[], players: Record<string, Player>): string[];
+//   one per awarded call-out: "Valid point: Ann"; a hand call-out reads "Valid point"
+export function judgeFlash(callout: Callout, players: Record<string, Player>, awarded: boolean): string | null;
+//   Y: "Valid point, Ann!", or "Valid point!" when the call-out has no player or the player has left; N: null
+export function bannerFor(...): BannerArgs | null;   // the pending call-out as now: { name, letter, footer "Y: valid point, N: move on" }, no option text
 export const KILL_MS = 2400;   // the party's strike and the boss's death together; Space skips it
 export interface SpaceState { phase: Phase; busy: boolean; killing: boolean; lockedUntil: number; time: number }
 export type SpaceAction = { kind: 'send'; cmd: HostCmd } | { kind: 'skip' } | { kind: 'none' };
 export function spaceAction(s: SpaceState): SpaceAction;
 //   travel -> openVote, vote -> closeVote, locked -> reveal, reveal while killing -> skip, reveal -> next; none while busy or before lockedUntil
 // kept as they are: labelFor (reads roles[].name), votedText, timerText, clockCues, phaseCues, lockNoteFor and its notes, lockoutAfterLock, the lock constants
-// deleted: classFor, strikePlan, beatsFor, debriefFor, alignmentText, narrationFor, judgeFlash, judgedNotes, lungeReach
+// deleted: classFor, strikePlan, beatsFor, debriefFor, alignmentText, narrationFor, judgedNotes, lungeReach
 
 // host/finale.ts
-export interface Outcome { ending: OptionId | null; tiedWith: OptionId[] }
-export function outcomeOf(view: HostView): Outcome;            // majorityOf(view.tally)
+export const NAMES_SHOWN = 30;
 export function endingArgs(content: CaseContent, view: HostView): EndingArgs;
-//   { title, note, split, mustBeTrue, risk }: note "" or "Tied with C"; with no votes title "No one voted in the final round." and empty lists
+//   { title: content.ending.title, text: content.ending.text, question: the last round's question,
+//     columns: for A, B, C { letter, text, count, names, more } }
+//   count is view.tally[letter] (hand counts and bots included); names are the players whose last-round vote is that
+//   letter, by join time then id, at most NAMES_SHOWN, with `more` the number of named voters left out;
+//   with view.hideNames, names is [] and more is 0. outcomeOf and leaderboardArgs are deleted.
 
 // host/router.ts
 // sceneFor: lobby -> Lobby; travel, vote, locked, reveal -> Battle, fitting by key, round and trip, started with resume = (phase !== 'travel'); ending -> Ending.
@@ -250,7 +260,7 @@ export function endingArgs(content: CaseContent, view: HostView): EndingArgs;
 export function botTally(n: number, rng: () => number): Tally;   // n even draws over A, B, C
 ```
 
-Other rules: digits 1 to 3 add hand votes, Y and N do nothing, the hotkey comment and the menu's key map list only keys that still exist. Menu stages read "Q1 Power" to "Q5 The Deadlock" then "Ending"; "Restart round N" becomes "Restart question N". `howto.ts` produces these five slides and nothing else, each a title and one or two lines, with the vote time read from `settings.voteSeconds`:
+Other rules: digits 1 to 3 add hand votes, Y and N judge a pending call-out as now, the hotkey comment and the menu's key map list only keys that still exist. Menu stages read "Q1 Power" to "Q5 The Deadlock" then "Ending"; "Restart round N" becomes "Restart question N". `howto.ts` produces these five slides and nothing else, each a title and one or two lines, with the vote time read from `settings.voteSeconds`:
 1. "Join": "Scan the code. Pick your name, your role and your team."
 2. "Five bosses": "Power, Demand, Competition, Risk, and the Deadlock. Each one guards a question."
 3. "Vote": "Read the question on your phone and pick A, B or C. You have 2:00."
@@ -268,11 +278,18 @@ expect(spaceAction({ phase: 'reveal', busy: false, killing: false, lockedUntil: 
 expect(sceneFor({ phase: 'travel', round: 0, trips: 1 }, { key: 'Lobby', round: -1, trip: 0 })).toEqual({ key: 'Battle', data: { round: 0, resume: false, trip: 1 } });
 expect(sceneFor({ phase: 'reveal', round: 2, trips: 3 }, null)).toEqual({ key: 'Battle', data: { round: 2, resume: true, trip: 3 } });
 expect(sceneFor({ phase: 'vote', round: 2, trips: 3 }, { key: 'Battle', round: 2, trip: 3 })).toBeNull();
-expect(endingArgs(content, viewWithTally({ A: 2, B: 5, C: 5 }))).toMatchObject({ title: content.endings.B.title, note: 'Tied with C' });
-expect(endingArgs(content, viewWithTally({ A: 0, B: 0, C: 0 }))).toMatchObject({ title: 'No one voted in the final round.', mustBeTrue: [], risk: [] });
+// endingArgs, Ann and Ben on B, Cy on C, two hand votes on A, in round 4:
+expect(args.title).toBe('Congratulations!'); expect(args.question).toBe(content.rounds[4].question);
+expect(args.columns.map((c) => [c.letter, c.count, c.names])).toEqual([['A', 2, []], ['B', 2, ['Ann', 'Ben']], ['C', 1, ['Cy']]]);
+expect(args.columns[1].text).toBe(content.rounds[4].options[1].text);
+// 34 named voters on B -> names.length 30, more 4; hideNames -> every names [] and more 0, counts unchanged; no votes -> counts 0, no throw
+expect(judgeFlash({ playerId: 'p1', option: 'B', status: 'pending' }, players, true)).toBe('Valid point, Ann!');
+expect(judgeFlash({ playerId: null, option: null, status: 'pending' }, players, true)).toBe('Valid point!');
+expect(judgeFlash({ playerId: 'p1', option: 'B', status: 'pending' }, players, false)).toBeNull();
 const t = botTally(300, seeded); expect(t.A + t.B + t.C).toBe(300); expect(Math.min(t.A, t.B, t.C)).toBeGreaterThan(60);
 // the offline client plays start to ending over five rounds with keys 1 to 3; Digit4 sends nothing
-// every string in the how-to slides and the menu model: not.toMatch(/point|score|damage|leaderboard|Rogue|Knight|Bard|Wizard/i)
+// pressing y with a call-out pending sends { k: 'judge', awarded: true }; pressing n sends awarded false
+// every string in the how-to slides and the menu model: not.toMatch(/points|score|damage|leaderboard|Rogue|Knight|Bard|Wizard/i)
 ```
 
 - [ ] **Step 2:** Run `npx vitest run tests/strikers.test.ts tests/finale.test.ts tests/router.test.ts tests/hotkeys.test.ts tests/menu.test.ts tests/offline-client.test.ts tests/ws-client.test.ts tests/howto.test.ts tests/score.test.ts tests/sound.test.ts`. Expected: FAIL.
@@ -302,14 +319,16 @@ export interface OptionsArgs {
   split: { shares: Record<OptionId, number>; counts: Tally } | null;
   footer: string; called?: string[];
 }
-export interface EndingArgs { title: string; note: string; split: Tally; mustBeTrue: string[]; risk: string[] }
+export interface EndingArgs { title: string; text: string; question: string; columns: { letter: OptionId; text: string; count: number; names: string[]; more: number }[] }
+export interface BannerArgs { name: string | null; letter: OptionId | null; footer: string }
 showQuestion(a: QuestionArgs): void;   // replaces showNarration
 showOptions(a: OptionsArgs): void;     // the question over three cards in one row
-showEnding(a: EndingArgs): void;       // the split's heading reads "Question 5 split"
-// removed: showNarration, showDebrief, showLeaderboard, flashRally
+showEnding(a: EndingArgs): void;       // the title and text, the question, three columns: badge, text, count, the names, "and N more"
+showFlash(text: string, ms?: number): void;   // flashRally renamed; always the amber style
+// removed: showNarration, showDebrief, showLeaderboard
 ```
 
-Battle, by phase: `travel` shows the boss's entrance and `showQuestion`; `vote` shows `showOptions` with `split: null`; `locked` adds the split, the call-out banner and `calledNotes`; on the view turning to `reveal` the four figures lunge together, the boss takes its hits and `die()`s within `KILL_MS`, and Space during it skips to the end state; `reveal` after the kill, or a Battle started with `resume` in `reveal`, shows `lieDead()` and `showOptions` with the split and the reveal footer. No HP bar, no rising numbers, no lead position: the party stands in `ROLES` order at x 26, 48, 70 and 92, feet on the floor, facing the boss. The boss for round `i` is `['power', 'demand', 'competition', 'risk', 'core'][i]`. Ending: the core cracks as now for an ending with votes, stands still with none; Space does nothing. `main.ts` registers `[Boot, Lobby, Battle, Ending]`. The lobby's keycaps and role tiles use `roles[].name`.
+Battle, by phase: `travel` shows the boss's entrance and `showQuestion`; `vote` shows `showOptions` with `split: null`; `locked` adds the split, the call-out banner, `validNotes`, and `showFlash(judgeFlash(...))` when the pending call-out turns `awarded`; on the view turning to `reveal` the four figures lunge together, the boss takes its hits and `die()`s within `KILL_MS`, and Space during it skips to the end state; `reveal` after the kill, or a Battle started with `resume` in `reveal`, shows `lieDead()` and `showOptions` with the split and the reveal footer. No HP bar, no rising numbers, no lead position: the party stands in `ROLES` order at x 26, 48, 70 and 92, feet on the floor, facing the boss. The boss for round `i` is `['power', 'demand', 'competition', 'risk', 'core'][i]`. Ending: no core and no crack. The floor, and the four figures in the middle hopping on the spot in a loop (about 10 px up, 300 ms each way, each figure 120 ms behind the one before), under `showEnding`. Space does nothing. `main.ts` registers `[Boot, Lobby, Battle, Ending]`. The lobby's keycaps and role tiles use `roles[].name`.
 
 - [ ] **Step 1: Write the failing tests** in `tests/hud.test.ts` and `tests/lobby.test.ts`:
 
@@ -322,7 +341,8 @@ expect(root.querySelector('.bar')).toBeNull();
 hud.showOptions({ ...args, split: { shares: { A: 0, B: 0, C: 0 }, counts: { A: 0, B: 0, C: 0 } } });
 expect(root.textContent).not.toContain('NaN'); expect(root.querySelectorAll('.bar').length).toBe(3);
 // with counts { A: 2, B: 5, C: 1 } card B reads "5" and "63%"
-// showEnding: the heading "Question 5 split", the note shown only when not empty
+// showEnding: an h1 "Congratulations!", three [data-column] blocks, column B lists its names in order and reads "and 4 more" when more is 4, a column with no names shows its count and no empty list
+// showBanner({ name: 'Ann', letter: 'B', footer }) reads "Ann, defend B" with no option text
 // hud.css: .card-text has no line-clamp
 // Hud.prototype has no showDebrief, showLeaderboard, showNarration
 ```
@@ -361,11 +381,11 @@ Independent of Tasks 3 to 5. Needs Task 2's figures.
 
 - [ ] **Step 1:** Rewrite `RUNBOOK.md` and `README.md` to the new flow: the run of show as five questions and the ending, the key table (Space, C, R, H, F, S, M, ?, 1 to 3 and B offline, Shift+R twice), the five questions with their bosses, the offline fallback, the rehearsal checklist. No discussion prompts. No mention of points, damage, exhibits, roads, judging or the leaderboard.
 - [ ] **Step 2:** Add a `next` environment to `wrangler.jsonc` (`"env": { "next": { "name": "olkaria-next", "durable_objects": { ... same binding ... } } }`, repeating whatever wrangler reports as not inherited) and `"deploy:next": "vite build && wrangler deploy --env next"` to `package.json`. Run `npx wrangler deploy --env next --dry-run`. Expected: it names `olkaria-next` and the `ROOM` binding, with no warning about a missing migration.
-- [ ] **Step 3:** Write `scripts/live-smoke.mjs`: `node scripts/live-smoke.mjs <out dir> [base url]`. Two headless Chromes over CDP, the host at 1920 x 1080 on port 9333 and a phone at 390 x 844 on port 9335. It creates a room with `?new=1`, joins the phone (name, role, Team 3), and for each of the five questions: screenshots the host's boss screen, opens the vote, screenshots both vote screens, asserts the phone's `h1` equals the question, votes, asserts the phone shows "Look at the screen now.", presses C on the first question and asserts the phone shows "You're up.", strikes, waits for the split, screenshots it, moves on. It ends on the ending with both screens shot, and asserts `document.documentElement.scrollWidth <= innerWidth` on every phone screen. Keys go in as DOM events, and it asserts the host tab is drawing (a `requestAnimationFrame` fires) before each strike. Exit code 0 only if every assertion held.
+- [ ] **Step 3:** Write `scripts/live-smoke.mjs`: `node scripts/live-smoke.mjs <out dir> [base url]`. Two headless Chromes over CDP, the host at 1920 x 1080 on port 9333 and a phone at 390 x 844 on port 9335. It creates a room with `?new=1`, joins the phone (name, role, Team 3), and for each of the five questions: screenshots the host's boss screen, opens the vote, screenshots both vote screens, asserts the phone's `h1` equals the question, votes, asserts the phone shows "Look at the screen now.", presses C on the first question and asserts the phone shows "You're up.", presses Y and asserts the host shows "Valid point, " with the phone's name, strikes, waits for the split, screenshots it, moves on. It ends on the ending with both screens shot, asserts the host shows "Congratulations!" and the phone's name under the option it picked, and asserts `document.documentElement.scrollWidth <= innerWidth` on every phone screen. Keys go in as DOM events, and it asserts the host tab is drawing (a `requestAnimationFrame` fires) before each strike. Exit code 0 only if every assertion held.
 - [ ] **Step 4:** `npx wrangler whoami` (expect caleblimster@gmail.com's account), `npm run deploy:next`, then `node scripts/live-smoke.mjs <scratchpad>/smoke-next https://olkaria-next.sparkbot-worker.workers.dev`. Expected: exit 0. Read every screenshot. Fix and repeat until it passes and the screens look right.
 - [ ] **Step 5:** `npm run deploy`, then the smoke script against `https://olkaria.sparkbot-worker.workers.dev`. Expected: exit 0. If it fails and the fix is not immediate, `npx wrangler rollback` and report.
 - [ ] **Step 6:** Commit and push: `docs: the runbook for five questions; a staging worker and a smoke script`.
-- [ ] **Step 7 (controller):** Send Caleb the screenshots on Telegram (the four figures, each boss, both vote screens, a split, the ending) with the live URL and the sheet's path, and update the memory file `project_olkaria.md` to the new game.
+- [ ] **Step 7 (controller):** Send Caleb the screenshots on Telegram (the four figures, each boss, both vote screens, a split, the ending with names under A, B and C) with the live URL and the sheet's path, and update the memory file `project_olkaria.md` to the new game.
 
 ## Order
 
