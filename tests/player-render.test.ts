@@ -166,6 +166,12 @@ describe('the join form', () => {
     expect(joinButton(el).classList.contains('is-loading')).toBe(true);
   });
 
+  it('reads a full room as a plain sentence', () => {
+    const el = mount();
+    render(el, null, c, { status: 'joining', name: 'Mo', role: 'citizen', table: 'Team 1', error: 'room full' }, noop);
+    expect(el.querySelector('form [role=alert]')?.textContent).toBe('This room is full.');
+  });
+
   it('shows a refused join as a line under the form, with the form ready to send again', () => {
     const el = mount();
     render(el, null, c, { status: 'joining', name: 'Mo', role: 'citizen', table: '', error: 'bad team' }, noop);

@@ -104,7 +104,7 @@ export function installHotkeys(game: Phaser.Game, client: RoomClient, hud: Hud, 
     const view = (game.registry.get('view') as HostView | null | undefined) ?? null;
     switch (key) {
       case 'b':
-        client.addBots(BOTS);
+        if (client.mode === 'offline') client.addBots(BOTS);
         break;
       case 'c':
         client.send({ k: 'callout' });

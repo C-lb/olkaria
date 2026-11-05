@@ -24,7 +24,23 @@ export class PlayerSocket {
 
   constructor(private readonly code: string, private readonly clientId: string) {
     this.connect();
+    // One listener for the life of the socket, not one per connect.
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVisible);
   }
+
+  /**
+   * A phone that wakes from a lock can hold a dead socket that still reads OPEN, and no close ever comes. So on every
+   * return to the page the socket is replaced, whatever it reads, through the same connect() a reconnect uses, so the
+   * room hears the same join again. A socket that is already being replaced is not replaced twice.
+   */
+  private readonly onVisible = (): void => {
+    if (this.stopped || document.visibilityState !== 'visible') return;
+    clearTimeout(this.timer);
+    const old = this.ws;
+    this.ws = null; // its events now belong to nobody
+    old?.close();
+    this.connect();
+  };
 
   onView(cb: (view: PlayerView) => void): void { this.viewCb = cb; }
   /** 'open' on every connection, 'closed' on every loss, and 'kicked' once, after which nothing reconnects. */
@@ -93,6 +109,7 @@ export class PlayerSocket {
     if (this.stopped) return;
     this.stopped = true;
     clearTimeout(this.timer);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisible);
     const ws = this.ws;
     this.ws = null;
     ws?.close();

@@ -73,7 +73,7 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['Space', 'Advance: start, open the vote, lock, strike, next'],
   ['1 to 3', 'Add a hand vote for A to C'],
   ['Shift+1 to 3', 'Add ten hand votes'],
-  ['B', 'Add 30 bot votes'],
+  ['B', 'Add 30 bot votes (practice only)'],
   ['C', 'Call a student out, once the vote is locked'],
   ['Y or N', 'Judge the call-out: valid point or move on'],
   ['R', 'Reopen a locked vote, or extend an open one'],

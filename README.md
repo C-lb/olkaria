@@ -14,7 +14,7 @@ npm run dev
 ```
 
 Then open http://localhost:5173/host/?mode=offline.
-Offline mode runs the room in the browser with no server: 1 to 3 add a vote for A to C, Shift adds ten, B adds 30 bots.
+Offline (practice) mode runs the room in the browser with no server: 1 to 3 add a vote for A to C, Shift adds ten, B adds 30 bots (practice mode only; B does nothing online).
 
 Online, with the Worker:
 

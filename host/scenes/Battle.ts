@@ -46,7 +46,7 @@ const STEP_PX = 8;
 const STEP_MS = 150;
 
 /**
- * The kill, about 1.9 s of KILL_MS: the four dash at the boss together (DASH_MS), strike it three times with a short
+ * The kill, about 2.4 s, which is KILL_MS: the four dash at the boss together (DASH_MS), strike it three times with a short
  * jab each (the hit and its sound on each), then fall back home while it dies (DIE.ms in boss-data.ts).
  */
 const DASH_PX = 128;

@@ -4,6 +4,9 @@
 
 const MAX_LENGTH = 16;
 
+/** Zero-width marks, and the bidi embeddings, overrides and isolates that can reorder or hide text around a name. */
+const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
+
 // Generated names must fit the same 16-character cap as typed ones. Every first word is 7 letters or fewer
 // and every second word 8 or fewer, so the longest pairing is exactly 16 (tests/names.test.ts checks them all).
 export const NAME_FIRST_WORDS: readonly string[] = [
@@ -33,10 +36,10 @@ export function generateName(seed: string): string {
   return `${first} ${second}`;
 }
 
-/** Control characters removed, trimmed, cut to 16 characters (and trimmed again, so the cut cannot leave a trailing space). */
+/** Control, zero-width and bidi characters removed, trimmed, cut to 16 code points so an emoji is never split (and trimmed again, so the cut cannot leave a trailing space). */
 function clean(raw: string | undefined): string {
   const text = typeof raw === 'string' ? raw : '';
-  return text.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_LENGTH).trimEnd();
+  return Array.from(text.replace(/[\u0000-\u001f\u007f]/g, '').replace(INVISIBLE, '').trim()).slice(0, MAX_LENGTH).join('').trimEnd();
 }
 
 /** The cleaned name, or the generated one for `seed` when nothing is left. */

@@ -23,7 +23,7 @@ The game is five boss fights, one question each. Every question has three option
    Chrome can unload a tab it thinks is idle, and reloading it needs the network.
    So add olkaria.sparkbot-worker.workers.dev in Chrome settings, Performance, "Always keep these sites active", or click the offline tab just before class.
 6. Use that offline tab to check the real fullscreen look on the projector.
-   F, then Space shows the Grid Wyrm with question 1. Space opens the vote, B adds 30 bot votes, and Space locks it.
+   F, then Space shows the Grid Wyrm with question 1. Space opens the vote, B adds 30 bot votes (this offline tab only), and Space locks it.
    Check the backdrop, the boss, the four figures, the option cards and the text sizes from the back of the room.
    Question 2 has the longest options, so check that its cards fit: M, then Q2 Demand twice, then Space to open its vote.
    At 1920 x 1080 the game draws at 6x and fills the screen.
@@ -76,7 +76,7 @@ The roles are Citizen, Government, Local Businessman and Satya Nadella. The team
 | Cmd+R | Reload. Needs the network. The same room and question come back. |
 | 1 to 3 | Add one vote for A to C. Meant for offline mode, and works online too. |
 | Shift+1 to 3 | Add ten votes for A to C |
-| B | Add 30 bot votes, spread evenly over A to C |
+| B | Add 30 bot votes, spread evenly over A to C. Practice (offline) mode only; online it does nothing |
 
 Y and N do nothing unless a call-out is waiting. Neither gives anything to anyone.
 Space rests about a second after each press, and a second and a half once the vote locks. A second press inside the rest is ignored without a note, so if Space seems to do nothing, wait a moment and press it again.
@@ -172,6 +172,9 @@ The room closed after 6 hours with no activity, so the page cannot get back in.
 Before the note, the projector shows "Reconnecting to the room" for several seconds with no Wi-Fi trouble, and every key answers "Not connected".
 Reload the tab (Cmd+R). It opens a new room, and the class scans the new QR.
 
+**A phone looks stuck.**
+Refresh the page. It rejoins as the same player.
+
 **A student cannot join.**
 Read out the address beside the QR, all of it, with the `/j/` and the letters at the end. Those letters have no I or O.
 The bare address without `/j/` opens the projector page, not the join page.
@@ -206,6 +209,7 @@ If no one is left to vote, the reopened vote stays open and the status line read
 
 **Names should not be on screen.**
 H hides them in the lobby list and on the ending.
+Phones still show a called student's name whatever H says.
 A call-out still names the student on the banner and in the "Valid point" flash.
 There is no kick on the projector, and none will be built. A rude name stays in the room.
 H keeps it off the lobby list and the ending. If a call-out lands on it, press N straight away.

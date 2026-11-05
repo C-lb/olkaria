@@ -12,6 +12,14 @@ it('sanitises names', () => {
   expect(sanitizeName('   ', 's')).toBe(generateName('s'));
   expect(sanitizeName(undefined, 's')).toBe(generateName('s'));
 });
+it('strips bidi and zero-width controls, and cuts by code point so an emoji is never split', () => {
+  expect(sanitizeName('Ann\u202Eevil', 's')).toBe('Annevil');
+  for (const cc of [0x200b, 0x200f, 0x202a, 0x202e, 0x2066, 0x2069]) expect(sanitizeName(`A${String.fromCharCode(cc)}B`, 's')).toBe('AB');
+  const cut = sanitizeName('\u{1F600}'.repeat(20), 's');
+  expect(Array.from(cut)).toHaveLength(16);
+  expect(cut).toBe('\u{1F600}'.repeat(16));
+  expect(cut).not.toMatch(/\uFFFD|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
+});
 it('lists Team 1 to Team 8 and accepts exactly those', () => {
   expect(TEAMS).toEqual(['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6', 'Team 7', 'Team 8']);
   for (const team of TEAMS) expect(sanitizeTeam(team)).toBe(team);

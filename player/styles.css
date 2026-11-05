@@ -97,12 +97,10 @@ svg { max-width: 100%; }
 
 /* ---- Type --------------------------------------------------------------------------------------------- */
 
-.title, .subtitle, .hero { font-weight: 600; overflow-wrap: anywhere; }
+.title, .subtitle { font-weight: 600; overflow-wrap: anywhere; }
 .title { font-size: var(--t-h3); line-height: var(--lh-h3); letter-spacing: var(--tr-h3); text-wrap: balance; }
 .title.is-lg { font-size: var(--t-h2); line-height: var(--lh-h2); letter-spacing: var(--tr-h2); }
 .subtitle { font-size: var(--t-lead); line-height: var(--lh-lead); letter-spacing: var(--tr-lead); }
-.hero { font-size: var(--t-h1); line-height: var(--lh-display); letter-spacing: var(--tr-display); }
-.hero .unit { font-size: var(--t-body); font-weight: 500; letter-spacing: 0; color: var(--ink-2); }
 .cap { font-size: var(--t-cap); line-height: var(--lh-tight); letter-spacing: var(--tr-cap); color: var(--ink-2); }
 /* Sentence case, never uppercase. Block, so an eyebrow can never share a line with the control it names. */
 .eyebrow { display: block; font-size: var(--t-cap); font-weight: 600; line-height: var(--lh-tight); letter-spacing: var(--tr-eyebrow); color: var(--ink-2); }
@@ -208,7 +206,6 @@ svg { max-width: 100%; }
   font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink);
 }
 .countdown:empty::before { content: "\00a0"; }   /* with no time to show, the clock still holds the row's height */
-.note { display: flex; align-items: center; gap: .5em; color: var(--ink-2); }
 .votes { display: flex; flex-direction: column; gap: var(--s3); }
 .vote {
   --btn-py: 14px;                   /* a card, not a one-line button: the text sets the height, 64 px at the least */

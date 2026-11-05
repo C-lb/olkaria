@@ -30,13 +30,15 @@ const sound = {
   toggle: vi.fn(() => { soundOn = !soundOn; return soundOn; }),
   get enabled() { return soundOn; },
 } satisfies Sound;
-const install = () => installHotkeys(game, { send, addBots } as unknown as RoomClient, hud, sound);
+let mode: 'online' | 'offline' = 'offline';
+const install = () => installHotkeys(game, { send, addBots, get mode() { return mode; } } as unknown as RoomClient, hud, sound);
 let dispose: () => void = () => {};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   view = null;
+  mode = 'offline';
   soundOn = true;
   hudCalls.length = 0;
   dispose = install();
@@ -86,6 +88,15 @@ it('sends bots, call-outs, reopen and hide names', () => {
   view = { phase: 'lobby', round: -1, hideNames: true };
   press('KeyH', 'h');
   expect(send.mock.calls.map(([cmd]) => cmd)).toEqual([{ k: 'callout' }, { k: 'reopen' }, { k: 'hideNames', hide: false }]);
+});
+
+it('adds bot votes with B in practice (offline) mode only', () => {
+  mode = 'online';
+  press('KeyB', 'b');
+  expect(addBots).not.toHaveBeenCalled();
+  mode = 'offline';
+  press('KeyB', 'b');
+  expect(addBots).toHaveBeenCalledWith(30);
 });
 
 it('judges with Y and N only while a call-out is pending in a locked vote', () => {

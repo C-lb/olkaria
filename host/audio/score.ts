@@ -1,4 +1,4 @@
-// The music as data: nine chiptune themes written as sixteenth-note steps, and the pure
+// The music as data: nine chiptune themes written as sixteenth-note steps (the game plays lobby, vote, locked, strike, debrief and endingWon; narration, endingHolds and leaderboard are kept but nothing starts them), and the pure
 // functions that turn a window of beats into note events. No DOM, no Phaser, no Web Audio.
 
 export type Wave = 'pulse' | 'square' | 'triangle' | 'noise';

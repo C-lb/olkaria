@@ -45,6 +45,9 @@ function windowMsFor(seconds: number | undefined, content: CaseContent): number 
 
 const nothing = (state: RoomState): Result => ({ state: { ...state }, effects: [] });
 
+/** The most phones one room takes. A known phone can always rejoin; only a new one is turned away. */
+export const MAX_PLAYERS = 200;
+
 const refuse = (state: RoomState, msg: string, clientId?: string): Result =>
   ({ state: { ...state }, effects: [clientId === undefined ? { type: 'error', msg } : { type: 'error', clientId, msg }] });
 
@@ -170,6 +173,7 @@ function join(state: RoomState, ev: JoinEvent): Result {
   }
   const known = playerOf(state, id);
   if (known && state.phase !== 'lobby') return nothing(state);
+  if (!known && Object.keys(state.players).length >= MAX_PLAYERS) return refuse(state, 'room full', id);
   if (!isRole(ev.role)) return refuse(state, 'bad role', id);
   const table = sanitizeTeam(ev.table);
   if (table === null) return refuse(state, 'bad team', id);

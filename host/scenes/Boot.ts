@@ -2,7 +2,6 @@
 // hands over to the lobby. A file that fails to load is reported once and its key left to the placeholder (the backdrop,
 // which has none, is left out): the game never waits on art. The router takes over once the room's first view arrives.
 import Phaser from 'phaser';
-import { BACKDROP } from '../art/backdrop';
 import { makeBossArt } from '../art/bosses';
 import { makePlaceholders } from '../art/placeholders';
 import type { SceneData } from '../router';
@@ -16,7 +15,6 @@ export class Boot extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
       console.warn(`Art "${file.key}" did not load from ${String(file.url)}; the game carries on without it.`);
     });
-    for (const { key, url } of BACKDROP) this.load.image(key, url);
   }
 
   /** The bosses first, so `boss-core` is theirs; then the placeholders fill every key still missing. */

@@ -34,6 +34,16 @@ describe('lobby and joins', () => {
       expect(r.state).toEqual(mk());
     }
   });
+  it('refuses the 201st new player with room full, but a known player can still rejoin at the cap', () => {
+    const full = run(mk(), Array.from({ length: 200 }, (_, i) => join(`p${i}`, `N${i}`))).state;
+    expect(Object.keys(full.players)).toHaveLength(200);
+    const r = reduce(full, join('late', 'Late'), c);
+    expect(r.effects).toEqual([{ type: 'error', clientId: 'late', msg: 'room full' }]);
+    expect(Object.keys(r.state.players)).toHaveLength(200);
+    const again = reduce(full, join('p7', 'Renamed', 'citizen'), c);
+    expect(again.effects.some((e: any) => e.type === 'error')).toBe(false);
+    expect(again.state.players.p7.name).toBe('Renamed');
+  });
   // Spec 4.1 fixes roles once the game starts: in the lobby a phone that tapped the wrong role joins again with the
   // right one.
   it('lets a known player change name, role and team in the lobby, and keeps when they joined and what they have', () => {

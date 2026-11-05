@@ -79,7 +79,7 @@ function figure(role: Role, scale: number): Element {
 // ---- Text -------------------------------------------------------------------------------------------
 
 const sentence = (text: string): string => {
-  const t = text.trim();
+  const t = text.trim() === 'room full' ? 'This room is full' : text.trim();
   if (t === '') return '';
   const s = t.charAt(0).toUpperCase() + t.slice(1);
   return /[.!?]$/.test(s) ? s : `${s}.`;

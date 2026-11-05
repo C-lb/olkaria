@@ -33,12 +33,21 @@ function connect() {
   return { socket, statuses, views, errors, ws: () => FakeSocket.all[FakeSocket.all.length - 1] };
 }
 
+/** Sockets from earlier tests are never closed, so their wake listeners are taken off the document after each test. */
+const wakeListeners: EventListener[] = [];
+const realAdd = document.addEventListener.bind(document);
 beforeEach(() => {
+  vi.spyOn(document, 'addEventListener').mockImplementation((type: string, fn: any, opts?: any) => {
+    if (type === 'visibilitychange') wakeListeners.push(fn);
+    realAdd(type, fn, opts);
+  });
   FakeSocket.all = [];
   vi.useFakeTimers();
   vi.stubGlobal('WebSocket', FakeSocket);
 });
 afterEach(() => {
+  for (const fn of wakeListeners.splice(0)) document.removeEventListener('visibilitychange', fn);
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -92,6 +101,43 @@ describe('player socket', () => {
     expect(FakeSocket.all).toHaveLength(6);
     vi.advanceTimersByTime(1);
     expect(FakeSocket.all).toHaveLength(7);
+  });
+
+  it('replaces the socket when the page becomes visible, open or not, with one listener and no loop', () => {
+    const { ws, statuses } = connect();
+    const wake = () => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); };
+    // A socket that reads OPEN but is dead: closed on purpose, and the new one opens as the same player.
+    ws().open();
+    const dead = ws();
+    wake();
+    expect(dead.readyState).toBe(3);
+    expect(FakeSocket.all).toHaveLength(2);
+    expect(ws().url).toBe(dead.url);
+    ws().open();
+    expect(statuses).toEqual(['open', 'open']);
+    // A closed socket waiting on its backoff timer reconnects now, and the timer does not add another.
+    ws().drop();
+    wake();
+    expect(FakeSocket.all).toHaveLength(3);
+    vi.advanceTimersByTime(20000);
+    expect(FakeSocket.all).toHaveLength(3);
+    // Hidden does nothing.
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(FakeSocket.all).toHaveLength(3);
+    // Another socket on the page does not stack listeners: one wake, one new socket.
+    connect();
+    wake();
+    expect(FakeSocket.all).toHaveLength(6); // the 4th from connect(), one new each for the two sockets
+  });
+
+  it('does not reconnect on a wake once kicked', () => {
+    const { ws } = connect();
+    ws().open();
+    ws().say({ t: 'kicked' });
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(FakeSocket.all).toHaveLength(1);
   });
 
   it('stops for good on a kicked message, even when the close that follows is an ordinary drop', () => {
