@@ -3,7 +3,9 @@
 // boss to the box Battle keeps for it.
 import type { PALETTE } from './placeholders';
 
-export type BossId = 'grid' | 'debt' | 'fog' | 'core';
+export type BossId = 'power' | 'demand' | 'competition' | 'risk' | 'core';
+/** The bosses in round order, Q1 to Q5. */
+export const BOSS_IDS: readonly BossId[] = ['power', 'demand', 'competition', 'risk', 'core'];
 export type Shade = keyof typeof PALETTE;
 /** A range of whole-pixel offsets, least to most. */
 export type Span = readonly [min: number, max: number];
@@ -12,10 +14,14 @@ export type Span = readonly [min: number, max: number];
 export const INK: Readonly<Record<string, Shade>> = {
   o: 'outline', n: 'night', D: 'stoneDeep', d: 'stoneDark', s: 'stone', l: 'stoneLight', p: 'stonePale',
   B: 'bone', b: 'boneDim', T: 'steel', t: 'steelDark', C: 'clothDark', c: 'cloth', e: 'ember', a: 'amber', W: 'white',
+  w: 'wood', L: 'leather',
 };
 
 /** A hit: bone for `flashMs`, a recoil of `recoilPx` to the right, out fast and back slow, home after `ms`. */
 export const HIT = { ms: 300, flashMs: 100, recoilPx: 3 } as const;
+
+/** A death: bone for `flashMs`, then it sinks `sinkPx` and fades out, gone after `ms`. */
+export const DIE = { ms: 900, flashMs: 150, sinkPx: 8 } as const;
 
 /** The digits font's cell (placeholders.ts): every glyph is drawn in one 5 x 6 cell. */
 export const DIGIT_CELL = { w: 5, h: 6 } as const;
@@ -61,65 +67,6 @@ export const WYRM_HEAD = [
   '.ossssssssssssssoo...',
   '..oooooooooooooo.....',
 ];
-
-export const GOLEM_BODY = [
-  '......................osppppppppppppso......................',
-  '......................ollsssssoossdddo......................',
-  '......................ollsssssssosdddo......................',
-  '......................ollsssssssssdddo......................',
-  '......................oldddddddddddddo......................',
-  '......................olloaaossoaaoddo......................',
-  '......................olloaaossoaaoddo......................',
-  '......................ollsssssssssdddo......................',
-  '....oooooooooo........ollsssssssssdddo........oooooooooo....',
-  '...olllllllllsooooooooollsoooooooodddooooooooolllllllllso...',
-  '..olllpllllllppppppppppsssssssssssdddpppppppppplpllllllsso..',
-  '..ollpssssssllllllllllllllllllllllllllllllllllllssssssssso..',
-  '..ollsossssslllsssssssssssssssssssssssssssssddddssssssssso..',
-  '..ollssoossslllsssssssssssssssssssssssssssssddddssssssssso..',
-  '..ollssssssslllsssssssssssssssssssssssssssssddddssssssssso..',
-  '..ollsssossslllssoooooooooooooooooooooooooosddddssssssssso..',
-  '..ossssssssslllssoddddddddddddddddddddddddlsddddssssssssso..',
-  '..ossdddddddlllssoddddddddddddddddddddddddlsddddddddddddso..',
-  '..ossdddddddllossoddddddddddddddddddddddddlsddddddddddddso..',
-  '...osllssssdlllosoddddddddddddddddddddddddlsddddlssssddso...',
-  '....ollssssdlllosoddddddddddddddddddddddddlsddddlssssddo....',
-  '....ollssssdllossoddddddddddddddddddddddddlsddddlssssddo....',
-  '....oTTssssTTlossoddddddddddddddddddddddddlsdddTTssssTToooo.',
-  '...oTooTTTTooTTTToddddddddddddddddddddddddlsddTooTTTTooTTTTo',
-  '....ottssssttllssoddddddddddddddddddddddddlsdddttssssttoooo.',
-  '....ollssssdlllssoddddddddddddddddddddddddlsddddlssssddo....',
-  '...oollssssdlllssoddddddddddddddddddddddddlsddodlssssddo....',
-  '..oTTllssTTdlllssoddddddddddddddddddddddddlsdodTTssssTToooo.',
-  '.oTooTTTTooTTTTssoddddddddddddddddddddddddlsdoTooTTTTooTTTTo',
-  '..ottllllttllllssolllllllllllllllllllllllllsddottllllttlloo.',
-  '..ollllllllllllsssssssssssssssssssssssssssssddddlllllllllo..',
-  '..ollssssssslTTssssTTssssTTssssTTssssTTssssTTdddssssssdddo..',
-  '..ollsssssssTooTTTTooTTTTooTTTTooTTTTooTTTTooTTTTsssssdddo..',
-  '..ollsdssdsslttssssttssssttssssttssssttssssttddddssdssdddo..',
-  '..ollsdssdsslllsssssssssssssssssssssssssssssdddddssdssdddo..',
-  '..ollsdssdssdddddddddddddddddddddddddddddddddddddssdssdddo..',
-  '..ollsssssssddddddddddddddddddddddddddddddddddddssssssdddo..',
-  '..oldddddddddddddddddddddddddddddddddddddddddddddddddddddo..',
-  '..osddddddddddsoooooooooooooooooooooooooooooosddddddddddso..',
-  '...osssssssssso..............................osssssssssso...',
-];
-export const GOLEM_LEGS = [
-  'ollsssssssdddo....ollsssssssdddo',
-  'ollsssssssdddo....ollsssssssdddo',
-  'ollsssssssdddo....ollsssssssdddo',
-  'ollsssssssdddo....ollsssssssdddo',
-  'ollddddddsdddo....ollddddddsdddo',
-  'ollsssssssdddo....ollsssssssdddo',
-  'ollsssssssdddo....ollsssssssdddo',
-  'oddddddddddddo....oddddddddddddo',
-  'oddddddddddddo....oddddddddddddo',
-  'oddddddddddddo....oddddddddddddo',
-];
-/** A chain hanging from each fist. */
-export const SHACKLE = ['.T.', 'T.t', '.t.', '.T.', '.t.', '.T.', 'T.t', '.t.', '.T.', '.t.'];
-/** The eyes flaring, laid over the eyes in GOLEM_BODY (columns 26 and 32, row 5). */
-export const GOLEM_EYES = ['BB....BB', 'aa....aa'];
 
 export const WRAITH = [
   '...........ooCccCCoo........',
@@ -253,13 +200,206 @@ export function ringArc(i: number): string[] {
   return outlined(cells);
 }
 
+/** A grid of clear cells. */
+const blank = (w: number, h: number): string[][] => Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
+
+/** Sets every cell whose middle lies within `r` of (cx, cy), leaving cells off the grid alone. */
+function stamp(cells: string[][], cx: number, cy: number, r: number, k: string, ry = r): void {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+      if (cells[y]?.[x] === undefined) continue;
+      if (((x + 0.5 - cx) / r) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) cells[y][x] = k;
+    }
+  }
+}
+
+/**
+ * Shades the stone cells of a body lit from the upper left, as the ring is: pale where the cell up or left of it is
+ * clear, dark where the cell down or right is, and a scatter of dark scales between.
+ */
+function shaded(cells: string[][]): void {
+  const clear = (x: number, y: number): boolean => (cells[y]?.[x] ?? '.') === '.';
+  const lit = cells.map((row, y) => row.map((k, x) => k === 's' && (clear(x - 1, y) || clear(x, y - 1))));
+  const dark = cells.map((row, y) => row.map((k, x) => k === 's' && (clear(x + 1, y) || clear(x, y + 1))));
+  cells.forEach((row, y) => row.forEach((k, x) => {
+    if (k !== 's') return;
+    if (lit[y][x]) row[x] = 'l';
+    else if (dark[y][x]) row[x] = 'd';
+    else if ((x + 3 * y) % 11 === 0) row[x] = 'd';
+  }));
+}
+
+// The Hydra of Rivalry: one squat body and three necks, a head on each for a rival, every head snapping at the party.
+
+/**
+ * A head, facing left, its neck running off to the lower right. The three heads share it and each wears its own
+ * crest, so the rivals are told apart without a logo.
+ */
+const HYDRA_HEAD = [
+  '.....ooooo....',
+  '...oollllsso..',
+  '.oolllaolllso.',
+  'ollllllllllsso',
+  'oBoBoBollllsso',
+  '.oeeeeeolsssso',
+  'oBoBoBoolsssso',
+  '.oooooooossso.',
+  '........ossso.',
+];
+/** Horns, a fin and a row of spikes: two rows laid on top of the head, one crest per head. */
+const CRESTS = [
+  ['.........T..T.', '........Tt.Tt.'],
+  ['......eee.....', '.....eeeee....'],
+  ['.....B.B.B....', '.....BBBBBB...'],
+];
+
+/** A head with its crest, a pixel of margin all round, ringed with outline. */
+function hydraHead(i: number): string[] {
+  const rows = [...CRESTS[i], ...HYDRA_HEAD];
+  const w = rows[0].length + 2;
+  const cells = [Array(w).fill('.'), ...rows.map((row) => ['.', ...row, '.']), Array(w).fill('.')];
+  return outlined(cells);
+}
+
+export const HYDRA = {
+  /** The body's sprite covers the whole box, so its corner is the box's (necks and tail included). */
+  body: { key: 'hydra-body', x: -40, y: -50, w: 76, h: 50 },
+  /** Each head's corner, and where its neck leaves the body: left and low, high in the middle, right and lower. */
+  heads: [{ x: -40, y: -40 }, { x: -24, y: -48 }, { x: -6, y: -42 }],
+  shoulders: [{ x: -10, y: -15 }, { x: 0, y: -18 }, { x: 10, y: -16 }],
+  /** Where a neck meets its head, about the head's corner. */
+  throat: { x: 11, y: 10 },
+  /** The body breathes a pixel up; each head dips a pixel on its own beat, so the three never move as one. */
+  breath: { dx: 0, dy: -1, ms: 1300 },
+  sway: [{ dx: 0, dy: 1, ms: 700 }, { dx: 0, dy: 1, ms: 950 }, { dx: 0, dy: 1, ms: 820 }],
+  swayDelay: [0, 300, 150],
+} as const;
+
+/** The body: a squat trunk on the floor, a tail curled up behind, three necks reaching up to where the heads sit. */
+function hydraBody(): string[] {
+  const { body, heads, shoulders, throat } = HYDRA;
+  const cells = blank(body.w, body.h);
+  const at = (x: number, y: number): [number, number] => [x - body.x, y - body.y];
+  // The necks, thick at the shoulder and thinner at the throat, bowed out to the left.
+  heads.forEach((head, i) => {
+    const [sx, sy] = at(shoulders[i].x, shoulders[i].y);
+    const [ex, ey] = at(head.x + throat.x, head.y + throat.y);
+    const [cx, cy] = [Math.min(sx, ex) - 3, (sy + ey) / 2 + 2];
+    for (let t = 0; t <= 1; t += 0.02) {
+      const x = (1 - t) ** 2 * sx + 2 * (1 - t) * t * cx + t ** 2 * ex;
+      const y = (1 - t) ** 2 * sy + 2 * (1 - t) * t * cy + t ** 2 * ey;
+      stamp(cells, x, y, 3.4 - t * 1.2, 's');
+    }
+  });
+  // The tail, curling up behind the trunk.
+  for (let t = 0; t <= 1; t += 0.02) {
+    const [x, y] = at(20 + 11 * Math.sin(t * 2.2), -6 - 12 * t + 4 * Math.sin(t * 3));
+    stamp(cells, x, y, 4 - t * 2.6, 's');
+  }
+  // The trunk and its two stout legs, cut flat at the floor.
+  stamp(cells, ...at(6, -9), 17, 's', 10);
+  for (const lx of [-6, 16]) stamp(cells, ...at(lx, -3), 4, 's', 3.5);
+  cells[body.h - 1].fill('.');
+  shaded(cells);
+  // Claws at the feet.
+  for (const lx of [-9, -6, -3, 13, 16, 19]) {
+    const [cx, cy] = at(lx, -2);
+    cells[cy][cx] = 'B';
+  }
+  return outlined(cells);
+}
+
+// The Wraith of Risk: a hooded wraith whose body is an hourglass, running out while the party waits.
+
+/** The hourglass's sizes, in rows and columns of its sprite. */
+const GLASS = { w: 30, h: 46, mid: 15, plateTop: 13, bulbTop: 15, neck: 25, bulbBottom: 36, plateBottom: 37, half: 7 } as const;
+
+/** The half-width of the glass's inside on a row: round bulbs pinched to a pixel at the neck. */
+function bulb(y: number): number {
+  const { bulbTop, bulbBottom, neck, half } = GLASS;
+  const t = y <= neck ? (neck - y) / (neck - bulbTop) : (y - neck - 1) / (bulbBottom - neck - 1);
+  return Math.max(1, Math.round(1 + (half - 1) * Math.sin(Math.min(1, t) * Math.PI * 0.62) / Math.sin(Math.PI * 0.62)));
+}
+
+/** The wraith: a hood over two eyes, a ragged mantle, the hourglass, a hem of tatters under it. */
+function wraithGlass(): string[] {
+  const { w, h, mid, plateTop, bulbTop, bulbBottom, plateBottom } = GLASS;
+  const cells = blank(w, h);
+  // The hood and the dark inside it.
+  stamp(cells, mid, 7.5, 7, 'C', 7.5);
+  stamp(cells, mid - 3, 6, 3, 'c', 4);
+  stamp(cells, mid - 1, 8.5, 4.3, 'o', 4);
+  cells[8][mid - 3] = 'a';
+  cells[8][mid] = 'a';
+  cells[9][mid - 3] = 'e';
+  cells[9][mid] = 'e';
+  // The mantle over the shoulders.
+  for (let y = 11; y <= plateTop; y++) for (let x = 3 + (plateTop - y) * 2; x < w - 3 - (plateTop - y) * 2; x++) cells[y][x] = y === 11 ? 'c' : 'C';
+  // The plates and the posts between them.
+  for (const y of [plateTop + 1, plateBottom]) for (let x = 3; x < w - 3; x++) cells[y][x] = y === plateTop + 1 ? 'w' : 'L';
+  for (let y = plateTop + 2; y < plateBottom; y++) {
+    cells[y][4] = 'w';
+    cells[y][w - 5] = 'L';
+  }
+  // The glass: a pale rim, dark inside, a glint down the left.
+  for (let y = bulbTop + 1; y < bulbBottom + 1; y++) {
+    const r = bulb(y);
+    for (let x = mid - r; x < mid + r; x++) cells[y][x] = 'D';
+    cells[y][mid - r - 1] = 'p';
+    cells[y][mid + r] = 'l';
+    if (r > 3) cells[y][mid - r + 1] = 'd';
+  }
+  // Tatters under the lower plate, uneven, thinning to nothing.
+  const hem = [3, 5, 2, 6, 4, 3, 5, 2, 4, 6, 3, 5, 2, 4, 3, 5, 2, 6, 4, 3];
+  hem.forEach((len, i) => {
+    const x = 5 + i;
+    for (let y = plateBottom + 1; y < Math.min(h - 1, plateBottom + 1 + len); y++) if ((y + i) % 4 !== 0 || y < plateBottom + 3) cells[y][x] = i % 3 === 0 ? 'C' : 'c';
+  });
+  return outlined(cells);
+}
+
+/** The sand, laid over the glass from its corner: a heap draining in the top bulb, a thread through the neck, a mound below. */
+function wraithSand(): string[] {
+  const { w, h, mid, neck, bulbBottom } = GLASS;
+  const cells = blank(w, h);
+  for (let y = neck - 4; y <= neck; y++) {
+    const r = bulb(y);
+    for (let x = mid - r; x < mid + r; x++) cells[y][x] = x >= mid + r - 1 ? 'e' : 'a';
+  }
+  for (let y = neck + 1; y < bulbBottom - 4; y++) cells[y][mid - 1] = 'a';
+  for (let y = bulbBottom - 4; y <= bulbBottom; y++) {
+    const r = Math.min(bulb(y), 1 + (y - (bulbBottom - 4)) * 2);
+    for (let x = mid - r; x < mid + r; x++) cells[y][x] = x >= mid + r - 2 ? 'e' : 'a';
+  }
+  return cells.map((row) => row.join(''));
+}
+
+/** An arm: a ragged sleeve reaching down and out, bone fingers at its end. The right arm is the same turned over. */
+const WRAITH_ARM = [
+  '.......ooo',
+  '......occo',
+  '.....occCo',
+  '.....occo.',
+  '....occCo.',
+  '...occco..',
+  '...occCo..',
+  '..occco...',
+  '..occo....',
+  '.oBBBo....',
+  'oBoBoBo...',
+  'oBoBo.....',
+  '.o.o......',
+];
+const mirrored = (rows: readonly string[]): string[] => rows.map((row) => [...row].reverse().join(''));
+
 /** Every sprite's rows by texture key, the ring's arcs included. */
 export const SPRITES: Readonly<Record<string, readonly string[]>> = {
   'boss-spark': SPARK, 'boss-bolt': BOLT, 'boss-mote': MOTE,
   'wyrm-link-face': LINK_FACE, 'wyrm-link-edge': LINK_EDGE,
   'wyrm-link-face-up': upright(LINK_FACE), 'wyrm-link-edge-up': upright(LINK_EDGE), 'wyrm-head': WYRM_HEAD,
-  'golem-body': GOLEM_BODY, 'golem-legs': GOLEM_LEGS, 'golem-shackle': SHACKLE, 'golem-eyes': GOLEM_EYES,
   'fog-wraith': WRAITH, 'core-heart': HEART, 'core-veins': VEINS,
+  'hydra-body': hydraBody(), 'hydra-head-0': hydraHead(0), 'hydra-head-1': hydraHead(1), 'hydra-head-2': hydraHead(2),
+  'risk-glass': wraithGlass(), 'risk-sand': wraithSand(), 'risk-arm-left': WRAITH_ARM, 'risk-arm-right': mirrored(WRAITH_ARM),
   ...Object.fromEntries(RING.cracks.map((_, i) => [`core-ring-${i}`, ringArc(i)])),
 };
 
@@ -324,40 +464,6 @@ export const SPARKS = {
 /** Now and then a bolt flickers where a spark would start, and stays put. */
 export const BOLTS = { everyMs: 450, lifeMs: 110 } as const;
 
-// The Debt Golem: stacked stone in chains, its debt figures carved into its chest.
-
-export const GOLEM = {
-  /** Low enough that its head, breathing, stays clear of the HP bar: the torso's bottom edge is the legs' top row. */
-  legs: { key: 'golem-legs', x: -18, y: -10 },
-  body: { key: 'golem-body', x: -32, y: -48 },
-  /** The eyes, the carved figures (the panel is columns 18 to 41, rows 16 to 28) and the fists, about the body's corner. */
-  eyes: { col: 26, row: 5 },
-  carvings: [{ text: '68%', col: 23, row: 16 }, { text: '48.5%', col: 18, row: 23 }],
-  carvingShade: 'amber',
-  fists: [8, 51],
-  /** It breathes a pixel up (body, eyes, figures), its chains sway a pixel right, and its eyes flare. */
-  breath: { dx: 0, dy: -1, ms: 1100 },
-  sway: { dx: 1, dy: 0, ms: 1700 },
-  swayDelay: 300,
-  eyeGlow: { from: 0.15, to: 0.9, ms: 1300 },
-  /** Stone falls from the shoulders: where it starts about the body's corner, how fast and how long. */
-  dust: { x: 4, y: 9, w: 52, h: 2, everyMs: 650, lifeMs: 700, speedX: 4, gravityY: 80, scale: 0.5 },
-} as const;
-
-/** The golem's parts at rest: legs, body, the eyes over it, a chain from each fist (hung a pixel inside it), the figures. */
-export function golemParts(): { legs: Placed; body: Placed; eyes: Placed; shackles: Placed[]; carvings: Figure[] } {
-  const { body } = GOLEM;
-  return {
-    legs: GOLEM.legs,
-    body,
-    eyes: { key: 'golem-eyes', x: body.x + GOLEM.eyes.col, y: body.y + GOLEM.eyes.row },
-    shackles: GOLEM.fists.map((col) => ({
-      key: 'golem-shackle', x: body.x + col - Math.floor(SHACKLE[0].length / 2), y: body.y + GOLEM_BODY.length - 2,
-    })),
-    carvings: GOLEM.carvings.map(({ text, col, row }) => ({ text, x: body.x + col, y: body.y + row, spacing: 0 })),
-  };
-}
-
 // The Fog of Demand: a wraith in a cloud of figures that never agree.
 
 export const FOG = {
@@ -379,6 +485,37 @@ export const FOG = {
   figureDrift: { dx: 0, dy: -2 },
   floor: 0.75,
 } as const;
+
+/** The hydra's parts at rest: the body, then a head on the end of each neck, left to right. */
+export function hydraParts(): { body: Placed; heads: Placed[] } {
+  const { body, heads } = HYDRA;
+  return { body: { key: body.key, x: body.x, y: body.y }, heads: heads.map(({ x, y }, i) => ({ key: `hydra-head-${i}`, x, y })) };
+}
+
+export const WRAITH_OF_RISK = {
+  /** The hourglass hangs a pixel clear of the floor, low enough that its hood, rising, stays under the HP bar. */
+  glass: { key: 'risk-glass', x: -15, y: -47 },
+  /** The arms hang from the mantle's ends (column 3 and 26 of the glass, row 11). */
+  arms: [{ key: 'risk-arm-left', col: 3 - 8, row: 11 }, { key: 'risk-arm-right', col: 26 - 1, row: 11 }],
+  /** The wraith hovers, rising this far and back; its arms reach a pixel lower on their own beat. */
+  bob: { dx: 0, dy: -2, ms: 1500 },
+  reach: { dx: 0, dy: 1, ms: 1100 },
+  /** The eyes and the sand glow and dim, never out. */
+  glow: { from: 0.7, to: 1, ms: 900 },
+} as const;
+
+/** Grains fall through the neck to the mound: where they start about the glass's corner, how fast and how long. */
+export const SAND = { fall: { x: GLASS.mid - 1, y: GLASS.neck + 1, everyMs: 140, lifeMs: 450, speedY: 14, scale: 0.5 } } as const;
+
+/** The wraith's parts at rest: the arms behind, the glass, the sand laid over the glass. */
+export function wraithParts(): { glass: Placed; sand: Placed; arms: Placed[] } {
+  const { glass, arms } = WRAITH_OF_RISK;
+  return {
+    glass: { key: glass.key, x: glass.x, y: glass.y },
+    sand: { key: 'risk-sand', x: glass.x, y: glass.y },
+    arms: arms.map(({ key, col, row }) => ({ key, x: glass.x + col, y: glass.y + row })),
+  };
+}
 
 // The core: a dark heart, beating behind a cracked ring.
 

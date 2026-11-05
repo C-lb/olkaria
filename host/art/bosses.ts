@@ -1,15 +1,16 @@
-// The four bosses (spec 4.2), one container each: the Grid Wyrm, the Debt Golem, the Fog of Demand and the core.
+// The five bosses, one container each: the Grid Wyrm, the Fog of Demand, the Hydra of Rivalry, the Wraith of Risk and
+// the core.
 // Every part is a small texture painted once per game from the rows in boss-data.ts, so the art stays whole pixels at
 // any zoom; a few particles and the digits font do the rest. A boss idles in a loop of tweens and, when hit, flashes
-// bone white and recoils 3 px for 300 ms. Through all of it each one stays inside the box Battle keeps for it: x -40 to
+// bone white and recoils 3 px for 300 ms; beaten, it flashes, sinks and fades. Through all of it each one stays inside the box Battle keeps for it: x -40 to
 // +38 and y -54 to 0 about its feet, and no higher than y -49 where the HP bar hangs over it (x -21 to +32), so the
 // bar, the strike numbers and the boss never touch (world x 240 to 318, y 30 to 84, and y 35 under the bar, at BOSS_X
 // 280 on the floor at 84; tests/bosses.test.ts holds every boss to it). The core's parts are also painted together as
 // `boss-core`, the still image the Ending cracks.
 import Phaser from 'phaser';
 import {
-  BOLTS, CORE, coreParts, FOG, GOLEM, golemParts, HIT, INK, PUFF_PX, SPARKS, SPRITES, STILL, WAVE, wyrmParts,
-  type BossId, type Placed, type Shade, type Stray,
+  BOLTS, CORE, coreParts, DIE, FOG, HIT, HYDRA, hydraParts, INK, PUFF_PX, SAND, SPARKS, SPRITES, STILL, WAVE,
+  WRAITH_OF_RISK, wraithParts, wyrmParts, type BossId, type Placed, type Shade, type Stray,
 } from './boss-data';
 import { PALETTE, Painter, texture } from './placeholders';
 
@@ -32,9 +33,10 @@ function paint(p: Painter, rows: readonly string[], x0 = 0, y0 = 0): void {
 
 /** The textures each boss is built from, the digits font's where it carries figures; any one missing, it falls back. */
 const ART: Record<BossId, readonly string[]> = {
-  grid: ['wyrm-link-face', 'wyrm-link-edge', 'wyrm-link-face-up', 'wyrm-link-edge-up', 'wyrm-head', 'boss-spark', 'boss-bolt'],
-  debt: ['golem-body', 'golem-legs', 'golem-shackle', 'golem-eyes', 'boss-mote', 'digits'],
-  fog: ['fog-wraith', 'boss-puff', 'digits'],
+  power: ['wyrm-link-face', 'wyrm-link-edge', 'wyrm-link-face-up', 'wyrm-link-edge-up', 'wyrm-head', 'boss-spark', 'boss-bolt'],
+  demand: ['fog-wraith', 'boss-puff', 'digits'],
+  competition: ['hydra-body', 'hydra-head-0', 'hydra-head-1', 'hydra-head-2'],
+  risk: ['risk-glass', 'risk-sand', 'risk-arm-left', 'risk-arm-right', 'boss-mote'],
   core: ['core-heart', 'core-veins', 'core-ring-0', 'core-ring-1', 'core-ring-2', 'boss-mote'],
 };
 
@@ -69,8 +71,11 @@ interface Rig {
   loop(): Phaser.Tweens.BaseTween[];
 }
 
+/** Anything placed by x and y: a part, or a container of parts that move together. */
+type Movable = Phaser.GameObjects.Components.Transform;
+
 /** A loop that moves parts by whole pixels, from where they rest out to (dx, dy) and back, `ms` each way. */
-function stray(scene: Phaser.Scene, parts: readonly Part[], { dx, dy, ms }: Stray, delay = 0): Phaser.Tweens.Tween {
+function stray(scene: Phaser.Scene, parts: readonly Movable[], { dx, dy, ms }: Stray, delay = 0): Phaser.Tweens.Tween {
   const home = parts.map((part) => ({ part, x: part.x, y: part.y }));
   const k = { t: 0 };
   return scene.tweens.add({
@@ -85,8 +90,8 @@ function stray(scene: Phaser.Scene, parts: readonly Part[], { dx, dy, ms }: Stra
 const kick = (t: number): number => (t < 1 / 3 ? 1 - (1 - 3 * t) ** 2 : 1 - ((t - 1 / 3) * 1.5) ** 2);
 
 /**
- * A boss: its parts in one container at its feet, an idle loop, and a hit. idle() (re)starts the loop from rest, so
- * a scene that has killed every tween can call it again; reset() ends a hit early.
+ * A boss: its parts in one container at its feet, an idle loop, a hit and a death. idle() (re)starts the loop from
+ * rest, so a scene that has killed every tween can call it again; reset() ends a hit early and undoes a death.
  */
 export class Boss extends Phaser.GameObjects.Container {
   private readonly home: { x: number; y: number };
@@ -95,6 +100,10 @@ export class Boss extends Phaser.GameObjects.Container {
   private readonly rig: Rig;
   private loops: Phaser.Tweens.BaseTween[] = [];
   private recoil: Phaser.Tweens.Tween | null = null;
+  private dying: Phaser.Tweens.Tween | null = null;
+  private dead = false;
+  /** Whoever asked to hear when the death ends, each told once. */
+  private onDead: (() => void)[] = [];
 
   constructor(scene: Phaser.Scene, readonly bossId: BossId, x: number, y: number) {
     super(scene, x, y);
@@ -106,6 +115,7 @@ export class Boss extends Phaser.GameObjects.Container {
     this.once(Phaser.GameObjects.Events.DESTROY, () => {
       for (const loop of this.loops) loop.stop();
       this.recoil?.stop();
+      this.dying?.stop();
     });
   }
 
@@ -126,8 +136,10 @@ export class Boss extends Phaser.GameObjects.Container {
     return this;
   }
 
-  /** Bone white for HIT.flashMs and a HIT.recoilPx recoil, whole pixels; back where it stood after HIT.ms. A second hit restarts it. */
+  /** Bone white for HIT.flashMs and a HIT.recoilPx recoil, whole pixels; back where it stood after HIT.ms. A second hit restarts it; a dying or dead boss ignores it. */
   hit(): this {
+    // A beaten boss takes no more hits: the recoil's end would bring it back.
+    if (this.dying !== null || this.dead) return this;
     this.recoil?.stop();
     this.flash(true);
     const k = { t: 0 };
@@ -149,13 +161,101 @@ export class Boss extends Phaser.GameObjects.Container {
     return this;
   }
 
-  /** Ends a hit: untinted, back at its place. The idle loop carries on. */
+  /**
+   * Ends a hit: untinted, back at its place. The idle loop carries on. After a death it also brings the boss back,
+   * whole and at rest but still, until idle() starts the loop again; anyone waiting on the death is not told.
+   */
   reset(): this {
     this.recoil?.stop();
     this.recoil = null;
+    if (this.dying !== null || this.dead) {
+      this.dying?.stop();
+      this.dying = null;
+      this.dead = false;
+      this.onDead = [];
+      this.setAlpha(1);
+      this.y = this.home.y;
+      for (const emitter of this.emitters()) emitter.start();
+      this.rig.rest();
+    }
     this.x = this.home.x;
     this.flash(false);
     return this;
+  }
+
+  /**
+   * Beaten: the loop stops, the particles stop coming, it flashes bone white and shudders for DIE.flashMs, then sinks
+   * DIE.sinkPx and fades out, gone after DIE.ms. onDone is called once, when it is gone; a die() while dying or dead
+   * only adds its onDone to that.
+   */
+  die(onDone?: () => void): this {
+    if (onDone !== undefined) this.onDead.push(onDone);
+    if (this.dead) return this.lieDead();
+    if (this.dying !== null) return this;
+    this.still();
+    for (const emitter of this.emitters()) emitter.stop();
+    this.flash(true);
+    const k = { t: 0 };
+    let lit = true;
+    this.dying = this.scene.tweens.add({
+      targets: k, t: 1, duration: DIE.ms,
+      onUpdate: () => {
+        const ms = k.t * DIE.ms;
+        if (lit && ms >= DIE.flashMs) {
+          lit = false;
+          this.flash(false);
+        }
+        const fade = Math.max(0, (ms - DIE.flashMs) / (DIE.ms - DIE.flashMs));
+        this.x = this.home.x + (lit ? (Math.floor(ms / 40) % 2 === 0 ? -1 : 1) : 0);
+        this.y = this.home.y + Math.round(DIE.sinkPx * fade * fade);
+        this.setAlpha(1 - fade);
+      },
+      onComplete: () => {
+        this.dying = null;
+        this.lieDead();
+      },
+    });
+    return this;
+  }
+
+  /** The state die() ends in, at once: no loop, no particles, sunk and faded out. Tells anyone waiting on the death. */
+  lieDead(): this {
+    this.still();
+    this.dying?.stop();
+    this.dying = null;
+    this.dead = true;
+    for (const emitter of this.emitters()) {
+      emitter.stop();
+      emitter.killAll();
+    }
+    this.flash(false);
+    this.setPosition(this.home.x, this.home.y + DIE.sinkPx);
+    this.setAlpha(0);
+    const waiting = this.onDead;
+    this.onDead = [];
+    for (const done of waiting) done();
+    return this;
+  }
+
+  /** Stops the idle loop and any hit. */
+  private still(): void {
+    for (const loop of this.loops) loop.stop();
+    this.loops = [];
+    this.recoil?.stop();
+    this.recoil = null;
+  }
+
+  /** Every particle emitter in the boss, those in a container of parts included. */
+  private emitters(): Phaser.GameObjects.Particles.ParticleEmitter[] {
+    const out: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+    const walk = (list: readonly Phaser.GameObjects.GameObject[]): void => {
+      for (const child of list) {
+        if (child instanceof Phaser.GameObjects.Particles.ParticleEmitter) out.push(child);
+        else if (child instanceof Phaser.GameObjects.Container) walk(child.list);
+      }
+    };
+    walk(this.list);
+    return out;
   }
 
   private flash(on: boolean): void {
@@ -181,7 +281,7 @@ const within = (x: number, y: number, w: number, h: number): Phaser.Types.GameOb
 /** A part placed by its top-left corner, so odd sizes still land on whole pixels. */
 const image = (scene: Phaser.Scene, { key, x, y }: Placed): Phaser.GameObjects.Image => scene.add.image(x, y, key).setOrigin(0, 0);
 
-function grid(scene: Phaser.Scene, boss: Boss): Rig {
+function power(scene: Phaser.Scene, boss: Boss): Rig {
   const parts = wyrmParts();
   const placed = parts.map((p) => ({ ...p, part: boss.part(image(scene, p)) }));
   const wave = { phase: 0 };
@@ -220,36 +320,7 @@ function grid(scene: Phaser.Scene, boss: Boss): Rig {
   };
 }
 
-function debt(scene: Phaser.Scene, boss: Boss): Rig {
-  const at = golemParts();
-  const amber = shade(GOLEM.carvingShade);
-  boss.part(image(scene, at.legs));
-  const body = boss.part(image(scene, at.body));
-  const eyes = boss.part(image(scene, at.eyes));
-  const carvings = at.carvings.map(({ text, x, y }) => boss.part(scene.add.bitmapText(x, y, 'digits', text).setTint(amber), amber));
-  const shackles = at.shackles.map((p) => boss.part(image(scene, p)));
-  const { dust } = GOLEM;
-  boss.add(scene.add.particles(0, 0, 'boss-mote', {
-    emitZone: within(at.body.x + dust.x, at.body.y + dust.y, dust.w, dust.h), frequency: dust.everyMs, quantity: 1,
-    lifespan: dust.lifeMs, speedX: { min: -dust.speedX, max: dust.speedX }, speedY: 0, gravityY: dust.gravityY, scale: dust.scale,
-    tint: [shade('stoneLight'), shade('stone')], alpha: { start: 1, end: 0 },
-  }));
-  const breathing: Part[] = [body, eyes, ...carvings];
-  const rests = [...breathing, ...shackles].map((part) => ({ part, x: part.x, y: part.y }));
-  return {
-    rest: () => {
-      for (const r of rests) r.part.setPosition(r.x, r.y);
-      eyes.setAlpha(GOLEM.eyeGlow.from);
-    },
-    loop: () => [
-      stray(scene, breathing, GOLEM.breath),
-      stray(scene, shackles, GOLEM.sway, GOLEM.swayDelay),
-      scene.tweens.add({ targets: eyes, alpha: GOLEM.eyeGlow.to, duration: GOLEM.eyeGlow.ms, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 }),
-    ],
-  };
-}
-
-function fog(scene: Phaser.Scene, boss: Boss): Rig {
+function demand(scene: Phaser.Scene, boss: Boss): Rig {
   const { zone, drift } = FOG;
   const puffs = (count: number, peak: number): Phaser.GameObjects.Particles.ParticleEmitter =>
     scene.add.particles(0, 0, 'boss-puff', {
@@ -307,7 +378,57 @@ function core(scene: Phaser.Scene, boss: Boss): Rig {
   };
 }
 
-const RIGS: Record<BossId, (scene: Phaser.Scene, boss: Boss) => Rig> = { grid, debt, fog, core };
+function competition(scene: Phaser.Scene, boss: Boss): Rig {
+  const at = hydraParts();
+  const body = boss.part(image(scene, at.body));
+  const heads = at.heads.map((p) => boss.part(image(scene, p)));
+  // The heads ride the body's breath in a container of their own, so each can dip on its own beat as well.
+  const neck = scene.add.container(0, 0, heads);
+  boss.add(neck);
+  const rests = [body, ...heads].map((part) => ({ part, x: part.x, y: part.y }));
+  return {
+    rest: () => {
+      for (const r of rests) r.part.setPosition(r.x, r.y);
+      neck.setPosition(0, 0);
+    },
+    loop: () => [
+      stray(scene, [body], HYDRA.breath),
+      stray(scene, [neck], HYDRA.breath),
+      ...heads.map((head, i) => stray(scene, [head], HYDRA.sway[i], HYDRA.swayDelay[i])),
+    ],
+  };
+}
+
+function risk(scene: Phaser.Scene, boss: Boss): Rig {
+  const at = wraithParts();
+  const arms = at.arms.map((p) => boss.part(image(scene, p)));
+  const glass = boss.part(image(scene, at.glass));
+  const sand = boss.part(image(scene, at.sand));
+  const { fall } = SAND;
+  const grains = scene.add.particles(0, 0, 'boss-mote', {
+    emitZone: within(at.glass.x + fall.x, at.glass.y + fall.y, 1, 1), frequency: fall.everyMs, quantity: 1,
+    lifespan: fall.lifeMs, speedX: 0, speedY: fall.speedY, scale: fall.scale, tint: [shade('amber'), shade('ember')],
+  });
+  // The arms hang behind the glass, the grains fall in front of it; all of them hover with it.
+  const body = scene.add.container(0, 0, [...arms, glass, sand, grains]);
+  boss.add(body);
+  const rests = arms.map((part) => ({ part, x: part.x, y: part.y }));
+  const { glow } = WRAITH_OF_RISK;
+  return {
+    rest: () => {
+      for (const r of rests) r.part.setPosition(r.x, r.y);
+      body.setPosition(0, 0);
+      sand.setAlpha(glow.to);
+    },
+    loop: () => [
+      stray(scene, [body], WRAITH_OF_RISK.bob),
+      stray(scene, arms, WRAITH_OF_RISK.reach, 200),
+      scene.tweens.add({ targets: sand, alpha: glow.from, duration: glow.ms, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 }),
+    ],
+  };
+}
+
+const RIGS: Record<BossId, (scene: Phaser.Scene, boss: Boss) => Rig> = { power, demand, competition, risk, core };
 
 /** The boss's placeholder image, breathing a pixel up and down: what Battle showed before the art pass. */
 function placeholder(scene: Phaser.Scene, boss: Boss, id: BossId): Rig {
