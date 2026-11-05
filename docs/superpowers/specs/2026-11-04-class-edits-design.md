@@ -127,7 +127,16 @@ Call-outs: the limit stays 4 per round, but only 3 options now exist. The picker
 
 ## Also changed
 
-- How-to slides (`?`): rewritten to the new flow, no points or classes. Fewer slides is fine.
+- How-to slides (`?`): Caleb's own copy (his ruling, 5 November), word for word, seven slides. Steps 1 to 6 are numbered and the last has no number:
+  1. You will be split into groups of 4
+  2. You pick a role
+  3. Each role has their own interest
+  4. The purpose of the game is for you to get to a team consensus, BUT KEEP YOUR INTERESTS IN MIND!! Under it, smaller: You'll have 2 minutes to discuss within your team
+  5. If you are very inclined to pick another option, then you may sabotage your team
+  6. You'll randomly be called to speak your truth, so be ready to defend!!
+  7. (no number) Each monster that we are defeating is representative of a problem that was faced in the case
+
+  "2 minutes" follows the vote time in `content/case.json`.
 - Facilitator menu: stages become Q1 to Q5 and Ending. Its restart, lobby, reload and sound items stay.
 - `RUNBOOK.md` and `README.md`: rewritten to the new flow. The old per-round discussion prompts refer to damage and go. The builder writes no new ones, because the team has its own discussion script: the runbook lists the five questions and their bosses only. This is the builder's call.
 - Music: the road's theme is no longer used. Theme cues per phase otherwise stay, with the boss's arrival taking the old pre-vote slot.
