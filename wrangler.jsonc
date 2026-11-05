@@ -6,5 +6,14 @@
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/", "/api/*", "/ws/*", "/j/*"] },
   "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Staging: `npm run deploy:next` makes a second Worker, olkaria-next, to smoke-test a build before it replaces the
+  // live game. Bindings are not inherited by an environment, so the Durable Object is repeated here; olkaria-next is
+  // its own Worker, so its Room class is a separate namespace and the live rooms are never touched.
+  "env": {
+    "next": {
+      "name": "olkaria-next",
+      "durable_objects": { "bindings": [{ "name": "ROOM", "class_name": "Room" }] }
+    }
+  }
 }
