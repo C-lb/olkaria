@@ -1,15 +1,16 @@
 // The projector's text layer: an HTML element laid exactly over the 320 x 180 game canvas. Every word on the
 // projector is drawn here, never on the canvas (spec 7), so it wraps, stays crisp, and scales with --zoom. One method
 // per screen, each building its screen from its arguments alone. Nothing from the room or a player goes through
-// innerHTML. Layers, bottom to top: the screen, the rally flash, the menu on its scrim or the how-to on its full-bleed
+// innerHTML. Layers, bottom to top: the screen, the flash, the menu on its scrim or the how-to on its full-bleed
 // dialog (host/hud/HowTo.ts), the banner with the toasts under it.
 import { figureSvg } from '../../shared/figures';
 import { OPTION_SHAPE, SHAPE_MARKUP } from '../../shared/shapes';
-import { OPTION_IDS, ROLES, type OptionId, type Role } from '../../shared/types';
+import { OPTION_IDS, ROLES, type OptionId, type Role, type Tally } from '../../shared/types';
+import type { QuestionArgs } from '../strikers';
 import { howToPanel, type HowToArgs } from './HowTo';
 
-/** The option colours, bound to the letters everywhere: badges, bars, the banner letter, the strike flash (spec 7). */
-export const OPTION_COLORS: Record<OptionId, string> = { A: '#b5473d', B: '#3f6fa3', C: '#c9a227', D: '#4f8a5b' };
+/** The option colours, bound to the letters everywhere: badges, bars and the banner letter (spec 7). */
+export const OPTION_COLORS: Record<OptionId, string> = { A: '#b5473d', B: '#3f6fa3', C: '#c9a227' };
 
 export interface LobbyArgs {
   /** The join QR as a data URL; null while it is being drawn, and offline. */
@@ -18,34 +19,25 @@ export interface LobbyArgs {
   joinUrl: string;
   count: number;
   roleCounts: Record<Role, number>;
-  /** The singular class name of each role ("Knight"); the counts read "Knights 2". */
-  classNames: Record<Role, string>;
-  /** The last eight joiners as "Ann, Knight", newest first; empty when names are hidden. */
+  /** Each role's name from the content ("Satya Nadella"); the tiles read "Satya Nadella 2". */
+  roleNames: Record<Role, string>;
+  /** The last eight joiners as "Ann, Citizen", newest first; empty when names are hidden. */
   recent: string[];
   offline: boolean;
 }
 
-export interface NarrationArgs {
-  boss: string;
-  title: string;
-  narration: string;
-  /** Shown as given: the caller passes the quote with its marks, speaker and citation. */
-  quote?: string;
-  footer: string;
-}
-
 export interface OptionsArgs {
-  options: { letter: OptionId; screen: string }[];
-  /** The lead class in the plural ("Rogues"): the status line and the label of each card's lead bar. */
-  leadLabel: string;
+  /** "Question 2 of 5: Demand". */
+  eyebrow: string;
+  question: string;
+  options: { letter: OptionId; text: string }[];
   timerText: string;
   votedText: string;
-  /** Null while the vote is open: the split stays hidden until the lock (spec 3.2). */
-  leadShares: Record<OptionId, number> | null;
-  supportShares: Record<OptionId, number> | null;
+  /** Null while the vote is open. Once locked: each option's share and count, one bar per card. */
+  split: { shares: Record<OptionId, number>; counts: Tally } | null;
   footer: string;
-  /** The call-outs already judged this round ("Sarah: +10 rally"), listed small under the cards. Absent or empty lists nothing. */
-  resolved?: string[];
+  /** The call-outs judged a valid point this round ("Valid point: Ann"), listed small under the cards. */
+  called?: string[];
 }
 
 /** The two parts of the options' status line that change while the cards stay: the clock and the vote count. */
@@ -54,30 +46,11 @@ export interface OptionsStatus { timerText: string; votedText: string }
 /** The call-out. No name is a hand call-out: the facilitator picks someone in the room. */
 export interface BannerArgs { name: string | null; letter: OptionId | null; footer: string }
 
-/** The parts of a round's damage. `cap` is the most one round can drain (`scoring.roundHp`), named when `capped`. */
-export interface Breakdown { base: number; focus: number; alignment: number; exhibit: number; rally: number; total: number; capped: boolean; cap: number }
-
-export interface DebriefArgs {
-  lines: { letter: OptionId; damage: number; text: string }[];
-  breakdown: Breakdown;
-  alignment: string;
-  rally: string | null;
-  discuss: string;
-}
-
 /**
  * The ending: the title and the line under it, the last question, and one column per option with its full text, how
  * many picked it, and the names of those who did (at most a screenful, then "and N more").
  */
 export interface EndingArgs { title: string; text: string; question: string; columns: { letter: OptionId; text: string; count: number; names: string[]; more: number }[] }
-
-export interface LeaderboardArgs {
-  rows: { name: string; className: string; score: number }[];
-  consistent: string;
-  table: string | null;
-  split: Record<OptionId, number>;
-  question: string;
-}
 
 /** One of the menu's buttons. An armed one reads "Sure?" until it is pressed again or the arming lapses (host/menu.ts). */
 export interface MenuButton { id: string; label: string; hint?: string; enabled: boolean; armed: boolean }
@@ -92,24 +65,21 @@ const TITLE = `${NAME}: ${SUBTITLE}`;
 
 /** How long a toast stays when no time is given. */
 const TOAST_MS = 4000;
-/** How long a rally flash stays when no time is given. */
+/** How long a flash stays when no time is given. */
 const FLASH_MS = 1500;
 
-/** The facilitator's keys (spec 6.5), for the key map in the menu. */
+/** The facilitator's keys (spec 6.5), for the key map in the menu: exactly the ones that work. */
 const KEYS: readonly (readonly [string, string])[] = [
-  ['Space', 'Advance: start, open the vote, lock, reveal, next'],
-  ['1 to 4', 'Add a vote for A to D'],
-  ['Shift+1 to 4', 'Add ten votes'],
+  ['Space', 'Advance: start, open the vote, lock, strike, next'],
+  ['1 to 3', 'Add a hand vote for A to C'],
+  ['Shift+1 to 3', 'Add ten hand votes'],
   ['B', 'Add 30 bot votes'],
   ['C', 'Call a student out, once the vote is locked'],
-  ['Y or N', 'Judge the call-out: convincing or not'],
+  ['Y or N', 'Judge the call-out: valid point or move on'],
   ['R', 'Reopen a locked vote, or extend an open one'],
   ['H', 'Hide or show names'],
   ['F', 'Fullscreen'],
   ['S', 'Sound off or on'],
-  ['Arrows', 'Take over the walk: run and jump; Space jumps too'],
-  ['A', 'Pause or resume the walk'],
-  ['N', 'Skip to the arena in travel'],
   ['Shift+R twice', 'Reset to the lobby'],
   ['?', 'How to play'],
   ['M or Esc', 'This menu'],
@@ -135,9 +105,6 @@ function num(n: number): string {
   return r === 0 ? '0' : String(r);   // also turns -0 into 0
 }
 
-/** A bonus: "+10" when there is one, "0" when there is not. */
-const plus = (n: number): string => (n > 0 ? `+${num(n)}` : num(n));
-
 const clampShare = (share: number): number => (Number.isFinite(share) ? Math.min(1, Math.max(0, share)) : 0);
 
 /** A share from 0 to 1 as a CSS width, exact to one decimal: "33.3%". */
@@ -146,14 +113,8 @@ const pct = (share: number): string => `${num(clampShare(share) * 100)}%`;
 /** A share in figures for the room to read: whole percentages, "33%". */
 const pctText = (share: number): string => `${Math.round(clampShare(share) * 100)}%`;
 
-/** The text with its first letter in capitals: the room's refusals and the content's bullets are stored lowercase. */
+/** The text with its first letter in capitals: the room's refusals are stored lowercase. */
 export const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-
-/** "Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally 0. Total 83", the sum the strike just drew (spec 3.2), then " (capped at 100)" if it passed the cap. */
-function breakdownText(b: Breakdown): string {
-  const parts = [`Base ${num(b.base)}`, `Focus ${plus(b.focus)}`, `Party aligned ${plus(b.alignment)}`, `Exhibits ${plus(b.exhibit)}`, `Rally ${plus(b.rally)}`];
-  return `${parts.join(', ')}. Total ${num(b.total)}${b.capped ? ` (capped at ${num(b.cap)})` : ''}`;
-}
 
 /** Marks `el` as option `letter`: its colour as --option, and data-option, from which the stylesheet takes the ink. */
 export function tint<E extends HTMLElement>(el: E, letter: OptionId): E {
@@ -187,24 +148,14 @@ function panel(cls: string, ...kids: Kid[]): HTMLElement {
   return h('section', { class: `panel ${cls}` }, ...kids);
 }
 
-/** A track filled to `share` and the share in whole percent. The fill takes the colour of the option it sits under. */
-function meter(share: number, kind?: string): [HTMLElement, HTMLElement] {
-  const fill = h('span', kind === undefined ? { class: 'bar-fill' } : { class: 'bar-fill', 'data-bar': kind });
+/** A card's one bar: a track filled to the option's share, the share in whole percent, and the count. */
+function bar(share: number, count: number): HTMLElement {
+  const fill = h('span', { class: 'bar-fill' });
   fill.style.width = pct(share);
-  return [h('span', { class: 'bar-track' }, fill), h('span', { class: 'bar-value' }, pctText(share))];
-}
-
-/** One of a card's two bars: who voted ("Rogues" or "Party"), then the meter. */
-function bar(kind: 'lead' | 'support', label: string, share: number): HTMLElement {
-  return h('div', { class: 'bar' }, h('span', { class: 'bar-label' }, label), ...meter(share, kind));
-}
-
-/** Votes per option, counts or shares, as one row per letter: each option's part of the whole. */
-function split(values: Record<OptionId, number>): HTMLElement {
-  const part = (o: OptionId): number => (Number.isFinite(values[o]) ? Math.max(0, values[o]) : 0);
-  const total = OPTION_IDS.reduce((sum, o) => sum + part(o), 0);
-  return h('ul', { class: 'split' }, ...OPTION_IDS.map((o) =>
-    tint(h('li', { class: 'split-row' }, badge(o, 'is-row'), ...meter(total > 0 ? part(o) / total : 0)), o)));
+  return h('div', { class: 'bar' },
+    h('span', { class: 'bar-track' }, fill),
+    h('span', { class: 'bar-value' }, pctText(share)),
+    h('span', { class: 'bar-count' }, String(Number.isFinite(count) ? Math.max(0, Math.round(count)) : 0)));
 }
 
 /** One of the menu's buttons: its label, or "Sure?" while it is armed, then its hint if it has one. */
@@ -269,7 +220,7 @@ export class Hud {
 
   /**
    * The lobby: the title on two lines and the keycaps; the QR, or in its square the offline notice or a line while
-   * there is no QR; the address on two lines, the count and a tile per class; the newest names. No room code and no
+   * there is no QR; the address on two lines, the count and a tile per role; the newest names. No room code and no
    * quote (spec 7).
    */
   showLobby(a: LobbyArgs): void {
@@ -278,7 +229,7 @@ export class Hud {
     if (a.offline) {
       join = h('div', { class: 'join' },
         h('p', { class: 'join-title' }, 'Offline mode'),
-        h('p', {}, 'Phones cannot join. 1 to 4 add a vote, Shift adds ten, B adds 30 bots.'));
+        h('p', {}, 'Phones cannot join. 1 to 3 add a vote, Shift adds ten, B adds 30 bots.'));
     } else if (a.qrDataUrl !== null) {
       join = this.qrImage(a.qrDataUrl);
     } else {
@@ -294,10 +245,10 @@ export class Hud {
         h('span', { class: 'join-path' }, slash === -1 ? '' : bare.slice(slash))),
     ];
     const joined = h('p', { class: 'joined' }, h('b', { class: 'joined-n' }, String(a.count)), h('span', { class: 'joined-word' }, ' joined'));
-    // A tile per class: its figure, its plural name, its count. The space keeps the text reading "Knights 2"; a grid
-    // draws no white space between its items, so it takes no column.
+    // A tile per role: its figure, its name, its count. The space keeps the text reading "Citizen 2"; a grid draws no
+    // white space between its items, so it takes no column.
     const counts = h('ul', { class: 'counts' }, ...ROLES.map((role) => h('li', { class: 'count' },
-      figure(role, 1), h('span', { class: 'count-name' }, `${a.classNames[role]}s`), ' ', h('b', {}, String(a.roleCounts[role])))));
+      figure(role, 1), h('span', { class: 'count-name' }, a.roleNames[role]), ' ', h('b', {}, String(a.roleCounts[role])))));
     const recent = h('div', { class: 'stack' },
       h('p', { class: 'eyebrow' }, 'Just joined'),
       a.recent.length > 0
@@ -313,46 +264,40 @@ export class Hud {
       h('div', { class: 'lobby-body' }, join, h('div', { class: 'stack lobby-info' }, ...address, joined, counts), recent)));
   }
 
-  /** Before the vote: the boss, the question, the situation ending in the lead class's call to strike. */
-  showNarration(a: NarrationArgs): void {
-    this.show(panel('narration',
-      h('p', { class: 'eyebrow' }, a.boss),
-      h('h1', { class: 'title' }, a.title),
-      h('p', { class: 'narration-text' }, a.narration),
-      a.quote ? h('p', { class: 'quote' }, a.quote) : null,
+  /** The boss's arrival, before the vote: "Question 2 of 5: Demand", the boss, the question in full, what Space does. */
+  showQuestion(a: QuestionArgs): void {
+    this.show(panel('question',
+      h('p', { class: 'eyebrow' }, a.eyebrow),
+      h('h1', { class: 'title' }, a.boss),
+      h('p', { class: 'question-text' }, a.question),
       a.footer ? h('p', { class: 'hint' }, a.footer) : null));
   }
 
   /**
-   * The four cards in a 2 x 2 grid over the lower 45% of the screen, in letter order, under a status line with the
-   * lead class, the timer and the vote count. After the lock each card gets two bars: the lead class's split and the
-   * rest of the party's. The judged call-outs, if any, go in one small line under the cards. Leaves a call-out banner up.
+   * The vote: a status line (the eyebrow, the clock, the count, the hint), the question, then the three cards in one
+   * row, in letter order, each with its full text and never cut. Once locked each card gets one bar: its share and its
+   * count. The valid points, if any, go in one small line under the cards. Leaves a call-out banner up.
    */
   showOptions(a: OptionsArgs): void {
     const cards = [...a.options]
       .sort((x, y) => OPTION_IDS.indexOf(x.letter) - OPTION_IDS.indexOf(y.letter))
-      .map((o) => {
-        const bars: HTMLElement[] = [];
-        if (a.leadShares !== null) bars.push(bar('lead', a.leadLabel, a.leadShares[o.letter]));
-        if (a.supportShares !== null) bars.push(bar('support', 'Party', a.supportShares[o.letter]));
-        // A card with bars says so: its text then gets fewer lines before the clamp (hud.css), so it never covers them.
-        return tint(h('article', { class: bars.length > 0 ? 'card has-bars' : 'card', 'data-card': o.letter },
-          badge(o.letter),
-          h('p', { class: 'card-text' }, o.screen),
-          bars.length > 0 ? h('div', { class: 'bars' }, ...bars) : null), o.letter);
-      });
+      .map((o) => tint(h('article', { class: 'card', 'data-card': o.letter },
+        h('div', { class: 'card-head' }, badge(o.letter), a.split !== null ? bar(a.split.shares[o.letter], a.split.counts[o.letter]) : null),
+        h('p', { class: 'card-text' }, o.text)), o.letter));
     // The clock and the count are always there, hidden while empty, so updateOptionsStatus() can fill them in later.
     const timer = h('span', { class: 'timer' });
-    const voted = h('span', {});
-    const resolved = a.resolved ?? [];
-    this.show(h('div', { class: resolved.length > 0 ? 'options has-resolved' : 'options' },
-      h('div', { class: 'panel status' },
-        a.leadLabel ? h('span', { class: 'status-lead' }, `${a.leadLabel} lead`) : null,
-        timer,
-        voted,
-        a.footer ? h('span', { class: 'hint status-hint' }, a.footer) : null),
+    const voted = h('span', { class: 'voted' });
+    const called = a.called ?? [];
+    this.show(h('div', { class: 'options' },
+      h('div', { class: 'panel options-head' },
+        h('div', { class: 'status' },
+          h('span', { class: 'options-eyebrow' }, a.eyebrow),
+          timer,
+          voted,
+          a.footer ? h('span', { class: 'hint status-hint' }, a.footer) : null),
+        h('p', { class: 'options-question' }, a.question)),
       h('div', { class: 'cards' }, ...cards),
-      resolved.length > 0 ? h('ul', { class: 'resolved' }, ...resolved.map((note) => h('li', {}, note))) : null), true);
+      called.length > 0 ? h('ul', { class: 'called' }, ...called.map((note) => h('li', {}, note))) : null), true);
     this.status = { timer, voted };
     this.updateOptionsStatus(a);
   }
@@ -366,7 +311,7 @@ export class Hud {
     }
   }
 
-  /** The call-out banner at the top: "Sarah, defend B: Yes to 60 to 100 MW, tied", or a hand call-out. Null hides it. */
+  /** The call-out banner: "Ann, defend B" with the letter's badge, a student with no letter, or a hand call-out. Null hides it. */
   showBanner(a: BannerArgs | null): void {
     if (a === null) {
       this.banner.hidden = true;
@@ -374,7 +319,7 @@ export class Hud {
       return;
     }
     let line: Kid[];
-    if (a.name !== null && a.letter !== null) line = [`${a.name}, defend `, badge(a.letter, 'is-inline'), a.phone ? `: ${a.phone}` : ''];
+    if (a.name !== null && a.letter !== null) line = [`${a.name}, defend `, badge(a.letter, 'is-inline')];
     else if (a.name !== null) line = [`${a.name}, defend your choice`];
     else line = ['Hand call-out. Who defends their choice?'];
     this.banner.replaceChildren(h('p', { class: 'banner-line' }, ...line));
@@ -382,59 +327,36 @@ export class Hud {
     this.banner.hidden = false;
   }
 
-  /** A short flash in the middle of the screen: a bonus ("+10 rally") in torch amber, anything else ("no bonus") in grey. */
-  flashRally(text: string, ms = FLASH_MS): void {
+  /** A short flash between the party and the boss, in the accent: "Valid point, Ann!". */
+  showFlash(text: string, ms = FLASH_MS): void {
     if (this.flashTimer !== null) clearTimeout(this.flashTimer);
-    this.flash.replaceChildren(h('p', { class: /\+\s*\d/.test(text) ? 'flash is-bonus' : 'flash' }, text));
+    this.flash.replaceChildren(h('p', { class: 'flash' }, text));
     this.flashTimer = setTimeout(() => {
       this.flash.replaceChildren();
       this.flashTimer = null;
     }, ms);
   }
 
-  /** After the strike: what each option did, the breakdown of the damage, the alignment, the rally, the discuss line. */
-  showDebrief(a: DebriefArgs): void {
-    const lines = a.lines.map((line) => tint(h('li', { class: 'debrief-line', 'data-debrief-line': line.letter },
-      badge(line.letter, 'is-row'),
-      h('span', { class: 'debrief-damage' }, Number.isFinite(line.damage) ? line.damage.toFixed(1) : '0.0'),
-      h('span', { class: 'debrief-text' }, line.text)), line.letter));
-    this.show(panel('debrief',
-      h('p', { class: 'eyebrow' }, 'Debrief'),
-      lines.length > 0 ? h('ol', { class: 'debrief-lines' }, ...lines) : null,
-      lines.length > 0 ? h('div', { class: 'sep' }) : null,
-      h('p', { class: 'breakdown' }, breakdownText(a.breakdown)),
-      a.alignment ? h('p', {}, a.alignment) : null,
-      a.rally ? h('p', {}, a.rally) : null,
-      a.discuss ? h('p', { class: 'discuss' }, `Discuss: ${a.discuss}`) : null));
-  }
-
-  /** The ending: its tier and title, what must be true and the risk accepted (or, if the Deadlock holds, why), the round 4 split. */
+  /**
+   * The ending: the title and its line at the top (the party hops on the canvas under them), then the last question
+   * and a column per option: its badge and count, its full text, and the names of those who picked it in a wrapping
+   * flow, then "and N more". A column with no names has no list.
+   */
   showEnding(a: EndingArgs): void {
-    const bullets = (heading: string, items: string[]): HTMLElement | null => (items.length === 0 ? null : h('div', { class: 'stack' },
-      h('p', { class: 'eyebrow' }, heading),
-      h('ul', { class: 'bullets' }, ...items.map((item) => h('li', {}, capitalise(item))))));
-    const holds = a.holds === null || a.holds.length === 0 ? null : h('ol', { class: 'holds' }, ...a.holds.map((row) =>
-      h('li', { class: 'holds-row' }, h('span', { class: 'holds-round' }, row.round), h('span', {}, row.chose), h('span', { class: 'holds-needed' }, `Needed: ${row.needed}`))));
-    this.show(panel('ending',
-      a.tier ? h('p', { class: 'eyebrow' }, capitalise(a.tier)) : null,
-      h('h1', { class: 'title' }, a.title),
-      a.text ? h('p', {}, a.text) : null,
-      h('div', { class: 'ending-body' },
-        h('div', { class: 'stack ending-text' }, holds, bullets('What must be true', a.mustBeTrue), bullets('The risk you accepted', a.risk)),
-        h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, 'Round 4 split'), split(a.split)))));
-  }
-
-  /** The closing screen: the top five, the awards, and the final split under the question the discussion picks up. */
-  showLeaderboard(a: LeaderboardArgs): void {
-    const rows = a.rows.length === 0 ? h('p', { class: 'muted' }, 'No scores yet') : h('ol', { class: 'board' }, ...a.rows.map((row, i) =>
-      h('li', { class: 'board-row' },
-        h('span', { class: 'board-rank' }, String(i + 1)),
-        h('span', { class: 'board-name' }, row.name),
-        h('span', { class: 'board-class' }, row.className),
-        h('span', { class: 'board-score' }, String(Math.round(row.score))))));
-    this.show(panel('leaderboard',
-      h('div', { class: 'stack' }, h('p', { class: 'eyebrow' }, a.rows.length > 0 ? `Top ${a.rows.length}` : 'Top players'), rows, h('p', {}, a.consistent), a.table ? h('p', {}, a.table) : null),
-      h('div', { class: 'stack' }, h('h1', { class: 'title' }, a.question), split(a.split))));
+    const columns = [...a.columns]
+      .sort((x, y) => OPTION_IDS.indexOf(x.letter) - OPTION_IDS.indexOf(y.letter))
+      .map((col) => tint(h('section', { class: 'column', 'data-column': col.letter },
+        h('div', { class: 'column-head' }, badge(col.letter), h('b', { class: 'column-count' }, String(col.count))),
+        h('p', { class: 'column-text' }, col.text),
+        col.names.length > 0 ? h('ul', { class: 'names' }, ...col.names.map((name) => h('li', {}, name))) : null,
+        col.more > 0 ? h('p', { class: 'names-more' }, `and ${col.more} more`) : null), col.letter));
+    this.show(h('div', { class: 'ending' },
+      h('header', { class: 'ending-head' },
+        h('h1', { class: 'title ending-title' }, a.title),
+        a.text ? h('p', { class: 'ending-text' }, a.text) : null),
+      h('div', { class: 'panel ending-body' },
+        h('p', { class: 'ending-question' }, a.question),
+        h('div', { class: 'columns' }, ...columns))));
   }
 
   /**
@@ -478,7 +400,7 @@ export class Hud {
   }
 
   /**
-   * The facilitator's menu (host/menu.ts), on a scrim over the screen and the rally flash. The banner and the toasts
+   * The facilitator's menu (host/menu.ts), on a scrim over the screen and the flash. The banner and the toasts
    * stay above the scrim, and the panel sits low so they seldom cover it. Each call draws the menu afresh and keeps
    * the focus on the item that had it, if that item is still enabled; null takes the menu down. clear() leaves it.
    */
@@ -514,7 +436,7 @@ export class Hud {
 
   /**
    * The how-to on its full-bleed dialog (host/howto.ts). Each call draws the slide afresh so its motion restarts; null
-   * takes it down. clear() leaves it. It sits over the screen and the rally flash, at the menu's layer, and under the
+   * takes it down. clear() leaves it. It sits over the screen and the flash, at the menu's layer, and under the
    * banner and the toasts; a sibling of the screen, so a new screen drawn under it leaves it up.
    */
   showHowTo(a: HowToArgs | null): void {

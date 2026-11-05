@@ -1,9 +1,9 @@
 /* Projector HUD: the HTML text layer over the 320 x 180 game canvas (spec 7).
    Every size is in canvas pixels, calc(var(--zoom) * Npx), so the layout is the same at every whole zoom and only
-   scales: hints 3.5, body 4, narration 5, titles and the banner 7, the how-to's lines 10 and its name 20, which is
-   21, 24, 30, 42, 60 and 120 px at zoom 6 (1080p).
+   scales: hints and names 3.5, body 4, the ending's options 5, the cards 6, the vote's question, titles and the
+   banner 7, the arriving question 8, the how-to's titles 10, which is 21, 24, 30, 36, 42, 48 and 60 px at zoom 6.
    Built from the house anti-vibecode tokens: flat slate panels at 85% over the world, one accent (torch amber, for
-   the Discuss line, the rally flash and the how-to's values only), option colours only on letter badges and bars.
+   the flash only), option colours only on letter badges and bars.
    Every colour and font below comes from the token block; nothing else in the file names one. */
 
 /* The title face, bundled so the projector needs no network (host/art/assets/fonts, OFL 1.1, CREDITS.md). It is the
@@ -31,7 +31,7 @@
   --ink-2:       #a9afbb;
   --ink-3:       #7c8290;
 
-  /* The one accent: torch amber, for the Discuss line, the rally flash and the how-to's values, nothing else. */
+  /* The one accent: torch amber, for the flash, nothing else. */
   --accent:      #eda34f;
 
   /* Ink on the option colours. The colours themselves arrive as --option, from OPTION_COLORS in Hud.ts. */
@@ -68,13 +68,16 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   --hud-h:    calc(var(--zoom) * 180px);
   --t-hint:   calc(var(--zoom) * 3.5px);
   --t-body:   calc(var(--zoom) * 4px);
+  --t-name:   calc(var(--zoom) * 3.5px);
   --t-narr:   calc(var(--zoom) * 5px);
+  --t-card:   calc(var(--zoom) * 6px);
+  --t-question: calc(var(--zoom) * 7px);
+  --t-arrive: calc(var(--zoom) * 8px);
   --t-badge:  calc(var(--zoom) * 6px);
   --t-title:  calc(var(--zoom) * 7px);
   --t-slide:  calc(var(--zoom) * 10px);
   --t-code:   calc(var(--zoom) * 12px);
-  --t-flash:  calc(var(--zoom) * 12px);
-  --t-howto-name: calc(var(--zoom) * 20px);
+  --t-flash:  calc(var(--zoom) * 9px);
   --s1: calc(var(--zoom) * 1px); --s2: calc(var(--zoom) * 2px); --s3: calc(var(--zoom) * 3px);
   --s4: calc(var(--zoom) * 4px); --s5: calc(var(--zoom) * 6px); --s6: calc(var(--zoom) * 8px);
   --r-sm: calc(var(--zoom) * 1.5px); --r-md: calc(var(--zoom) * 2px); --r-lg: calc(var(--zoom) * 3px);
@@ -111,7 +114,6 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .eyebrow { display: block; font-weight: 600; letter-spacing: var(--tr-eyebrow); color: var(--ink-2); }
 .hint { color: var(--ink-2); }
 .muted { color: var(--ink-3); }
-.quote { color: var(--ink-2); overflow-wrap: anywhere; }
 .sep { height: 1px; margin: var(--s1) calc(var(--s5) * -1); background: var(--line); }
 
 /* The letter, then its shape, on the option's colour: the same height as the letter alone had, as wide as the two need.
@@ -145,22 +147,16 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 }
 .badge-shape { display: block; flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* A thin track filled in the option's colour, with the share in figures after it. */
-.bar-track { height: calc(var(--zoom) * 2px); border-radius: var(--r-sm); background: var(--surface-2); overflow: hidden; }
+/* A card's one bar: a thin track filled in the option's colour, the share in figures, then the count. */
+.bar { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--s3); }
+.bar-track { height: calc(var(--zoom) * 3px); border-radius: var(--r-sm); background: var(--surface-2); overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--option); }
-.bar-value { text-align: right; font-variant-numeric: tabular-nums; }
-
-.split { list-style: none; display: grid; gap: var(--s1); }
-.split-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) calc(var(--zoom) * 12px);
-  align-items: center;
-  column-gap: var(--s3);
-}
+.bar-value { font-size: var(--t-narr); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar-count { min-width: 2ch; text-align: right; font-size: var(--t-narr); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 /* ---- Lobby: one panel across the top; the bottom third stays clear for the skyline and the avatars. The title on
    two lines and the keycaps; the square, the join column (the address on two lines, the count as a hero, a tile per
-   class) and the newest names. No room code, as the address ends in it, and no quote ------------------------ */
+   role) and the newest names. No room code, as the address ends in it, and no quote ------------------------ */
 
 .lobby { position: absolute; top: var(--s4); left: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s4); }
 .lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s6); }
@@ -206,96 +202,70 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .joined { display: flex; align-items: baseline; gap: var(--s2); }
 .joined-n { font: 600 var(--t-code)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; font-variant-numeric: tabular-nums; }
 .joined-word { color: var(--ink-2); }
-/* A tile per class, two by two: the figure at one canvas pixel per pixel, the plural name, the count. */
+/* A tile per role, two by two: the figure at one canvas pixel per pixel, the role's name, the count. */
 .counts { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2) var(--s4); }
 /* The count follows its own name rather than the far edge of the tile, so it never reads as the next tile's. */
 .count { display: grid; grid-template-columns: auto minmax(0, max-content) 1fr; align-items: center; column-gap: var(--s2); }
-.count .figure { display: block; width: calc(var(--zoom) * 12px); height: calc(var(--zoom) * 16px); }
+.count .figure { display: block; width: calc(var(--zoom) * 16px); height: calc(var(--zoom) * 20px); }
 .count-name { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .count b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .recent { list-style: none; display: grid; gap: var(--s1); }
 .recent li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- Narration: anchored to the bottom, so the boss stays in view above it ----------------------------- */
+/* ---- The boss's arrival: the question anchored to the bottom, where the narration sat, so the party and the boss
+   stay in full view above it ---------------------------------------------------------------------------------- */
 
-.narration {
+.question {
   position: absolute;
   left: 0; right: 0; bottom: var(--s4);
-  width: min(calc(100% - 2 * var(--s4)), calc(var(--zoom) * 264px));
+  width: min(calc(100% - 2 * var(--s4)), calc(var(--zoom) * 288px));
   margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--s2);
 }
-.narration-text { font-size: var(--t-narr); line-height: var(--lh-lead); }
+.question-text { font-size: var(--t-arrive); font-weight: 600; line-height: var(--lh-body); text-wrap: balance; overflow-wrap: anywhere; }
 
-/* ---- Options: a status line, then the cards in a 2 x 2 grid over the lower 45% -------------------------- */
+/* ---- Options: the status line and the question, then the three cards in one row. The block is anchored to the
+   bottom and at least as tall as the space under the floor line (y 72), so the boss and the party stand clear above
+   it; a font wider than planned grows it upward, never cuts an option ------------------------------------------- */
 
-.status {
+.options {
   position: absolute;
-  left: var(--s4); right: var(--s4); bottom: calc(45% + var(--s2));
+  left: var(--s4); right: var(--s4); bottom: var(--s3);
+  min-height: calc(var(--zoom) * 103px);
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  column-gap: var(--s5);
-  padding: var(--s1) var(--s4);
-  border-radius: var(--r-md);
+  flex-direction: column;
+  gap: var(--s2);
 }
-.status-lead { color: var(--ink-2); }
-.timer { font: 600 var(--t-title)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; font-variant-numeric: tabular-nums; }
+.options-head { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s4); }
+.status { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: var(--s5); }
+.options-eyebrow { font-weight: 600; color: var(--ink-2); }
+/* The clock and the counts in the body face: the pixel face's 5 reads as an S from the back of the room. */
+.timer { font: 700 var(--t-narr)/var(--lh-title) var(--font-body); font-variant-numeric: tabular-nums; }
+.voted { color: var(--ink-2); }
 .status-hint { margin-left: auto; text-align: right; }
+.options-question { font-size: var(--t-question); font-weight: 600; line-height: var(--lh-body); text-wrap: balance; overflow-wrap: anywhere; }
 .cards {
-  position: absolute;
-  left: var(--s4); right: var(--s4); top: 55%; bottom: var(--s3);
+  flex: 1 0 auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: var(--s2) var(--s3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
 }
 .card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  grid-template-areas: "badge text" "bars bars";
-  column-gap: var(--s3);
-  row-gap: var(--s2);
-  padding: var(--s2) var(--s4);   /* the longest option is three lines over two bars: the vertical inset stays tight to leave a spare line */
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
   border-radius: var(--r-lg);
   background: var(--panel);
 }
-.card > .badge { grid-area: badge; }
-/* Backstop for a wider fallback font on the projector PC: the text stops at the last whole line that fits its row
-   (6 lines on its own, 3 above the bars; the longest option today is 3) and ends in an ellipsis, never under the bars. */
-.card-text {
-  grid-area: text;
-  align-self: start;         /* the box ends at the clamped line; stretched to its row it would show part of the next */
-  max-height: 100%;
-  overflow-wrap: anywhere;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
-}
-.card.has-bars .card-text { -webkit-line-clamp: 3; }
-.bars { grid-area: bars; display: grid; gap: var(--s1); }
-.bar {
-  display: grid;
-  grid-template-columns: calc(var(--zoom) * 20px) minmax(0, 1fr) calc(var(--zoom) * 12px);
-  align-items: center;
-  column-gap: var(--s2);
-}
-.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-/* The call-outs judged this round: one muted line under the cards, which give up that line and a gap for it. */
-.options.has-resolved .cards { bottom: calc(var(--s2) * 2 + var(--t-body) * var(--lh-body)); }
-.resolved {
-  position: absolute;
-  left: var(--s4); right: var(--s4); bottom: var(--s2);
-  display: flex;
-  column-gap: var(--s5);
-  list-style: none;
-  color: var(--ink-2);
-}
-.resolved li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-head { display: flex; align-items: center; gap: var(--s3); min-height: calc(var(--zoom) * 9px); }
+/* The whole option, always: no clamp and no ellipsis. The longest is 150 characters, about six lines at this size. */
+.card-text { font-size: var(--t-card); line-height: var(--lh-body); overflow-wrap: anywhere; }
+/* The valid points this round: one muted line under the cards. */
+.called { display: flex; flex-wrap: wrap; column-gap: var(--s5); list-style: none; color: var(--ink-2); }
+
 
 /* ---- Banner and toasts: one column at the top, so a toast never lands on the banner --------------------- */
 
@@ -324,6 +294,9 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 /* In the lobby the column sits at the bottom, over the skyline, so a toast (the room server refusing, say) never covers
    the title or the keycaps; with the menu or the how-to up it stays at the top, clear of their panels. */
 .hud:has(> .hud-screen > .lobby):not(:has(> .hud-menu, > .hud-howto)) > .hud-top { top: auto; bottom: var(--s4); }
+/* In the arena the column sits in the open sky between the party (x 18 to 100) and the boss (x 240 on), so the
+   call-out banner covers neither while the cards stay up under it. */
+.hud:has(> .hud-screen > .options, > .hud-screen > .question):not(:has(> .hud-menu, > .hud-howto)) > .hud-top { left: calc(var(--zoom) * 102px); right: calc(var(--zoom) * 82px); }
 .toasts { display: flex; flex-direction: column; align-items: center; gap: var(--s2); max-width: 100%; }
 .toast {
   max-width: calc(var(--zoom) * 260px);
@@ -336,87 +309,42 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
   animation: hud-in .18s ease-out;
 }
 
-/* ---- Rally flash: under the banner, above the status line ---------------------------------------------- */
+/* ---- Flash: between the party and the boss, in the accent ---------------------------------------------- */
 
-.hud-flash { position: absolute; left: 0; right: 0; top: 30%; z-index: var(--z-sticky); display: flex; justify-content: center; }
+.hud-flash { position: absolute; left: calc(var(--zoom) * 100px); right: calc(var(--zoom) * 80px); top: calc(var(--zoom) * 28px); z-index: var(--z-sticky); display: flex; justify-content: center; }
 .flash {
-  padding: var(--s2) var(--s5);
+  padding: var(--s2) var(--s4);
   border-radius: var(--r-lg);
   background: var(--panel);
-  max-width: calc(100% - 2 * var(--s4));
-  overflow: hidden;
   font: 700 var(--t-flash)/var(--lh-title) var(--font-title);
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0;
-  color: var(--ink-2);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  color: var(--accent);
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
   animation: hud-pop .16s ease-out;
 }
-.flash.is-bonus { color: var(--accent); }
 
-/* ---- Debrief: anchored to the bottom, the boss and its bar stay in view above ---------------------------- */
+/* ---- Ending: the title and its line at the top, the party hopping on the canvas under them (y 36 to 66), then
+   the last question and its three columns, anchored to the bottom ---------------------------------------------- */
 
-.debrief { position: absolute; left: var(--s4); right: var(--s4); bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
-.debrief-lines { list-style: none; display: grid; gap: var(--s2); }
-.debrief-line {
-  display: grid;
-  grid-template-columns: auto calc(var(--zoom) * 12px) minmax(0, 1fr);
-  align-items: start;
-  column-gap: var(--s3);
-}
-.debrief-damage { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
-.debrief-text { overflow-wrap: anywhere; }
-.breakdown { font-weight: 600; font-variant-numeric: tabular-nums; }
-.discuss { font-weight: 600; color: var(--accent); }
+.ending { position: absolute; inset: var(--s3) var(--s4); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s2); }
+.ending-head { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ending-title { font-size: calc(var(--zoom) * 12px); text-shadow: var(--s1) var(--s1) 0 var(--bg); }
+.ending-text { font-size: var(--t-narr); font-weight: 600; color: var(--ink-2); text-shadow: var(--s1) var(--s1) 0 var(--bg); }
+.ending-body { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4); }
+.ending-question { font-size: var(--t-narr); font-weight: 600; line-height: var(--lh-body); overflow-wrap: anywhere; }
+.columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); align-items: start; }
+.column { display: flex; flex-direction: column; gap: var(--s1); }
+.column-head { display: flex; align-items: center; gap: var(--s3); }
+.column-count { font: 700 var(--t-title)/var(--lh-title) var(--font-body); font-variant-numeric: tabular-nums; }
+.column-text { font-size: var(--t-narr); line-height: var(--lh-body); overflow-wrap: anywhere; }
+/* Up to 30 names in a wrapping flow, in small type, in the order they joined. */
+.names { list-style: none; display: flex; flex-wrap: wrap; gap: 0 var(--s3); margin-top: var(--s1); font-size: var(--t-name); line-height: var(--lh-body); color: var(--ink-2); }
+.names li { overflow-wrap: anywhere; }
+.names-more { font-size: var(--t-name); color: var(--ink-3); }
 
-/* ---- Ending ----------------------------------------------------------------------------------------------- */
-
-.ending { position: absolute; left: var(--s4); right: var(--s4); bottom: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
-.ending-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; gap: var(--s6); margin-top: var(--s1); }
-.ending-text { gap: var(--s3); }
-.bullets { padding-left: 1.1em; display: grid; gap: var(--s1); }
-.bullets li::marker { color: var(--ink-3); }
-/* One grid for every row, each row a subgrid of it, so the round, the choice and what was needed stand in columns:
-   "Needed" follows the longest choice after one gap, beside its own row and well clear of the split. */
-.holds {
-  list-style: none;
-  display: grid;
-  grid-template-columns: calc(var(--zoom) * 16px) minmax(0, max-content) max-content;
-  justify-content: start;
-  gap: var(--s2) var(--s4);
-}
-.holds-row {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: baseline;
-}
-.holds-round { color: var(--ink-2); }
-.holds-needed { color: var(--ink-2); white-space: nowrap; }
-
-/* ---- Leaderboard: names and awards on the left, the closing question and the split on the right --------- */
-
-.leaderboard {
-  position: absolute;
-  inset: var(--s4);
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-content: center;
-  gap: var(--s6);
-}
-.board { list-style: none; display: grid; gap: var(--s2); }
-.board-row {
-  display: grid;
-  grid-template-columns: calc(var(--zoom) * 5px) minmax(0, 1fr) auto calc(var(--zoom) * 14px);
-  align-items: baseline;
-  column-gap: var(--s3);
-  font-size: var(--t-narr);
-}
-.board-rank { font-variant-numeric: tabular-nums; color: var(--ink-3); }
-.board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.board-class { color: var(--ink-2); }
-.board-score { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---- Menu: a scrim over the screen and the flash, under the banner and the toasts; the panel sits low so they
    stay readable above it. The actions, the stages, then the key map ----------------------------------------- */
@@ -474,8 +402,8 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .menu-hint { font-weight: 500; font-size: var(--t-hint); line-height: var(--lh-body); color: var(--ink-2); }
 .menu-btn[data-armed] .menu-hint { color: var(--bg); opacity: .7; }
 .menu-note { margin-top: calc(var(--s1) * -1); }
-/* Read down each column: the room's keys on the left, travel and the page on the right. */
-.keys { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(8, auto); grid-auto-flow: column; gap: var(--s2) var(--s6); }
+/* Read down each column: the room's keys on the left, the page's on the right. */
+.keys { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(7, auto); grid-auto-flow: column; gap: var(--s2) var(--s6); }
 .key-row { display: grid; grid-template-columns: calc(var(--zoom) * 30px) minmax(0, 1fr); align-items: baseline; column-gap: var(--s3); }
 .key {
   justify-self: start;
@@ -524,167 +452,23 @@ html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: clip; backgr
 .howto-dot[aria-current] { background: var(--ink); }
 .howto-keys { list-style: none; display: flex; gap: var(--s4); }
 
-/* Type: the lines, the join steps and the awards at --t-slide; the example round, the split, the points rows and the
-   damage rows at --t-title; captions at the slide's --t-narr. The pixel face for the name and the boss alone, and the
-   accent on the values. */
-.howto-line, .howto-steps, .howto-awards { font-size: var(--t-slide); line-height: var(--lh-title); }
-.howto-question, .howto-options, .howto-split, .howto-chips, .howto-chunks { font-size: var(--t-title); line-height: var(--lh-title); }
-.howto-title { display: flex; flex-direction: column; }
-.howto-name { font: 700 var(--t-howto-name)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; text-shadow: var(--s2) var(--s2) 0 var(--surface-2); }
-.howto-sub { font: 500 var(--t-title)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; color: var(--ink-2); }
-.howto-bossname { font: 700 var(--t-title)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; }
-.howto-chip-value, .howto-chunks b, .howto-clock, .howto-mark b, .howto-end { font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-.howto-class { display: block; font-weight: 600; }
-.howto-who { color: var(--ink-2); }
+/* Type: the step number large in the pixel face and the quiet ink, the sentence at --t-slide in the body face so it
+   reads from the back of the room and wraps freely, the note under it at --t-title. */
+.howto-step { font: 700 calc(var(--zoom) * 16px)/var(--lh-title) var(--font-title); font-variant-ligatures: none; font-feature-settings: "liga" 0; color: var(--ink-3); }
+.howto-text { font: 700 var(--t-slide)/var(--lh-title) var(--font-body); letter-spacing: var(--tr-title); max-width: calc(var(--zoom) * 280px); text-wrap: balance; overflow-wrap: anywhere; }
+.howto-note { font-size: var(--t-title); line-height: var(--lh-body); color: var(--ink-2); max-width: calc(var(--zoom) * 280px); }
 
-/* The pieces, slide by slide. The party: each figure over its class and stakeholder, in even columns; figure(role, 3)
-   is three canvas pixels to each of its 12 x 16, so it stays crisp at every whole zoom, and the row carries that 3 as
-   --figure-scale (FIGURE_SCALE in HowTo.ts), which sizes the figure here. The lists are numbered by
-   the stylesheet in the quiet ink. Option tiles and points rows are flat on surface-2 with the dim stroke, twice as
-   much padding across as down, the option colour on the badge alone; no label in them wraps. */
-.howto-party {
-  list-style: none;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(calc(var(--zoom) * 56px), max-content);
-  justify-content: start;
-  column-gap: var(--s4);
-}
-.howto-member { display: flex; flex-direction: column; align-items: center; gap: var(--s1); white-space: nowrap; }
-.howto-member .figure {
-  display: block;
-  flex: none;
-  width: calc(var(--zoom) * 12px * var(--figure-scale, 3));
-  height: calc(var(--zoom) * 16px * var(--figure-scale, 3));
-  margin-bottom: var(--s1);
-}
-/* The lead's step forward reaches about 8 canvas px over its row and 2 under it: room for it, clear of the eyebrow. */
-.howto-slide[data-kind="lead"] .howto-party { margin-block: var(--s6) var(--s2); }
-.howto-steps, .howto-chunks { list-style: none; display: grid; counter-reset: howto-n; }
-.howto-steps { gap: var(--s3); }
-.howto-chunks { gap: var(--s1); }
-.howto-steps > li, .howto-chunks > li { display: grid; align-items: baseline; column-gap: var(--s3); counter-increment: howto-n; }
-.howto-steps > li { grid-template-columns: calc(var(--zoom) * 8px) minmax(0, 1fr); }
-.howto-chunks > li { grid-template-columns: calc(var(--zoom) * 6px) minmax(0, 1fr) max-content; }
-.howto-steps > li::before, .howto-chunks > li::before { content: counter(howto-n); color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.howto-chunks span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.howto-chunks b { white-space: nowrap; }
-.howto-boss { display: flex; align-items: center; gap: var(--s5); }
-.howto-vote { display: flex; align-items: center; gap: var(--s5); }
-.howto-options { flex: 1 1 auto; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
-.howto-option, .howto-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  padding: var(--s2) var(--s4);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-.howto-option-label, .howto-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The clock ring: the window drains from ink to surface-2, and like the tracks the ring is edged with a canvas pixel
-   of the quiet ink, so the empty ring still reads on a washed-out projector. --p is the share of a turn still to run. */
-.howto-ring {
-  --p: 0;
-  position: relative;
-  flex: none;
-  width: calc(var(--zoom) * 30px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: conic-gradient(var(--ink) calc(var(--p) * 1turn), var(--surface-2) 0);
-  box-shadow: inset 0 0 0 var(--s1) var(--ink-3);
-}
-.howto-clock {
-  position: absolute;
-  inset: var(--s3);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--bg);
-  font-size: var(--t-title);
-  line-height: var(--lh-flat);
-}
-.howto-chips { list-style: none; display: grid; gap: var(--s2); width: min(100%, calc(var(--zoom) * 180px)); }
-.howto-chip { justify-content: space-between; gap: var(--s4); }
-.howto-chip-value { flex: none; white-space: nowrap; }
-.howto-awards { list-style: none; display: grid; gap: var(--s3); }
+/* Motion: the number, the sentence and the note rise in on a .35 s stagger. */
+.howto-in { animation: howto-rise .45s ease-out both; animation-delay: calc(var(--i, 0) * .35s); }
 
-/* Bars: flat tracks on surface-2, each edged with a canvas pixel of the quiet ink, so that the empty part of a track
-   still reads on a washed-out projector; a fill covers the edge as it grows. The HP bar and the gauge fill in ink;
-   the damage track in chunks of ink-2, each cut from the next by a canvas pixel of the canvas colour; the lead's half
-   bright, the rest dim. Each gauge mark is a line one canvas pixel wide in the quiet ink across the track, its label
-   under it; the gauge's top score sits under its right end. */
-.howto-hp, .howto-track, .howto-gauge { background: var(--surface-2); border-radius: var(--r-sm); box-shadow: inset 0 0 0 var(--s1) var(--ink-3); }
-.howto-hp, .howto-track { overflow: hidden; }
-.howto-hp { flex: 0 1 calc(var(--zoom) * 96px); height: var(--s3); }
-/* The HP the boss has left after the example strike (--hit); the hit's animation (.howto-hit) starts it full. */
-.howto-hpbar { width: calc(var(--hit, 1) * 100%); height: 100%; background: var(--ink); }
-.howto-track { display: flex; height: calc(var(--zoom) * 8px); }
-.howto-chunk { display: block; flex: none; height: 100%; width: var(--w); background: var(--ink-2); box-shadow: inset calc(var(--zoom) * -1px) 0 0 var(--bg); }
-.howto-chunk:last-child { box-shadow: none; }
-.howto-split { display: flex; border-radius: var(--r-sm); overflow: hidden; font-weight: 600; }
-.howto-half { flex: 1 1 0; padding: var(--s1) var(--s2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--surface-2); color: var(--ink-2); }
-.howto-half.is-lead { background: var(--ink); color: var(--bg); }
-.howto-gauge {
-  --gauge-h: calc(var(--zoom) * 6px);
-  position: relative;
-  height: var(--gauge-h);
-  margin-bottom: calc(var(--s2) + var(--t-narr) * var(--lh-body));   /* room for the labels under the marks */
-}
-.howto-gaugefill { height: 100%; width: var(--w); border-radius: inherit; background: var(--ink); }
-.howto-mark { position: absolute; left: var(--at); top: 100%; padding-top: var(--s2); transform: translateX(-50%); white-space: nowrap; color: var(--ink-2); }
-.howto-mark::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: calc(var(--gauge-h) * -1 - var(--s1));
-  width: var(--s1);
-  height: calc(var(--gauge-h) + var(--s1) * 2);
-  transform: translateX(-50%);
-  background: var(--ink-3);
-}
-.howto-end { position: absolute; right: 0; top: 100%; padding-top: var(--s2); white-space: nowrap; }
-
-/* Motion: a rise-in on a .35 s stagger, the walk-in on .22 s with the front of the line first, the fills growing from
-   the left on .55 s. The title, damage and ending slides rise on the fills' step: the title's line comes up as the
-   last of the four stops walking, each row of the damage list comes in with its chunk, and the gauge fills after the
-   ending's lines and before the line under it. Every walker starts the same distance back (howto-walk), far enough
-   that the Wizard at the front of the line starts wholly past the left edge, and covers it in 2 s, about 128 canvas
-   px a second, its bob keeping time: seven beats of .28 s. The bob is steps(1) on each half of its cycle, so the
-   figure is up a whole canvas pixel, then down: a two-step bob. The ring drains over three seconds, then the HP bar
-   takes its hit; the lead class rises with the party, then steps forward. */
-.howto-in { animation: howto-rise .45s ease-out both; animation-delay: calc(var(--i, 0) * var(--rise-step, .35s)); }
-.howto-slide[data-kind="title"], .howto-slide[data-kind="damage"], .howto-slide[data-kind="ending"] { --rise-step: .55s; }
-.howto-walk { animation: howto-walk 2s ease-out both; animation-delay: calc(var(--i, 0) * .22s); }
-.howto-walk .figure { animation: howto-bob .28s steps(1) 7; animation-delay: calc(var(--i, 0) * .22s); }
-.howto-fill { transform-origin: left; animation: howto-grow .6s ease-out both; animation-delay: calc(var(--i, 0) * .55s); }
-.howto-ring { animation: howto-drain 3s linear both; }
-.howto-hit { transform-origin: left; animation: howto-hit .5s ease-in 3s both; }
-/* The lead is a .howto-in too; the compound selector outranks that rule wherever the two sit in the file. The scale,
-   7 / 6, takes each pixel of the figure from three canvas pixels to three and a half: 14 device pixels at zoom 4, 21
-   at zoom 6. It is taken about a point a whole number of the figure's pixels from its edges (6 across, 11 down, the
-   nearest to the member's middle), so every edge of the art moves by whole device pixels too and stays sharp. */
-.howto-in.howto-lead {
-  transform: translateY(calc(var(--zoom) * -3px)) scale(calc(7 / 6));
-  transform-origin: 50% calc(var(--zoom) * 33px);
-  animation: howto-rise .45s ease-out both, howto-step .5s ease-out .9s both;
-}
 
 /* ---- Motion --------------------------------------------------------------------------------------------- */
 
 @keyframes hud-in { from { opacity: 0; transform: translateY(calc(var(--zoom) * -2px)); } to { opacity: 1; transform: none; } }
 @keyframes hud-pop { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
 
-/* The how-to's (How to play, above). --p is the ring's share of a turn, registered as a number so the drain can
-   animate it. */
-@property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+/* The how-to's (How to play, above). */
 @keyframes howto-rise { from { opacity: 0; transform: translateY(var(--s2)); } }
-@keyframes howto-walk { from { transform: translateX(calc(var(--zoom) * -256px)); } }
-@keyframes howto-bob { 50% { transform: translateY(calc(var(--zoom) * -1px)); } }
-@keyframes howto-grow { from { transform: scaleX(0); } }
-@keyframes howto-drain { from { --p: 1; } to { --p: 0; } }
-@keyframes howto-hit { from { transform: scaleX(calc(1 / var(--hit, 1))); } }
-@keyframes howto-step { from { transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .hud * { animation: none !important; }

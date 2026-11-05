@@ -1,5 +1,5 @@
-// The lobby. The HUD carries the QR, the address, the counts per class and the newest names; the canvas carries a
-// gothic Nairobi skyline and, for every phone that joins, an avatar of its class dropping onto the road. No text is
+// The lobby. The HUD carries the QR, the address, the counts per role and the newest names; the canvas carries a
+// gothic Nairobi skyline and, for every phone that joins, an avatar of its role dropping onto the road. No text is
 // drawn on the canvas. Space starts the game.
 import Phaser from 'phaser';
 import QRCode from 'qrcode';
@@ -61,7 +61,7 @@ export class Lobby extends Phaser.Scene {
   /** The room and its QR, once connect() has resolved and the QR is drawn (or has failed). */
   private room: (RoomInfo & { qr: string | null }) | null = null;
   private connected = false;
-  /** One avatar per player, keyed by id, join time and role, so a player who changes role gets the new class's figure. */
+  /** One avatar per player, keyed by id, join time and role, so a player who changes role gets the new role's figure. */
   private avatars = new Map<string, Phaser.GameObjects.Image>();
   /** What the HUD shows now, so a view that changes nothing it shows does not redraw it. */
   private shown = '';
@@ -140,19 +140,19 @@ export class Lobby extends Phaser.Scene {
     const view = (this.registry.get('view') as HostView | null | undefined) ?? null;
     if (view !== null && view.phase !== 'lobby') return;
     const players = view === null ? [] : Object.values(view.players);
-    const classNames = Object.fromEntries(this.content.roles.map((r) => [r.id, r.className])) as Record<Role, string>;
+    const roleNames = Object.fromEntries(this.content.roles.map((r) => [r.id, r.name])) as Record<Role, string>;
     const roleCounts: Record<Role, number> = { citizen: 0, government: 0, business: 0, microsoft: 0 };
     for (const p of players) roleCounts[p.role] += 1;
     const recent = view === null || view.hideNames ? [] : [...players]
       .sort((a, b) => b.joinedAt - a.joinedAt || a.id.localeCompare(b.id))
       .slice(0, RECENT)
-      .map((p) => `${p.name}, ${classNames[p.role]}`);
+      .map((p) => `${p.name}, ${roleNames[p.role] ?? p.role}`);
     const args: LobbyArgs = {
       qrDataUrl: this.room?.qr ?? null,
       joinUrl: this.room?.joinUrl ?? '',
       count: players.length,
       roleCounts,
-      classNames,
+      roleNames,
       recent,
       offline: this.client.mode === 'offline',
     };

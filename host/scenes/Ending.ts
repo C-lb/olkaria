@@ -1,98 +1,57 @@
-// The ending (spec 4.6). The HUD names the ending the class reached, at its tier, over round 4's split: what must be
-// true and the risk accepted, or, when the Deadlock holds, why. The canvas keeps the last round's arena, the party on
-// the floor facing the core. For an option's ending the core trembles, flashes and splits in two, once per start of
-// the scene and in under 2 s, with no key needed; when the Deadlock holds it stands still. Space moves the room on to
-// the leaderboard, which also cuts the crack short. A reload here is no different: the crack plays again.
+// The ending (spec, "The flow" 8). The HUD says "Congratulations!" and "The Deadlock is broken." at the top, then the
+// last question and a column per option with who picked it. The canvas has the floor and the four figures in the
+// middle, hopping on the spot in a loop, each a beat behind the one before. No boss: the Deadlock is broken. It closes
+// the game, so Space does nothing here. A reload is no different: the party hops again.
 import Phaser from 'phaser';
 import type { CaseContent } from '../../shared/content';
-import type { HostView, Role } from '../../shared/types';
+import { ROLES, type HostView } from '../../shared/types';
 import { PALETTE } from '../art/placeholders';
 import type { Sound } from '../audio/sound';
-import { endingArgs, outcomeOf } from '../finale';
-import { oncePerEvent } from '../hotkeys';
+import { endingArgs } from '../finale';
 import type { Hud } from '../hud/Hud';
-import type { RoomClient } from '../net';
-import type { SceneData } from '../router';
-import { classFor, SEND_LOCK_MS, SPACE_LOCK_KEY } from '../strikers';
 
 const hex = (colour: string): number => Number.parseInt(colour.slice(1), 16);
 
-/** The arena as the last round's Battle left it: one row of floor tiles, the core at the right edge, the party facing it. */
-const GROUND_Y = 84;
-const FLOOR_H = 16;
-const CORE_X = 280;
-const LEAD_X = 104;
-const SUPPORT_X = [30, 52, 74] as const;
-
 /**
- * The crack, 1.65 s in all: the core trembles a pixel each way (eight times, 100 ms each), flashes bone white for
- * 150 ms, then splits down the middle, its halves tipping apart over 700 ms while the camera shakes.
+ * The floor the party hops on: between the title (to y 34) and the question's panel (from y 70), so a figure at the
+ * top of its hop (y 36) stays clear of both.
  */
-const TREMBLE_PX = 1;
-const TREMBLE_MS = 50;
-const TREMBLES = 8;
-const FLASH_MS = 150;
-const SPLIT_PX = 10;
-const TILT_DEG = 12;
-const SPLIT_MS = 700;
-const SHAKE_MS = 250;
-const SHAKE = 0.01;
+const GROUND_Y = 66;
+const FLOOR_H = 16;
+/** The four in the middle of the canvas, in ROLES order. */
+const PARTY_X = [127, 149, 171, 193] as const;
+/** Each hop: HOP_PX up over HOP_MS and down again, each figure HOP_LAG_MS behind the one before it. */
+const HOP_PX = 10;
+const HOP_MS = 300;
+const HOP_LAG_MS = 120;
 
 export class Ending extends Phaser.Scene {
-  private round = 0;
-  private client!: RoomClient;
   private content!: CaseContent;
   private hud!: Hud;
   /** The music and effects (audio/sound.ts); `sound` is Phaser's own. */
   private audio!: Sound;
-  private core!: Phaser.GameObjects.Image;
-  /** The latest view of the ending: Space sends nothing before one has come. */
+  /** The latest view of the ending; its theme sounds on the first. */
   private view: HostView | null = null;
   /** What the HUD shows now, so a view that changes nothing it shows redraws nothing. */
   private shown = '';
-  /** The core cracks once per start of the scene, however many views follow. */
-  private cracked = false;
 
   constructor() {
     super('Ending');
   }
 
-  /** A resumed ending is no different from a fresh one, so only the round is kept: the party stands as it did in it. */
-  init(data: Partial<SceneData>): void {
-    this.round = data.round ?? 0;
-  }
-
-  /**
-   * Space does nothing until the game clock passes this. It lives in the registry, where the Battle set it when Space
-   * on round 4's debrief sent `next`, so a second press of that Space cannot also send this screen on.
-   */
-  private get lockedUntil(): number {
-    const until: unknown = this.registry.get(SPACE_LOCK_KEY);
-    return typeof until === 'number' ? until : 0;
-  }
-
-  private set lockedUntil(until: number) {
-    this.registry.set(SPACE_LOCK_KEY, until);
-  }
-
   create(): void {
-    this.client = this.registry.get('client') as RoomClient;
     this.content = this.registry.get('content') as CaseContent;
     this.hud = this.registry.get('hud') as Hud;
     this.audio = this.registry.get('sound') as Sound;
     this.hud.clear();
     this.view = null;
     this.shown = '';
-    this.cracked = false;
 
     this.drawArena();
     this.registry.events.on('changedata-view', this.onView, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off('changedata-view', this.onView, this);
     });
-    this.input.keyboard?.on('keydown-SPACE', oncePerEvent((event: KeyboardEvent) => {
-      if (!event.repeat) this.onSpace();
-    }));
     this.onView(null, (this.registry.get('view') as HostView | null | undefined) ?? null);
   }
 
@@ -100,71 +59,26 @@ export class Ending extends Phaser.Scene {
     const { width, height } = this.scale;
     this.add.tileSprite(0, GROUND_Y, width, FLOOR_H, 'tile-ground').setOrigin(0, 0).setDepth(0);
     this.add.rectangle(0, GROUND_Y + FLOOR_H, width, height - GROUND_Y - FLOOR_H, hex(PALETTE.stoneDeep)).setOrigin(0, 0).setDepth(0);
-    this.core = this.add.image(CORE_X, GROUND_Y, 'boss-core').setOrigin(0.5, 1).setDepth(10);
-    const { lead, support } = classFor(this.content, this.round);
-    const stand = (role: Role, x: number): void => {
-      this.add.image(x, GROUND_Y, `class-${role}`).setOrigin(0.5, 1).setDepth(20);
-    };
-    stand(lead, LEAD_X);
-    support.forEach((role, i) => stand(role, SUPPORT_X[i] ?? SUPPORT_X[0]));
+    ROLES.forEach((role, i) => {
+      const figure = this.add.image(PARTY_X[i], GROUND_Y, `class-${role}`).setOrigin(0.5, 1).setDepth(20);
+      this.tweens.add({
+        targets: figure, y: GROUND_Y - HOP_PX, duration: HOP_MS, ease: 'Quad.easeOut', yoyo: true, repeat: -1, delay: i * HOP_LAG_MS,
+      });
+    });
   }
 
-  /**
-   * Sounds the outcome on the first view, redraws the HUD when what it shows has changed, and cracks the core the first
-   * time a view names an option's ending.
-   */
+  /** Sounds the ending on the first view, and redraws the HUD when what it shows has changed. */
   private onView(_parent: unknown, view: HostView | null): void {
     if (view === null || view.phase !== 'ending') return;   // the router is about to move on
     if (this.view === null) {
-      // The first view this scene draws: the outcome's stinger, then its theme, by the same name.
-      const ending = outcomeOf(this.content, view).ending === 'holds' ? 'endingHolds' : 'endingWon';
-      this.audio.sfx(ending);
-      this.audio.music(ending);
+      this.audio.sfx('endingWon');
+      this.audio.music('endingWon');
     }
     this.view = view;
     const args = endingArgs(this.content, view);
     const sig = JSON.stringify(args);
-    if (sig !== this.shown) {
-      this.shown = sig;
-      this.hud.showEnding(args);
-    }
-    if (!this.cracked && outcomeOf(this.content, view).ending !== 'holds') {
-      this.cracked = true;
-      this.crack();
-    }
-  }
-
-  /** Space sends `next` and rests a second. The rest is set before the send, because offline the answer comes inside it. */
-  private onSpace(): void {
-    if (this.view === null || this.time.now < this.lockedUntil) return;
-    this.lockedUntil = this.time.now + SEND_LOCK_MS;
-    this.client.send({ k: 'next' });
-  }
-
-  /** The core trembles, then flashes, then splits. */
-  private crack(): void {
-    this.tweens.add({
-      targets: this.core,
-      x: { from: CORE_X - TREMBLE_PX, to: CORE_X + TREMBLE_PX },
-      duration: TREMBLE_MS,
-      yoyo: true,
-      repeat: TREMBLES - 1,
-      onComplete: () => {
-        this.core.setX(CORE_X).setTintFill(hex(PALETTE.bone));
-        this.time.delayedCall(FLASH_MS, () => this.split());
-      },
-    });
-  }
-
-  /** The whole core gives way to its two halves, each cropped from the same texture, which tip apart from the seam. */
-  private split(): void {
-    const { width, height } = this.core;
-    this.core.setVisible(false);
-    this.cameras.main.shake(SHAKE_MS, SHAKE);
-    for (const side of [-1, 1] as const) {
-      const half = this.add.image(CORE_X, GROUND_Y, 'boss-core').setOrigin(0.5, 1).setDepth(10)
-        .setCrop(side < 0 ? 0 : width / 2, 0, width / 2, height);
-      this.tweens.add({ targets: half, x: CORE_X + side * SPLIT_PX, angle: side * TILT_DEG, duration: SPLIT_MS, ease: 'Quad.easeOut' });
-    }
+    if (sig === this.shown) return;
+    this.shown = sig;
+    this.hud.showEnding(args);
   }
 }

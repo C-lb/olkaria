@@ -15,50 +15,36 @@ import { loadContent } from '../shared/content';
 
 const c = loadContent(raw);
 
-// These tests are about the slides and the keys. The markup is host/hud/HowTo.ts's, drawn here by a stand-in with the
-// same dialog, slide and dots, so a test of the keys does not hang on how a slide looks.
-vi.mock('../host/hud/HowTo', () => ({
-  howToPanel: (a: { slide: { title: string; lines: string[] }; index: number; count: number; onNext: () => void }): HTMLElement => {
-    const panel = document.createElement('div');
-    panel.className = 'hud-howto';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'How to play');
-    const slide = document.createElement('section');
-    slide.className = 'howto-slide';
-    slide.textContent = [a.slide.title, ...a.slide.lines].join(' ');
-    slide.addEventListener('click', () => a.onNext());
-    const dots = document.createElement('ol');
-    for (let i = 0; i < a.count; i++) {
-      const dot = document.createElement('li');
-      dot.className = 'howto-dot';
-      if (i === a.index) dot.setAttribute('aria-current', 'step');
-      dots.append(dot);
-    }
-    panel.append(slide, dots);
-    return panel;
-  },
-}));
 /** The sound facade, silent: the menu and the keys take one. */
 const sound: Sound = { music: vi.fn(), tension: vi.fn(), sfx: vi.fn(), hit: vi.fn(), join: vi.fn(), toggle: vi.fn(() => true), enabled: true };
 
-it('five slides, each a title and one or two lines, with the vote time read from the settings', () => {
+it('seven slides in the client\'s words, numbered 1 to 6 and the closing one unnumbered, with the vote time read from the settings', () => {
   expect(howtoSlides(c)).toEqual([
-    { title: 'Join', lines: ['Scan the code. Pick your name, your role and your team.'] },
-    { title: 'Five bosses', lines: ['Power, Demand, Competition, Risk, and the Deadlock. Each one guards a question.'] },
-    { title: 'Vote', lines: ['Read the question on your phone and pick A, B or C. You have 2:00.'] },
-    { title: 'Defend', lines: ['Then look at the screen. You may be called to defend your pick.'] },
-    { title: 'The ending', lines: ['The last vote decides how it ends.'] },
+    { step: 1, text: 'You will be split into groups of 4' },
+    { step: 2, text: 'You pick a role' },
+    { step: 3, text: 'Each role has their own interest' },
+    { step: 4, text: 'The purpose of the game is for you to get to a team consensus, BUT KEEP YOUR INTERESTS IN MIND!!', note: "You'll have 2 minutes to discuss within your team" },
+    { step: 5, text: 'If you are very inclined to pick another option, then you may sabotage your team' },
+    { step: 6, text: "You'll randomly be called to speak your truth, so be ready to defend!!" },
+    { step: null, text: 'Each monster that we are defeating is representative of a problem that was faced in the case' },
   ]);
-  const quick = howtoSlides({ ...c, settings: { ...c.settings, voteSeconds: 90 } });
-  expect(quick[2].lines).toEqual(['Read the question on your phone and pick A, B or C. You have 1:30.']);
-  for (const slide of howtoSlides(c)) expect(slide.lines.length).toBeGreaterThanOrEqual(1);
-  for (const slide of howtoSlides(c)) expect(slide.lines.length).toBeLessThanOrEqual(2);
+  const at = (voteSeconds: number) => howtoSlides({ ...c, settings: { ...c.settings, voteSeconds } })[3].note;
+  expect(at(60)).toBe("You'll have 1 minute to discuss within your team");
+  expect(at(180)).toBe("You'll have 3 minutes to discuss within your team");
+  expect(at(90)).toBe("You'll have 1:30 to discuss within your team");
+});
+
+it('keeps none of the old five slides', () => {
+  const words = JSON.stringify(howtoSlides(c));
+  for (const old of ['Scan the code', 'Five bosses', 'Each one guards a question', 'Read the question on your phone', 'The last vote decides']) {
+    expect(words).not.toContain(old);
+  }
 });
 
 it('says nothing about points, scores, damage, a leaderboard or the old classes, and has no dashes', () => {
-  for (const text of howtoSlides(c).flatMap((s) => [s.title, ...s.lines])) {
+  for (const text of howtoSlides(c).flatMap((s) => [s.text, s.note ?? ''])) {
     expect(text).not.toMatch(/points|score|damage|leaderboard|Rogue|Knight|Bard|Wizard/i);
-    expect(text).not.toMatch(/[\u2013\u2014]/);
+    expect(text).not.toMatch(/[\u2013\u2014\u2018\u2019]/);
   }
 });
 
@@ -96,8 +82,9 @@ it('? opens the how-to at the first slide; Space, the arrows and Esc walk and cl
   press('Escape');
   expect(root.querySelector('.hud-howto')).toBeNull();
   press('?', { shiftKey: true });
-  for (let i = 0; i < 4; i++) press(' ');
-  expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[4]);
+  for (let i = 0; i < 6; i++) press(' ');
+  expect(root.querySelectorAll('.howto-dot')).toHaveLength(7);
+  expect(root.querySelector('.howto-dot[aria-current]')).toBe(root.querySelectorAll('.howto-dot')[6]);
   press(' ');
   expect(root.querySelector('.hud-howto')).toBeNull();
 });

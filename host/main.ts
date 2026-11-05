@@ -2,11 +2,11 @@
 // over a 320 x 180 Phaser world at a whole-number zoom, and lets the router start whichever scene the room's phase
 // calls for. The scenes share one registry: 'client', 'content', 'hud', 'sound', the music and effects (audio/sound.ts,
 // silent until the first key press or click), 'view', the latest HostView or null (listen for 'changedata-view'), and
-// 'spaceLockedUntil' (SPACE_LOCK_KEY in strikers.ts), the game time before which Space does nothing, which Lobby,
-// Travel, Battle and Ending set so that a press's rest holds across a scene switch. The facilitator's hotkeys work in
+// 'spaceLockedUntil' (SPACE_LOCK_KEY in strikers.ts), the game time before which Space does nothing, which Lobby and
+// Battle set so that a press's rest holds across a scene switch. The facilitator's hotkeys work in
 // every scene (S among them turns the sound off or on), and M or Esc opens the menu over any screen (menu.ts): restart
-// the round, back to the lobby, reload the page, sound off or on, go to a stage, and the key map. The ? key opens How
-// to play over any screen (howto.ts): eight slides on how the game is played and scored.
+// the question, back to the lobby, reload the page, sound off or on, go to a stage, and the key map. The ? key opens How
+// to play over any screen (howto.ts): five slides on how the game is played.
 import Phaser from 'phaser';
 import { loadContent } from '../shared/content';
 import { createSound } from './audio/sound';
@@ -21,9 +21,7 @@ import { applyZoom, integerZoom } from './scale';
 import { Battle } from './scenes/Battle';
 import { Boot } from './scenes/Boot';
 import { Ending } from './scenes/Ending';
-import { Leaderboard } from './scenes/Leaderboard';
 import { Lobby } from './scenes/Lobby';
-import { Travel } from './scenes/Travel';
 
 /** The page's localStorage, or null where reading it throws (storage blocked by the browser's settings). */
 function safeLocalStorage(): Storage | null {
@@ -68,7 +66,7 @@ async function main(): Promise<void> {
     physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 600 } } },
     // Nothing uses Phaser's sound: without this it makes a second AudioContext of its own. Ours is in audio/sound.ts.
     audio: { noAudio: true },
-    scene: [Boot, Lobby, Travel, Battle, Ending, Leaderboard],
+    scene: [Boot, Lobby, Battle, Ending],
   });
   game.registry.set('client', client);
   game.registry.set('content', content);

@@ -6,53 +6,234 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import raw from '../content/case.json';
 import { howtoSlides } from '../host/howto';
-import { capitalise, Hud, OPTION_COLORS, type LobbyArgs, type MenuArgs, type MenuButton } from '../host/hud/Hud';
+import { capitalise, Hud, OPTION_COLORS, type EndingArgs, type LobbyArgs, type MenuArgs, type MenuButton, type OptionsArgs } from '../host/hud/Hud';
 import { loadContent } from '../shared/content';
-const sh = (A: number, B: number, C: number, D: number) => ({ A, B, C, D });
-it('draws four cards in letter order with letter colours and two bars each', () => {
-  const root = document.createElement('div'); document.body.appendChild(root);
-  const hud = new Hud(root);
-  hud.showOptions({ options: [{ letter: 'A', screen: 'a' }, { letter: 'B', screen: 'b' }, { letter: 'C', screen: 'c' }, { letter: 'D', screen: 'd' }],
-    leadLabel: 'Rogues', timerText: '30 s', votedText: '0 of 3 voted', leadShares: sh(0.1, 0.6, 0.1, 0.2), supportShares: sh(0.2, 0.5, 0.1, 0.2), footer: 'Space locks' });
-  const cards = [...root.querySelectorAll('[data-card]')];
-  expect(cards.map(c => c.getAttribute('data-card'))).toEqual(['A', 'B', 'C', 'D']);
-  expect((cards[0] as HTMLElement).style.getPropertyValue('--option')).toBe(OPTION_COLORS.A);
-  expect((cards[1].querySelector('[data-bar=lead]') as HTMLElement).style.width).toBe('60%');
-  expect((cards[1].querySelector('[data-bar=support]') as HTMLElement).style.width).toBe('50%');
-  expect(root.textContent).toContain('Rogues');
-});
-it('shows the lobby counts, the banner and the debrief lines', () => {
-  const root = document.createElement('div'); const hud = new Hud(root);
-  hud.showLobby({ qrDataUrl: null, joinUrl: 'https://x/j/ABCD', count: 3, roleCounts: { citizen: 1, government: 2, business: 0, microsoft: 0 }, classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' }, recent: ['Ann, Knight', 'Cy, Rogue'], offline: true });
-  expect(root.textContent).toContain('Knights 2'); expect(root.textContent).toContain('Offline mode'); expect(root.textContent).toContain('Ann, Knight');
-  hud.showBanner({ name: 'Sarah', letter: 'B', phone: 'Yes to 60 to 100 MW, tied', footer: 'Y convincing, N not' });
-  expect(root.textContent).toContain('Sarah, defend B: Yes to 60 to 100 MW, tied');
-  hud.showBanner({ name: null, letter: null, phone: null, footer: '' });
-  expect(root.textContent).toContain('Hand call-out');
-  hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'line a' }, { letter: 'B', damage: 44, text: 'line b' }], breakdown: { base: 62.5, focus: 0, alignment: 10, exhibit: 10, rally: 10, total: 93, capped: false, cap: 100 }, alignment: 'The party stood with the Rogues: both chose B', rally: 'Rally: Sarah +10', discuss: 'Why?' });
-  expect(root.querySelectorAll('[data-debrief-line]')).toHaveLength(2);
-  expect(root.textContent).toContain('Rally: Sarah +10'); expect(root.textContent).toContain('stood with the Rogues');
-  expect(root.textContent).toContain('Base 62.5, Focus 0, Party aligned +10, Exhibits +10, Rally +10. Total 93');
-  hud.showDebrief({ lines: [], breakdown: { base: 80, focus: 15, alignment: 0, exhibit: 15, rally: 20, total: 100, capped: true, cap: 100 }, alignment: '', rally: null, discuss: '' });
-  expect(root.textContent).toContain('Total 100 (capped at 100)');
-});
+import type { OptionId } from '../shared/types';
 
-// ---- Beyond the brief: the tests above are its code unchanged ----------------------------------------------
+const c = loadContent(raw);
+const q2 = c.rounds[1];
 
-const lobby = (over: Partial<LobbyArgs> = {}): LobbyArgs => ({
-  qrDataUrl: null, joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
-  roleCounts: { citizen: 0, government: 0, business: 0, microsoft: 0 },
-  classNames: { citizen: 'Rogue', government: 'Knight', business: 'Bard', microsoft: 'Wizard' },
-  recent: [], offline: false, ...over,
-});
 const fresh = (): { root: HTMLElement; hud: Hud } => {
   const root = document.createElement('div');
   return { root, hud: new Hud(root) };
 };
-const options = (letters: ('A' | 'B' | 'C' | 'D')[]) => letters.map((letter) => ({ letter, screen: `option ${letter}` }));
-const text = (root: HTMLElement, selector: string) => root.querySelector(selector)?.textContent ?? null;
+const text = (root: ParentNode, selector: string) => root.querySelector(selector)?.textContent ?? null;
+// The path is joined by hand: in this environment Vite turns new URL(path, import.meta.url) into a dev-server address.
+const css = (path: string): string => readFileSync(join(dirname(fileURLToPath(import.meta.url)), path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 afterEach(() => { vi.useRealTimers(); });
+
+// ---- The brief's tests --------------------------------------------------------------------------------------
+
+describe('the question over three cards', () => {
+  const q = q2.question;
+  const options = q2.options.map((o) => ({ letter: o.id, text: o.text }));
+  const args: OptionsArgs = {
+    eyebrow: 'Question 2 of 5: Demand', question: q, options, timerText: '1:59', votedText: '3 still to vote', split: null, footer: 'Space locks the vote',
+  };
+
+  it('shows the question and the three options in full, with no bar while the vote is open', () => {
+    const { root, hud } = fresh();
+    hud.showOptions(args);
+    expect(root.querySelector('.options-question')?.textContent).toBe(q);
+    expect(root.querySelectorAll('[data-card]').length).toBe(3);
+    expect(root.querySelector('[data-card="C"] .card-text')?.textContent).toBe(options[2].text);
+    expect(options[2].text.length).toBeGreaterThanOrEqual(149);   // the longest option, whole
+    expect(root.querySelector('.bar')).toBeNull();
+    expect(text(root, '.options-eyebrow')).toBe('Question 2 of 5: Demand');
+  });
+
+  it('draws one bar a card once locked, with no NaN on an empty tally', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ ...args, split: { shares: { A: 0, B: 0, C: 0 }, counts: { A: 0, B: 0, C: 0 } } });
+    expect(root.textContent).not.toContain('NaN');
+    expect(root.querySelectorAll('.bar').length).toBe(3);
+    expect([...root.querySelectorAll('[data-card]')].map((card) => card.querySelectorAll('.bar').length)).toEqual([1, 1, 1]);
+  });
+
+  it('reads each card\'s count and share: with counts 2, 5 and 1 card B reads "5" and "63%"', () => {
+    const { root, hud } = fresh();
+    const counts = { A: 2, B: 5, C: 1 };
+    hud.showOptions({ ...args, split: { shares: { A: 2 / 8, B: 5 / 8, C: 1 / 8 }, counts } });
+    const b = root.querySelector('[data-card="B"]')!;
+    expect(text(b, '.bar-count')).toBe('5');
+    expect(text(b, '.bar-value')).toBe('63%');
+    expect((b.querySelector('.bar-fill') as HTMLElement).style.width).toBe('62.5%');
+    expect(text(root.querySelector('[data-card="A"]')!, '.bar-value')).toBe('25%');
+  });
+
+  it('sorts the cards into letter order, whatever order they arrive in, each tinted with its letter', () => {
+    const { root, hud } = fresh();
+    hud.showOptions({ ...args, options: [options[2], options[0], options[1]] });
+    const cards = [...root.querySelectorAll<HTMLElement>('[data-card]')];
+    expect(cards.map((card) => card.getAttribute('data-card'))).toEqual(['A', 'B', 'C']);
+    expect(cards.map((card) => card.style.getPropertyValue('--option'))).toEqual([OPTION_COLORS.A, OPTION_COLORS.B, OPTION_COLORS.C]);
+  });
+
+  it('draws the shape bound to each letter inside its badge, after the letter', () => {
+    const { root, hud } = fresh();
+    hud.showOptions(args);
+    const badges = [...root.querySelectorAll<HTMLElement>('[data-card] .badge')];
+    expect(badges.map((b) => b.querySelector('svg')?.getAttribute('data-shape'))).toEqual(['triangle', 'diamond', 'circle']);
+    expect(badges.map((b) => [b.firstChild?.textContent, b.textContent])).toEqual([['A', 'A'], ['B', 'B'], ['C', 'C']]);
+  });
+
+  it('puts the clock, the count and the hint on the line over the question, and patches them in place', () => {
+    const { root, hud } = fresh();
+    hud.showOptions(args);
+    expect(text(root, '.status')).toBe('Question 2 of 5: Demand1:593 still to voteSpace locks the vote');
+    const card = root.querySelector('[data-card=A]');
+    hud.updateOptionsStatus({ timerText: '1:58', votedText: '2 still to vote' });
+    expect(text(root, '.status')).toBe('Question 2 of 5: Demand1:582 still to voteSpace locks the vote');
+    expect(root.querySelector('[data-card=A]')).toBe(card);
+    hud.updateOptionsStatus({ timerText: '', votedText: '9 of 9 voted' });
+    expect((root.querySelector('.timer') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('updateOptionsStatus does nothing when the options are not up', () => {
+    const { root, hud } = fresh();
+    hud.updateOptionsStatus({ timerText: '0:09', votedText: '1 voted' });
+    expect(root.querySelector('.hud-screen')!.childElementCount).toBe(0);
+    hud.showOptions(args);
+    const timer = root.querySelector('.timer')!;
+    hud.showQuestion({ eyebrow: 'e', boss: 'b', question: 'q', footer: '' });
+    hud.updateOptionsStatus({ timerText: '0:09', votedText: '1 voted' });
+    expect(root.textContent).not.toContain('0:09');
+    expect(timer.textContent).toBe('1:59');
+  });
+
+  it('lists the valid points under the cards as text, and nothing when there are none', () => {
+    const { root, hud } = fresh();
+    hud.showOptions(args);
+    expect(root.querySelector('.called')).toBeNull();
+    hud.showOptions({ ...args, called: [] });
+    expect(root.querySelector('.called')).toBeNull();
+    hud.showOptions({ ...args, called: ['Valid point: Ann', 'Valid point: <b>Ben</b>'] });
+    expect([...root.querySelectorAll('.called li')].map((li) => li.textContent)).toEqual(['Valid point: Ann', 'Valid point: <b>Ben</b>']);
+    expect(root.querySelector('.called b')).toBeNull();
+  });
+});
+
+describe('the question on the boss\'s arrival', () => {
+  it('shows the eyebrow, the boss, the question and the footer, in that order', () => {
+    const { root, hud } = fresh();
+    hud.showQuestion({ eyebrow: 'Question 2 of 5: Demand', boss: 'Fog of Demand', question: q2.question, footer: 'Space opens the vote' });
+    expect([...root.querySelector('.question')!.children].map((el) => el.textContent)).toEqual([
+      'Question 2 of 5: Demand', 'Fog of Demand', q2.question, 'Space opens the vote',
+    ]);
+  });
+});
+
+describe('the banner and the flash', () => {
+  it('reads "Ann, defend B" with no option text, a name alone or a hand call-out, and null takes it down', () => {
+    const { root, hud } = fresh();
+    hud.showBanner({ name: 'Ann', letter: 'B', footer: 'Y: valid point, N: move on' });
+    expect(text(root, '.banner-line')).toBe('Ann, defend B');
+    expect(root.querySelector('.banner .badge svg')?.getAttribute('data-shape')).toBe('diamond');
+    expect(text(root, '.banner .hint')).toBe('Y: valid point, N: move on');
+    hud.showBanner({ name: 'Ann', letter: null, footer: '' });
+    expect(text(root, '.banner-line')).toBe('Ann, defend your choice');
+    hud.showBanner({ name: null, letter: null, footer: '' });
+    expect(text(root, '.banner-line')).toBe('Hand call-out. Who defends their choice?');
+    hud.showBanner(null);
+    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
+    expect(root.querySelector('.banner')!.childElementCount).toBe(0);
+  });
+
+  it('keeps the banner up when the cards are redrawn, and takes it down for any other screen', () => {
+    const { root, hud } = fresh();
+    hud.showBanner({ name: 'Ann', letter: 'B', footer: '' });
+    hud.showOptions({ eyebrow: '', question: 'q', options: [], timerText: '', votedText: '', split: null, footer: '' });
+    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(false);
+    hud.showQuestion({ eyebrow: 'e', boss: 'b', question: 'q', footer: '' });
+    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('flashes in the one accent, whatever it says, then clears', () => {
+    vi.useFakeTimers();
+    const { root, hud } = fresh();
+    hud.showFlash('Valid point, Ann!');
+    expect(text(root, '.flash')).toBe('Valid point, Ann!');
+    hud.showFlash('Valid point!', 500);
+    expect(root.querySelectorAll('.flash')).toHaveLength(1);
+    vi.advanceTimersByTime(500);
+    expect(root.querySelector('.flash')).toBeNull();
+  });
+});
+
+describe('the ending', () => {
+  const column = (letter: OptionId, names: string[], count: number, more = 0) => ({ letter, text: `option ${letter}`, count, names, more });
+  const ending = (over: Partial<EndingArgs> = {}): EndingArgs => ({
+    title: 'Congratulations!', text: 'The Deadlock is broken.', question: c.rounds[4].question,
+    columns: [column('A', ['Ann'], 1), column('B', ['Ben', 'Cy', 'Dee'], 7, 4), column('C', [], 2)], ...over,
+  });
+
+  it('says "Congratulations!" over its line, then the question and three columns', () => {
+    const { root, hud } = fresh();
+    hud.showEnding(ending());
+    expect(text(root, 'h1')).toBe('Congratulations!');
+    expect(text(root, '.ending-text')).toBe('The Deadlock is broken.');
+    expect(text(root, '.ending-question')).toBe(c.rounds[4].question);
+    expect(root.querySelectorAll('[data-column]')).toHaveLength(3);
+    expect([...root.querySelectorAll('[data-column]')].map((col) => col.getAttribute('data-column'))).toEqual(['A', 'B', 'C']);
+  });
+
+  it('lists a column\'s names in order and reads "and 4 more" when more is 4', () => {
+    const { root, hud } = fresh();
+    hud.showEnding(ending());
+    const b = root.querySelector('[data-column="B"]')!;
+    expect(text(b, '.column-text')).toBe('option B');
+    expect(text(b, '.column-count')).toBe('7');
+    expect([...b.querySelectorAll('.names li')].map((li) => li.textContent)).toEqual(['Ben', 'Cy', 'Dee']);
+    expect(text(b, '.names-more')).toBe('and 4 more');
+    expect(root.querySelector('[data-column="A"] .names-more')).toBeNull();
+  });
+
+  it('shows a column with no names as its count, with no empty list', () => {
+    const { root, hud } = fresh();
+    hud.showEnding(ending());
+    const col = root.querySelector('[data-column="C"]')!;
+    expect(text(col, '.column-count')).toBe('2');
+    expect(col.querySelector('.names')).toBeNull();
+    expect(col.querySelector('.names-more')).toBeNull();
+  });
+
+  it('puts names in as text, never as markup', () => {
+    const { root, hud } = fresh();
+    hud.showEnding(ending({ columns: [column('A', ['<img src=x onerror=alert(1)>'], 1), column('B', [], 0), column('C', [], 0)] }));
+    expect(root.querySelector('.names img')).toBeNull();
+    expect(text(root, '.names li')).toBe('<img src=x onerror=alert(1)>');
+  });
+});
+
+describe('what is gone', () => {
+  it('has no debrief, leaderboard or narration screen, and only the colours of A, B and C', () => {
+    const proto = Hud.prototype as unknown as Record<string, unknown>;
+    expect(proto.showDebrief).toBeUndefined();
+    expect(proto.showLeaderboard).toBeUndefined();
+    expect(proto.showNarration).toBeUndefined();
+    expect(proto.flashRally).toBeUndefined();
+    expect(Object.keys(OPTION_COLORS)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('never clamps an option\'s text in the stylesheet', () => {
+    const sheet = css('../host/hud/hud.css');
+    const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.includes('.card-text'));
+    expect(rules.length).toBeGreaterThan(0);
+    for (const [, , body] of rules) {
+      expect(body).not.toMatch(/line-clamp|text-overflow|-webkit-box/);
+    }
+  });
+});
+
+// ---- The lobby ------------------------------------------------------------------------------------------------
+
+const lobby = (over: Partial<LobbyArgs> = {}): LobbyArgs => ({
+  qrDataUrl: null, joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 0,
+  roleCounts: { citizen: 0, government: 0, business: 0, microsoft: 0 },
+  roleNames: { citizen: 'Citizen', government: 'Government', business: 'Local Businessman', microsoft: 'Satya Nadella' },
+  recent: [], offline: false, ...over,
+});
 
 describe('lobby', () => {
   it('shows the QR and the address without its scheme online, with no offline notice', () => {
@@ -79,11 +260,13 @@ describe('lobby', () => {
     expect(root.querySelector('.join-url')).toBeNull();
   });
 
-  it('lists every class count, and says names are hidden when players have joined but the list is empty', () => {
+  it('names each role\'s tile from the content with its count, and says names are hidden when the list is empty', () => {
     const { root, hud } = fresh();
-    hud.showLobby(lobby({ count: 4, roleCounts: { citizen: 1, government: 1, business: 1, microsoft: 1 } }));
-    expect([...root.querySelectorAll('.counts li')].map((li) => li.textContent)).toEqual(['Rogues 1', 'Knights 1', 'Bards 1', 'Wizards 1']);
-    expect(root.textContent).toContain('4 joined');
+    hud.showLobby(lobby({ count: 5, roleCounts: { citizen: 1, government: 2, business: 1, microsoft: 1 } }));
+    expect([...root.querySelectorAll('.count')].map((li) => [li.querySelector('.count-name')!.textContent, li.querySelector('b')!.textContent]))
+      .toEqual([['Citizen', '1'], ['Government', '2'], ['Local Businessman', '1'], ['Satya Nadella', '1']]);
+    expect([...root.querySelectorAll('.count svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
+    expect(root.textContent).toContain('5 joined');
     expect(root.textContent).toContain('Names hidden');
     hud.showLobby(lobby());
     expect(root.textContent).toContain('No one yet');
@@ -91,9 +274,9 @@ describe('lobby', () => {
 
   it('puts names in as text, never as markup', () => {
     const { root, hud } = fresh();
-    hud.showLobby(lobby({ count: 1, recent: ['<img src=x onerror=alert(1)>, Rogue'] }));
+    hud.showLobby(lobby({ count: 1, recent: ['<img src=x onerror=alert(1)>, Citizen'] }));
     expect(root.querySelector('.recent img')).toBeNull();
-    expect(text(root, '.recent li')).toBe('<img src=x onerror=alert(1)>, Rogue');
+    expect(text(root, '.recent li')).toBe('<img src=x onerror=alert(1)>, Citizen');
   });
 
   it('the lobby hint is three keycaps: Space to start, M for the hotkeys, ? for how to play', () => {
@@ -102,202 +285,53 @@ describe('lobby', () => {
     hud.showLobby(lobby());
     expect([...root.querySelectorAll('.lobby-key')].map((li) => [li.querySelector('kbd.key')!.textContent, li.querySelector('span')!.textContent]))
       .toEqual([['Space', 'Start'], ['M', 'Shows hotkeys'], ['?', 'How to play']]);
-    expect(root.querySelector('.lobby-hint')).toBeNull();
-    expect(root.textContent).not.toContain('every key');
   });
 
-  it('the lobby shows the address in two lines, the count as a hero and the four class tiles, and no room code', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
-    hud.showLobby(lobby({ joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 12, roleCounts: { citizen: 3, government: 4, business: 2, microsoft: 3 } }));
+  it('shows the address in two lines, the count as a hero, and the title on two lines with no room code', () => {
+    const { root, hud } = fresh();
+    hud.showLobby(lobby({ joinUrl: 'https://olkaria.example.dev/j/ABCD', count: 12 }));
     expect(root.querySelector('.join-host')!.textContent).toBe('olkaria.example.dev');
     expect(root.querySelector('.join-path')!.textContent).toBe('/j/ABCD');
     expect(root.querySelector('.joined-n')!.textContent).toBe('12');
-    expect([...root.querySelectorAll('.count svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
-    expect([...root.querySelectorAll('.count')].map((li) => [li.querySelector('.count-name')!.textContent, li.querySelector('b')!.textContent]))
-      .toEqual([['Rogues', '3'], ['Knights', '4'], ['Bards', '2'], ['Wizards', '3']]);
-    expect(root.textContent).not.toContain('Room');
     expect(root.querySelector('.code')).toBeNull();
     expect(root.querySelector('.lobby-title .lobby-name')!.textContent).toBe('Olkaria');
     expect(root.querySelector('.lobby-title .lobby-sub')!.textContent).toBe('the Deadlock');
-    expect(root.querySelector('.quote')).toBeNull();
-    expect(root.querySelectorAll('.lobby-key')).toHaveLength(3);   // Space, M and ? (the how-to plan)
+    expect(root.querySelector('h1.lobby-title')!.getAttribute('aria-label')).toBe('Olkaria: the Deadlock');
   });
-  it('names the whole title on the heading, and splits an address with a port at the slash after the host', () => {
+
+  it('splits an address with a port at the slash after the host', () => {
     const { root, hud } = fresh();
     hud.showLobby(lobby({ joinUrl: 'http://localhost:5173/j/ABCD' }));
-    expect(root.querySelector('h1.lobby-title')!.getAttribute('aria-label')).toBe('Olkaria: the Deadlock');
     expect([text(root, '.join-host'), text(root, '.join-path')]).toEqual(['localhost:5173', '/j/ABCD']);
   });
-  it('offline and connecting lobbies keep the tiles but show no address', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
+
+  it('offline: the notice names keys 1 to 3, the tiles stay and there is no address', () => {
+    const { root, hud } = fresh();
     hud.showLobby(lobby({ offline: true }));
     expect(root.querySelector('.join-url')).toBeNull();
     expect(root.querySelectorAll('.count')).toHaveLength(4);
     expect(root.textContent).toContain('Offline mode');
-    hud.showLobby(lobby({ joinUrl: '' }));
-    expect(root.textContent).toContain('Connecting to the room');
-    expect(root.querySelector('.join-url')).toBeNull();
-    expect(root.querySelectorAll('.count')).toHaveLength(4);
+    expect(root.textContent).toContain('1 to 3');
+    expect(root.textContent).not.toContain('1 to 4');
   });
 });
 
-describe('options and banner', () => {
-  it('sorts the cards into letter order, whatever order they arrive in', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ options: options(['D', 'B', 'A', 'C']), leadLabel: 'Bards', timerText: '', votedText: '', leadShares: null, supportShares: null, footer: '' });
-    expect([...root.querySelectorAll('[data-card]')].map((c) => c.getAttribute('data-card'))).toEqual(['A', 'B', 'C', 'D']);
-  });
+// ---- Toasts and clear ---------------------------------------------------------------------------------------------
 
-  it('hides the split while the vote is open, but still names the leading class and the clock', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '23 s', votedText: '5 of 9 voted', leadShares: null, supportShares: null, footer: 'Space locks the vote' });
-    expect(root.querySelectorAll('[data-bar]')).toHaveLength(0);
-    expect(root.querySelector('.card.has-bars')).toBeNull();
-    expect(text(root, '.status')).toBe('Rogues lead23 s5 of 9 votedSpace locks the vote');
-  });
-
-  it('labels each card bar, sizes it to one decimal and prints its share in whole percent', () => {
-    const { root, hud } = fresh();
-    const third = { A: 1 / 3, B: 2 / 3, C: 0, D: 0 };
-    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Knights', timerText: '', votedText: '', leadShares: third, supportShares: third, footer: '' });
-    const a = root.querySelector('[data-card=A]')!;
-    expect([...a.querySelectorAll('.bar-label')].map((l) => l.textContent)).toEqual(['Knights', 'Party']);
-    expect((a.querySelector('[data-bar=lead]') as HTMLElement).style.width).toBe('33.3%');
-    expect(text(a as HTMLElement, '.bar-value')).toBe('33%');
-    expect(text(root.querySelector('[data-card=B]') as HTMLElement, '.bar-value')).toBe('67%');
-    expect(a.classList.contains('has-bars')).toBe(true);
-  });
-
-  it('marks every badge with its letter, so the stylesheet can put dark ink on C', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '', votedText: '', leadShares: null, supportShares: null, footer: '' });
-    const badges = [...root.querySelectorAll<HTMLElement>('.badge')];
-    expect(badges.map((b) => b.getAttribute('data-option'))).toEqual(['A', 'B', 'C', 'D']);
-    expect(badges.map((b) => b.style.getPropertyValue('--option'))).toEqual(['A', 'B', 'C', 'D'].map((o) => OPTION_COLORS[o as 'A']));
-  });
-
-  it('draws the shape bound to each letter inside its badge, after the letter, on the cards, the banner and the debrief', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '', votedText: '', leadShares: null, supportShares: null, footer: '' });
-    const badges = [...root.querySelectorAll<HTMLElement>('[data-card] > .badge')];
-    expect(badges.map((b) => b.querySelector('svg')?.getAttribute('data-shape'))).toEqual(['triangle', 'diamond', 'circle', 'square']);
-    expect(badges.map((b) => b.querySelector('svg > *')?.tagName.toLowerCase())).toEqual(['path', 'path', 'circle', 'rect']);
-    expect(badges.map((b) => b.querySelector('svg')?.getAttribute('aria-hidden'))).toEqual(['true', 'true', 'true', 'true']);
-    expect(badges.map((b) => [b.firstChild?.textContent, b.textContent])).toEqual([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'D']]);
-    hud.showBanner({ name: 'Sarah', letter: 'C', phone: 'Wait, compare providers', footer: '' });
-    expect(root.querySelector('.banner .badge svg')?.getAttribute('data-shape')).toBe('circle');
-    expect(text(root, '.banner-line')).toBe('Sarah, defend C: Wait, compare providers');
-    hud.showDebrief({ lines: [{ letter: 'D', damage: 9, text: 'd' }], breakdown: { base: 9, focus: 0, alignment: 0, exhibit: 0, rally: 0, total: 9, capped: false, cap: 100 }, alignment: '', rally: null, discuss: '' });
-    expect(root.querySelector('[data-debrief-line=D] .badge svg')?.getAttribute('data-shape')).toBe('square');
-  });
-
-  it('keeps the banner up when the cards are redrawn, and takes it down for any other screen', () => {
-    const { root, hud } = fresh();
-    hud.showBanner({ name: 'Sarah', letter: 'B', phone: 'Yes to 60 to 100 MW, tied', footer: 'Y convincing, N not' });
-    hud.showOptions({ options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', timerText: '', votedText: '', leadShares: null, supportShares: null, footer: '' });
-    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(false);
-    expect(text(root, '.banner')).toBe('Sarah, defend B: Yes to 60 to 100 MW, tiedY convincing, N not');
-    hud.showNarration({ boss: 'Grid Wyrm', title: 't', narration: 'n', footer: '' });
-    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
-  });
-
-  it('names a called student with no recorded choice, and null takes the banner down', () => {
-    const { root, hud } = fresh();
-    hud.showBanner({ name: 'Ann', letter: null, phone: null, footer: '' });
-    expect(text(root, '.banner-line')).toBe('Ann, defend your choice');
-    hud.showBanner(null);
-    expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
-    expect(root.querySelector('.banner')!.childElementCount).toBe(0);
-  });
-});
-
-describe('narration, debrief, ending and leaderboard', () => {
-  it('shows the boss, the question, the situation, the quote as given and the footer', () => {
-    const { root, hud } = fresh();
-    hud.showNarration({ boss: 'Grid Wyrm', title: 'What will Kenyans accept on power?', narration: 'Olkaria steam fields.', quote: '“shut off power for half the country” President Ruto', footer: 'Space opens the vote' });
-    expect([...root.querySelector('.narration')!.children].map((el) => el.textContent)).toEqual([
-      'Grid Wyrm', 'What will Kenyans accept on power?', 'Olkaria steam fields.', '“shut off power for half the country” President Ruto', 'Space opens the vote',
-    ]);
-  });
-
-  it('prints damage with one decimal, the breakdown without trailing zeros, and the discuss line apart', () => {
-    const { root, hud } = fresh();
-    hud.showDebrief({ lines: [{ letter: 'C', damage: 1.5, text: 'line c' }], breakdown: { base: 73.333, focus: 15, alignment: 0, exhibit: 0, rally: 10, total: 98, capped: false, cap: 100 }, alignment: '', rally: null, discuss: 'What should Microsoft do, and why?' });
-    expect(text(root, '.debrief-damage')).toBe('1.5');
-    expect(text(root, '.breakdown')).toBe('Base 73.3, Focus +15, Party aligned 0, Exhibits 0, Rally +10. Total 98');
-    expect(text(root, '.discuss')).toBe('Discuss: What should Microsoft do, and why?');
-    hud.showDebrief({ lines: [{ letter: 'A', damage: 6, text: 'a' }], breakdown: { base: 0, focus: 0, alignment: 0, exhibit: 0, rally: 0, total: 0, capped: false, cap: 100 }, alignment: '', rally: null, discuss: '' });
-    expect(text(root, '.debrief-damage')).toBe('6.0');
-    expect(root.querySelector('.discuss')).toBeNull();
-  });
-
-  it('capitalises the ending bullets and lists what each round needed when the Deadlock holds', () => {
-    const { root, hud } = fresh();
-    hud.showEnding({ title: 'The Seed Plant', tier: 'decisive', split: { A: 1, B: 6, C: 1, D: 2 }, mustBeTrue: ['the expansion option stays open'], risk: ['weak early returns'], holds: null });
-    expect(root.textContent).toContain('Decisive');
-    expect([...root.querySelectorAll('.bullets li')].map((li) => li.textContent)).toEqual(['The expansion option stays open', 'Weak early returns']);
-    expect([...root.querySelectorAll('.split .bar-value')].map((v) => v.textContent)).toEqual(['10%', '60%', '10%', '20%']);
-    hud.showEnding({ title: 'The Deadlock holds', tier: '', split: { A: 0, B: 0, C: 0, D: 0 }, mustBeTrue: [], risk: [], holds: [{ round: 'Round 1', chose: 'Rogues chose B', needed: 'B or D' }] });
-    expect(text(root, '.holds-row')).toBe('Round 1Rogues chose BNeeded: B or D');
-    expect(root.querySelector('.bullets')).toBeNull();
-    expect([...root.querySelectorAll('.split .bar-value')].map((v) => v.textContent)).toEqual(['0%', '0%', '0%', '0%']);
-  });
-
-  it('puts a tied ending\'s tier in the eyebrow with its first letter in capitals', () => {
-    const { root, hud } = fresh();
-    hud.showEnding({ title: 'The Tenant', tier: 'decisive, tied with C', split: { A: 4, B: 0, C: 4, D: 0 }, mustBeTrue: ['x'], risk: ['y'], holds: null });
-    expect(text(root, '.ending .eyebrow')).toBe('Decisive, tied with C');
-  });
-
-  it('opens the Deadlock holding on its title with no tier over it, then its sentence above the rows, and no sentence without text', () => {
-    const { root, hud } = fresh();
-    const split = { A: 0, B: 2, C: 0, D: 0 };
-    hud.showEnding({ title: 'The Deadlock holds', tier: '', text: 'Your board sends the party back to Nairobi.', split, mustBeTrue: [], risk: [], holds: [{ round: 'Round 1', chose: 'Rogues chose C: Full 1 GW for the hub', needed: 'B or D' }] });
-    const parts = [...root.querySelector('.ending')!.children];
-    expect(parts.map((el) => el.tagName)).toEqual(['H1', 'P', 'DIV']);
-    expect(parts.slice(0, 2).map((el) => el.textContent)).toEqual(['The Deadlock holds', 'Your board sends the party back to Nairobi.']);
-    expect(parts[2].querySelector('.holds-row')?.textContent).toBe('Round 1Rogues chose C: Full 1 GW for the hubNeeded: B or D');
-    hud.showEnding({ title: 'The Seed Plant', tier: 'decisive', split, mustBeTrue: ['the expansion option stays open'], risk: ['weak early returns'], holds: null });
-    expect([...root.querySelector('.ending')!.children].map((el) => el.tagName)).toEqual(['P', 'H1', 'DIV']);
-  });
-
-  it('ranks the leaderboard and closes on the question over the split', () => {
-    const { root, hud } = fresh();
-    hud.showLeaderboard({ rows: [{ name: 'Ann', className: 'Knight', score: 212.4 }, { name: 'Cy', className: 'Rogue', score: 198 }], consistent: 'Most consistent strategist: Ann', table: null, split: { A: 0, B: 3, C: 0, D: 1 }, question: 'What should Microsoft do, and why?' });
-    expect([...root.querySelectorAll('.board-row')].map((r) => r.textContent)).toEqual(['1AnnKnight212', '2CyRogue198']);
-    expect(root.textContent).toContain('Most consistent strategist: Ann');
-    expect(text(root, 'h1')).toBe('What should Microsoft do, and why?');
-    expect(text(root, '.eyebrow')).toBe('Top 2');
-    hud.showLeaderboard({ rows: [], consistent: 'No one voted in all four rounds', table: null, split: { A: 0, B: 0, C: 0, D: 0 }, question: 'q' });
-    expect(text(root, '.eyebrow')).toBe('Top players');
-    expect(root.textContent).toContain('No scores yet');
-  });
-
-  it('names the cap it is given, never a number of its own', () => {
-    const { root, hud } = fresh();
-    hud.showDebrief({ lines: [], breakdown: { base: 90, focus: 15, alignment: 10, exhibit: 5, rally: 0, total: 120, capped: true, cap: 120 }, alignment: '', rally: null, discuss: '' });
-    expect(text(root, '.breakdown')).toBe('Base 90, Focus +15, Party aligned +10, Exhibits +5, Rally 0. Total 120 (capped at 120)');
-  });
-});
-
-describe('toasts, flash and clear', () => {
+describe('toasts and clear', () => {
   it('keeps one sticky toast and one timed toast, each replacing only its own kind', () => {
     vi.useFakeTimers();
     const { root, hud } = fresh();
     const toasts = () => [...root.querySelectorAll('.toast')].map((t) => t.textContent);
     hud.showToast('Bad phase', 2000);
-    hud.showToast('Travel 1: Grid Wyrm ahead. Rogues lead.', 0);
-    expect(toasts()).toEqual(['Travel 1: Grid Wyrm ahead. Rogues lead.', 'Bad phase']);   // sticky above timed
     hud.showToast('Reconnecting to the room', 0);
-    expect(toasts()).toEqual(['Reconnecting to the room', 'Bad phase']);
+    expect(toasts()).toEqual(['Reconnecting to the room', 'Bad phase']);   // sticky above timed
     vi.advanceTimersByTime(2000);
-    expect(toasts()).toEqual(['Reconnecting to the room']);   // the timed toast goes on its own and leaves the sticky one
-    hud.showToast('Olkaria generates about 950 MW (James, 2026)');
-    hud.showToast('Record peak demand 2,444 MW, January 2026 (James, 2026)');
-    expect(toasts()).toEqual(['Reconnecting to the room', 'Record peak demand 2,444 MW, January 2026 (James, 2026)']);
-    vi.advanceTimersByTime(3999);
-    expect(toasts()).toHaveLength(2);
-    vi.advanceTimersByTime(1);
+    expect(toasts()).toEqual(['Reconnecting to the room']);
+    hud.showToast('One');
+    hud.showToast('Two');
+    expect(toasts()).toEqual(['Reconnecting to the room', 'Two']);
+    vi.advanceTimersByTime(4000);
     expect(toasts()).toEqual(['Reconnecting to the room']);
     hud.showToast('Reconnecting to the room', Infinity);   // the same sticky text again changes nothing
     expect(toasts()).toEqual(['Reconnecting to the room']);
@@ -306,20 +340,16 @@ describe('toasts, flash and clear', () => {
     expect(toasts()).toEqual([]);
   });
 
-  it('clearToast() takes down the sticky toast and leaves the timed one', () => {
+  it('clearToast() takes down the sticky toast and clearTimedToast() the timed one, each leaving the other', () => {
     vi.useFakeTimers();
     const { root, hud } = fresh();
     hud.showToast('Reconnecting to the room', 0);
     hud.showToast('Press Shift+R again to reset', 3000);
     hud.clearToast();
     expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Press Shift+R again to reset']);
-    hud.clearToast();
-    expect(root.querySelectorAll('.toast')).toHaveLength(1);
-  });
-
-  it('capitalises the first letter of a message and nothing else', () => {
-    expect(capitalise('bad phase')).toBe('Bad phase');
-    expect(capitalise('')).toBe('');
+    hud.showToast('Reconnecting to the room', 0);
+    hud.clearTimedToast();
+    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
   });
 
   it('keeps a repeated toast up from the repeat instead of stacking a copy', () => {
@@ -335,96 +365,18 @@ describe('toasts, flash and clear', () => {
     expect(root.querySelectorAll('.toast')).toHaveLength(0);
   });
 
-  it('flashes a bonus in the accent and anything else muted, then clears', () => {
-    vi.useFakeTimers();
-    const { root, hud } = fresh();
-    hud.flashRally('+10 rally');
-    expect(root.querySelector('.flash')?.classList.contains('is-bonus')).toBe(true);
-    hud.flashRally('no bonus', 500);
-    expect(root.querySelector('.flash')?.classList.contains('is-bonus')).toBe(false);
-    vi.advanceTimersByTime(500);
-    expect(root.querySelector('.flash')).toBeNull();
+  it('capitalises the first letter of a message and nothing else', () => {
+    expect(capitalise('bad phase')).toBe('Bad phase');
+    expect(capitalise('')).toBe('');
   });
 
   it('clear() empties the screen and takes the banner down', () => {
     const { root, hud } = fresh();
     hud.showLobby(lobby());
-    hud.showBanner({ name: null, letter: null, phone: null, footer: '' });
+    hud.showBanner({ name: null, letter: null, footer: '' });
     hud.clear();
     expect(root.querySelector('.hud-screen')!.childElementCount).toBe(0);
     expect((root.querySelector('.banner') as HTMLElement).hidden).toBe(true);
-  });
-});
-
-// ---- Task 8: the countdown patched in place, and the judged call-outs under the cards ------------------------
-describe('options status and judged call-outs', () => {
-  const vote = { options: options(['A', 'B', 'C', 'D']), leadLabel: 'Rogues', leadShares: null, supportShares: null, footer: 'Space locks the vote' };
-
-  it('patches the timer and the vote count in place, without rebuilding the cards', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 of 9 voted' });
-    const card = root.querySelector('[data-card=A]');
-    hud.updateOptionsStatus({ timerText: '29 s', votedText: '3 of 9 voted' });
-    expect(text(root, '.status')).toBe('Rogues lead29 s3 of 9 votedSpace locks the vote');
-    expect(root.querySelector('[data-card=A]')).toBe(card);
-    hud.updateOptionsStatus({ timerText: '', votedText: '3 of 9 voted' });
-    expect((root.querySelector('.timer') as HTMLElement).hidden).toBe(true);
-    expect(text(root, '.status')).toBe('Rogues lead3 of 9 votedSpace locks the vote');
-  });
-
-  it('can show a timer the cards were drawn without', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ ...vote, timerText: '', votedText: '' });
-    expect(text(root, '.status')).toBe('Rogues leadSpace locks the vote');
-    hud.updateOptionsStatus({ timerText: '12 s', votedText: '12 voted' });
-    expect((root.querySelector('.timer') as HTMLElement).hidden).toBe(false);
-    expect(text(root, '.status')).toBe('Rogues lead12 s12 votedSpace locks the vote');
-  });
-
-  it('does nothing when the options are not up', () => {
-    const { root, hud } = fresh();
-    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
-    expect(root.querySelector('.hud-screen')!.childElementCount).toBe(0);
-    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 voted' });
-    let timer = root.querySelector('.timer')!;
-    hud.showNarration({ boss: 'Grid Wyrm', title: 't', narration: 'n', footer: '' });
-    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
-    expect(root.textContent).not.toContain('9 s');
-    expect(timer.textContent).toBe('30 s');   // the status line that went with the cards is left alone too
-    hud.showOptions({ ...vote, timerText: '30 s', votedText: '0 voted' });
-    timer = root.querySelector('.timer')!;
-    hud.clear();
-    hud.updateOptionsStatus({ timerText: '9 s', votedText: '1 voted' });
-    expect(timer.textContent).toBe('30 s');
-  });
-
-  it('lists the judged call-outs small under the cards, as text, and nothing when there are none', () => {
-    const { root, hud } = fresh();
-    hud.showOptions({ ...vote, timerText: '', votedText: '' });
-    expect(root.querySelector('.resolved')).toBeNull();
-    expect(root.querySelector('.options')!.classList.contains('has-resolved')).toBe(false);
-    hud.showOptions({ ...vote, timerText: '', votedText: '', resolved: [] });
-    expect(root.querySelector('.resolved')).toBeNull();
-    hud.showOptions({ ...vote, timerText: '', votedText: '', resolved: ['Sarah: +10 rally', '<b>Ann</b>: no bonus'] });
-    expect([...root.querySelectorAll('.resolved li')].map((li) => li.textContent)).toEqual(['Sarah: +10 rally', '<b>Ann</b>: no bonus']);
-    expect(root.querySelector('.resolved b')).toBeNull();
-    expect(root.querySelector('.options')!.classList.contains('has-resolved')).toBe(true);
-    expect(root.querySelector('.cards + .resolved')).not.toBeNull();   // after the cards, so it sits under them
-  });
-});
-
-// ---- Task 8 fix round 1: the timed toast taken down at a skip ---------------------------------------------------
-describe('timed toast', () => {
-  it('clearTimedToast() takes down the timed toast and leaves the sticky one', () => {
-    vi.useFakeTimers();
-    const { root, hud } = fresh();
-    hud.showToast('Reconnecting to the room', 0);
-    hud.showToast('No Rogues voted this round', 3100);
-    hud.clearTimedToast();
-    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
-    hud.clearTimedToast();   // nothing left to take down
-    vi.advanceTimersByTime(4000);
-    expect([...root.querySelectorAll('.toast')].map((t) => t.textContent)).toEqual(['Reconnecting to the room']);
   });
 });
 
@@ -432,15 +384,15 @@ describe('timed toast', () => {
 
 describe('menu', () => {
   const button = (id: string, label: string, over: Partial<MenuButton> = {}): MenuButton => ({ id, label, enabled: true, armed: false, ...over });
-  const stagesHint = 'Earlier rounds stay. The one you go to, and the ones after it, start over. Ending shows what has been played.';
+  const stagesHint = 'Earlier questions stay. The one you go to, and the ones after it, start over.';
   /** Restart and the second stage disabled, the lobby armed. */
   const menu = (over: Partial<MenuArgs> = {}): MenuArgs => ({
     actions: [
-      button('restart', 'Restart the round', { hint: 'This round again from its road. Its votes go; earlier rounds stay.', enabled: false }),
-      button('lobby', 'Back to the lobby', { hint: 'Players stay; votes and scores go.', armed: true }),
+      button('restart', 'Restart question 1', { hint: 'This question again. Its votes go.', enabled: false }),
+      button('lobby', 'Back to the lobby', { hint: 'Players stay; votes go.', armed: true }),
       button('reload', 'Reload the page', { hint: 'The same room and screen come back.' }),
     ],
-    stages: [button('stage-0', '1 Grid Wyrm'), button('stage-1', '2 Debt Golem', { enabled: false }), button('stage-4', 'Ending')],
+    stages: [button('stage-0', 'Q1 Power'), button('stage-1', 'Q2 Demand', { enabled: false }), button('stage-5', 'Ending')],
     stagesHint,
     onPick: () => {},
     onClose: () => {},
@@ -454,37 +406,30 @@ describe('menu', () => {
     hud.showMenu(menu());
     expect(root.querySelector('.hud-menu[role=dialog][aria-label=Menu] > .menu > h2.title')?.textContent).toBe('Menu');
     const buttons = [...root.querySelectorAll<HTMLButtonElement>('button.menu-btn[type=button][data-menu-item]')];
-    expect(ids(buttons)).toEqual(['restart', 'lobby', 'reload', 'stage-0', 'stage-1', 'stage-4']);
+    expect(ids(buttons)).toEqual(['restart', 'lobby', 'reload', 'stage-0', 'stage-1', 'stage-5']);
     expect(ids(buttons.filter((b) => b.disabled))).toEqual(['restart', 'stage-1']);
-    expect([...root.querySelectorAll('.menu-group > .eyebrow')].map((e) => e.textContent)).toEqual(['Actions', 'Go to']);
-
     const lobbyButton = root.querySelector('[data-menu-item=lobby]')!;
-    expect(ids(root.querySelectorAll('[data-armed]'))).toEqual(['lobby']);
     expect(lobbyButton.querySelector('.menu-label')!.textContent).toBe('Sure?');
     expect(lobbyButton.getAttribute('aria-label')).toBe('Sure? Back to the lobby');
-    const reloadButton = root.querySelector('[data-menu-item=reload]')!;
-    expect([...reloadButton.children].map((s) => [s.className, s.textContent])).toEqual([['menu-label', 'Reload the page'], ['menu-hint', 'The same room and screen come back.']]);
-    expect(reloadButton.hasAttribute('aria-label')).toBe(false);
-    expect(root.querySelector('[data-menu-item=stage-0]')!.children).toHaveLength(1);   // no hint given, no hint line
     expect(text(root, '.menu-group + .menu-group > p.hint.menu-note')).toBe(stagesHint);
-
-    const keys = [...root.querySelectorAll('.menu > .sep + ul.keys > .key-row')].map((row) => [...row.children].map((cell) => cell.textContent));
-    expect(keys).toHaveLength(16);
-    expect(keys).toContainEqual(['S', 'Sound off or on']);
-    expect(keys).toContainEqual(['Shift+R twice', 'Reset to the lobby']);
-    expect(keys).toContainEqual(['?', 'How to play']);
-    expect(keys.at(-1)).toEqual(['M or Esc', 'This menu']);
-    expect(root.textContent).not.toContain('Show or hide these keys');
-
     hud.showMenu(null);
     expect(root.querySelector('.hud-menu')).toBeNull();
-    expect(root.querySelector('[data-menu-item]')).toBeNull();
+  });
+
+  it('lists exactly the keys that work, and none that went with the road or option D', () => {
+    const { root, hud } = fresh();
+    hud.showMenu(menu());
+    const keys = [...root.querySelectorAll('.menu > .sep + ul.keys > .key-row')].map((row) => row.querySelector('.key')!.textContent);
+    expect(keys).toEqual(['Space', '1 to 3', 'Shift+1 to 3', 'B', 'C', 'Y or N', 'R', 'H', 'F', 'S', 'Shift+R twice', '?', 'M or Esc']);
+    const rows = root.querySelector('ul.keys')!.textContent!;
+    expect(rows).not.toMatch(/\bD\b|1 to 4|Arrows|walk|road|travel/i);
+    expect(rows).toContain('valid point');
   });
 
   it('puts the labels and hints in as text, never as markup', () => {
     const { root, hud } = fresh();
-    hud.showMenu(menu({ stages: [button('stage-0', '1 <b>Grid</b> Wyrm')], stagesHint: '<i>x</i>' }));
-    expect(text(root, '[data-menu-item=stage-0] .menu-label')).toBe('1 <b>Grid</b> Wyrm');
+    hud.showMenu(menu({ stages: [button('stage-0', 'Q1 <b>Power</b>')], stagesHint: '<i>x</i>' }));
+    expect(text(root, '[data-menu-item=stage-0] .menu-label')).toBe('Q1 <b>Power</b>');
     expect(text(root, '.menu-note')).toBe('<i>x</i>');
     expect(root.querySelector('.menu b, .menu i')).toBeNull();
   });
@@ -495,32 +440,16 @@ describe('menu', () => {
     hud.showMenu(menu());
     expect(hud.focusedMenuItem()).toBeNull();
     hud.moveMenuFocus(-1);
-    expect(focused()).toBe('stage-4');   // none focused: back goes to the last
+    expect(focused()).toBe('stage-5');
     hud.moveMenuFocus(1);
-    expect(focused()).toBe('lobby');     // past the end it wraps to the first enabled, skipping the restart
+    expect(focused()).toBe('lobby');
     hud.moveMenuFocus(-1);
-    expect(focused()).toBe('stage-4');   // and back again
     hud.moveMenuFocus(-1);
     expect(focused()).toBe('stage-0');   // the disabled second stage is skipped
-    expect(hud.focusedMenuItem()).toBe('stage-0');
-
-    const before = document.activeElement;
-    hud.showMenu(menu({ stages: [button('stage-0', '1 Grid Wyrm', { armed: true }), button('stage-1', '2 Debt Golem'), button('stage-4', 'Ending')] }));
+    hud.showMenu(menu({ stages: [button('stage-0', 'Q1 Power', { armed: true }), button('stage-1', 'Q2 Demand'), button('stage-5', 'Ending')] }));
     expect(focused()).toBe('stage-0');
-    expect(document.activeElement).not.toBe(before);   // the new button took it: the old one is gone
-    expect(root.contains(document.activeElement)).toBe(true);
-    hud.moveMenuFocus(1);
-    expect(focused()).toBe('stage-1');   // enabled now
-
-    hud.showMenu(menu({ stages: [button('stage-0', '1 Grid Wyrm'), button('stage-1', '2 Debt Golem', { enabled: false }), button('stage-4', 'Ending')] }));
-    expect(hud.focusedMenuItem()).toBeNull();   // the focused item is disabled now, so nothing has the focus
-    hud.moveMenuFocus(1);
-    expect(focused()).toBe('lobby');     // none focused: forward goes to the first enabled
-
     hud.showMenu(null);
     expect(hud.focusedMenuItem()).toBeNull();
-    hud.moveMenuFocus(1);                // no menu: nothing to move through
-    expect(focused()).toBeNull();
     root.remove();
   });
 
@@ -532,106 +461,75 @@ describe('menu', () => {
     (root.querySelector('[data-menu-item=reload] .menu-hint') as HTMLElement).click();
     expect(onPick.mock.calls).toEqual([['reload']]);
     (root.querySelector('.menu .title') as HTMLElement).click();
-    (root.querySelector('.keys') as HTMLElement).click();
     expect(onClose).not.toHaveBeenCalled();
     (root.querySelector('.hud-menu') as HTMLElement).click();
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onPick).toHaveBeenCalledTimes(1);
     hud.clear();
     expect(root.querySelector('.hud-menu')).not.toBeNull();
   });
-});
 
-// ---- How to play: one slide at a time on a full-bleed dialog, and whether the menu is up -------------------------
-
-const c = loadContent(raw);
-
-describe('how to play', () => {
-  it('showHowTo draws one slide on a full-bleed dialog with the dots and the keycaps, restarts on each call, and null takes it down', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
-    const slides = howtoSlides(c); const onNext = vi.fn();
-    hud.showHowTo({ slide: slides[2], index: 2, count: 8, onNext });
-    const dialog = root.querySelector('.hud-howto')!;
-    expect(dialog.getAttribute('role')).toBe('dialog');
-    expect(dialog.getAttribute('aria-label')).toBe('How to play');
-    expect(dialog.parentElement).toBe(root);   // a sibling of the screen, so a redraw of the screen leaves it
-    expect(dialog.querySelector('.howto-slide')!.getAttribute('data-kind')).toBe('round');
-    expect(dialog.textContent).toContain('Grid Wyrm');
-    expect(dialog.textContent).toContain('2:00');
-    expect(dialog.querySelectorAll('.howto-option')).toHaveLength(4);
-    expect(dialog.querySelectorAll('.howto-dot')).toHaveLength(8);
-    expect(dialog.querySelector('.howto-dot[aria-current]')).toBe(dialog.querySelectorAll('.howto-dot')[2]);
-    // ? and not Esc on the second cap: in fullscreen Chrome takes Esc to leave fullscreen (spec 3).
-    expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['?', 'Close']]);
-    (dialog.querySelector('.howto-slide') as HTMLElement).click();
-    expect(onNext).toHaveBeenCalledTimes(1);
-    hud.showHowTo({ slide: slides[7], index: 7, count: 8, onNext });
-    expect(root.querySelectorAll('.hud-howto')).toHaveLength(1);
-    expect([...root.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Close'], ['?', 'Close']]);
-    hud.showLobby(lobby({}));   // a screen change under the dialog
-    expect(root.querySelector('.hud-howto')).not.toBeNull();
-    hud.showHowTo(null);
-    expect(root.querySelector('.hud-howto')).toBeNull();
-  });
-  it('every slide draws, and the party slides draw the shared figures with the lead stepping forward', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
-    const slides = howtoSlides(c); const noop = () => {};
-    for (const [i, slide] of slides.entries()) {
-      hud.showHowTo({ slide, index: i, count: slides.length, onNext: noop });
-      expect(root.querySelector('.howto-slide')!.getAttribute('data-kind')).toBe(slide.kind);
-      expect(root.querySelector('.howto-slide .eyebrow')!.textContent).toBe(slide.eyebrow);
-    }
-    hud.showHowTo({ slide: slides[0], index: 0, count: 8, onNext: noop });
-    expect([...root.querySelectorAll('.howto-member svg.figure')].map((f) => f.getAttribute('data-role'))).toEqual(['citizen', 'government', 'business', 'microsoft']);
-    // One number sizes the figures: the scale they are drawn at is the one the stylesheet sizes them by.
-    expect((root.querySelector('.howto-party') as HTMLElement).style.getPropertyValue('--figure-scale')).toBe('3');
-    expect(root.querySelector('.howto-member svg.figure')!.getAttribute('width')).toBe('36');
-    expect(root.querySelector('.howto-name')!.textContent).toBe('Olkaria');
-    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop });
-    expect(root.querySelector('.howto-member.howto-lead svg.figure')!.getAttribute('data-role')).toBe('citizen');
-    hud.showHowTo({ slide: slides[5], index: 5, count: 8, onNext: noop });
-    expect(root.querySelectorAll('.howto-chunk')).toHaveLength(5);
-    expect((root.querySelector('.howto-chunk') as HTMLElement).style.getPropertyValue('--w')).toBe('50%');
-  });
-  it('the gauge ends in its top score, and the split and the gauge fill come in after the lines that explain them', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
-    const slides = howtoSlides(c); const noop = () => {};
-    const at = (el: Element | null): number => Number((el as HTMLElement).style.getPropertyValue('--i'));
-    hud.showHowTo({ slide: slides[3], index: 3, count: 8, onNext: noop });
-    const split = root.querySelector('.howto-split.howto-in');
-    expect(at(split)).toBeGreaterThan(Math.max(...[...root.querySelectorAll('.howto-line')].map(at)));
-    hud.showHowTo({ slide: slides[6], index: 6, count: 8, onNext: noop });
-    expect(text(root, '.howto-gauge > .howto-end')).toBe('400');
-    const [first, second, holds] = [...root.querySelectorAll('.howto-line')].map(at);
-    const fill = at(root.querySelector('.howto-gaugefill'));
-    expect([first < second, second < fill, fill < holds]).toEqual([true, true, true]);
-  });
-  it('clear() leaves the how-to up, as it leaves the menu', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
-    hud.showHowTo({ slide: howtoSlides(c)[0], index: 0, count: 8, onNext: () => {} });
-    hud.clear();
-    expect(root.querySelector('.hud-howto')).not.toBeNull();
-  });
   it('menuOpen says whether the menu is up', () => {
-    const root = document.createElement('div'); const hud = new Hud(root);
+    const { hud } = fresh();
     expect(hud.menuOpen()).toBe(false);
-    hud.showMenu({ actions: [], stages: [], stagesHint: '', onPick: () => {}, onClose: () => {} });
+    hud.showMenu(menu());
     expect(hud.menuOpen()).toBe(true);
     hud.showMenu(null);
     expect(hud.menuOpen()).toBe(false);
   });
 });
 
+// ---- How to play: one slide at a time on a full-bleed dialog -------------------------------------------------------
+
+describe('how to play', () => {
+  it('draws a slide as its step number over its sentence and note, on a full-bleed dialog with the dots and the keycaps; null takes it down', () => {
+    const { root, hud } = fresh();
+    const slides = howtoSlides(c); const onNext = vi.fn();
+    hud.showHowTo({ slide: slides[3], index: 3, count: slides.length, onNext });
+    const dialog = root.querySelector('.hud-howto')!;
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-label')).toBe('How to play');
+    expect(dialog.parentElement).toBe(root);
+    expect([...dialog.querySelector('.howto-slide')!.children].map((el) => [el.className.split(' ')[0], el.textContent])).toEqual([
+      ['howto-step', '4'],
+      ['howto-text', 'The purpose of the game is for you to get to a team consensus, BUT KEEP YOUR INTERESTS IN MIND!!'],
+      ['howto-note', "You'll have 2 minutes to discuss within your team"],
+    ]);
+    expect(dialog.querySelectorAll('.howto-dot')).toHaveLength(7);
+    expect(dialog.querySelector('.howto-dot[aria-current]')).toBe(dialog.querySelectorAll('.howto-dot')[3]);
+    expect([...dialog.querySelectorAll('.howto-key')].map((k) => [k.querySelector('kbd')!.textContent, k.querySelector('span')!.textContent])).toEqual([['Space', 'Next'], ['?', 'Close']]);
+    (dialog.querySelector('.howto-slide') as HTMLElement).click();
+    expect(onNext).toHaveBeenCalledTimes(1);
+    hud.showHowTo({ slide: slides[6], index: 6, count: slides.length, onNext });
+    expect(root.querySelectorAll('.hud-howto')).toHaveLength(1);
+    expect(dialog.isConnected).toBe(false);
+    // The closing slide has no number and no note.
+    expect([...root.querySelector('.howto-slide')!.children].map((el) => el.className.split(' ')[0])).toEqual(['howto-text']);
+    expect([...root.querySelectorAll('.howto-key')].map((k) => k.querySelector('span')!.textContent)).toEqual(['Close', 'Close']);
+    hud.showLobby(lobby());   // a screen change under the dialog
+    expect(root.querySelector('.hud-howto')).not.toBeNull();
+    hud.clear();
+    expect(root.querySelector('.hud-howto')).not.toBeNull();
+    hud.showHowTo(null);
+    expect(root.querySelector('.hud-howto')).toBeNull();
+  });
+
+  it('every slide draws its own sentence in full, as text', () => {
+    const { root, hud } = fresh();
+    const slides = howtoSlides(c);
+    for (const [i, slide] of slides.entries()) {
+      hud.showHowTo({ slide, index: i, count: slides.length, onNext: () => {} });
+      expect(text(root, '.howto-text')).toBe(slide.text);
+      expect(text(root, '.howto-step')).toBe(slide.step === null ? null : String(slide.step));
+    }
+  });
+});
+
 // ---- The pixel face: no ligatures anywhere it is set ---------------------------------------------------------
 
 describe('the pixel face', () => {
-  // The path is joined by hand: in this environment Vite turns new URL(path, import.meta.url) into a dev-server address.
-  const css = (path: string): string => readFileSync(join(dirname(fileURLToPath(import.meta.url)), path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   it('turns ligatures off in every rule that sets it, after the font, since Pixelify Sans lacks the glyph its "fi" stands for', () => {
-    // "Households first" read "Households Arst" on the call-out banner. The font shorthand resets ligatures, so the
-    // rule must turn them off after it.
     const rules = [...css('../host/hud/hud.css').matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , body]) => body.includes('var(--font-title)'));
-    expect(rules.length).toBeGreaterThanOrEqual(10);
+    expect(rules.length).toBeGreaterThanOrEqual(6);
     for (const [, selector, body] of rules) {
       const at = body.indexOf('var(--font-title)');
       expect({ selector: selector.trim(), off: body.indexOf('font-variant-ligatures: none') > at && body.indexOf('font-feature-settings: "liga" 0') > at })

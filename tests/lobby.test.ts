@@ -75,3 +75,19 @@ it('keeps to a rest another scene left in the registry', () => {
   space(press());
   expect(sent).toEqual([{ k: 'start' }]);
 });
+
+it('names each role from the content\'s roles[].name, in the tiles and the newest names', () => {
+  const showLobby = vi.fn();
+  values.set('hud', { showLobby, showToast: vi.fn() });
+  values.set('content', { roles: [{ id: 'citizen', name: 'Citizen' }, { id: 'government', name: 'Government' }, { id: 'business', name: 'Local Businessman' }, { id: 'microsoft', name: 'Satya Nadella' }] });
+  values.set('view', { phase: 'lobby', hideNames: false, players: { p1: { id: 'p1', name: 'Ann', role: 'microsoft', table: 'Team 1', joinedAt: 1, votes: {} } } });
+  const registry = { get: (key: string) => values.get(key), set: (key: string, value: unknown) => values.set(key, value), events: { on: vi.fn(), off: vi.fn() } };
+  const scene = new Lobby();
+  Object.assign(scene, { registry, input: { keyboard: { on: vi.fn() } }, time: clock, events: { once: vi.fn() }, add: inert, tweens: inert });
+  scene.create();
+  const args = showLobby.mock.calls.at(-1)![0];
+  expect(args.roleNames).toEqual({ citizen: 'Citizen', government: 'Government', business: 'Local Businessman', microsoft: 'Satya Nadella' });
+  expect(args.recent).toEqual(['Ann, Satya Nadella']);
+  expect(args.roleCounts.microsoft).toBe(1);
+  expect(args).not.toHaveProperty('classNames');
+});

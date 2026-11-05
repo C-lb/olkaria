@@ -1,25 +1,38 @@
-// How to play: five slides the facilitator shows on the projector before the game, one idea each, so the room sees
-// how a question goes. Nothing is scored, so no slide talks about points or classes. This is the slide model:
-// howtoSlides() reads the vote time from the case's settings, so a content edit carries through; the words are fixed
-// here because they describe the game, not the case. host/hud/HowTo.ts draws a slide; Hud.showHowTo shows it;
-// installHowTo() puts the slides on ? and walks them.
+// How to play: seven slides the facilitator shows on the projector before the game, in the client's own words, so
+// the room knows how the session runs. This is the slide model: howtoSlides() reads the vote time from the case's
+// settings, so slide 4 stays true if it changes; every other word is the client's, fixed here. host/hud/HowTo.ts draws
+// a slide; Hud.showHowTo shows it; installHowTo() puts the slides on ? and walks them.
 import { clockText } from '../shared/clock';
 import type { CaseContent } from '../shared/content';
 import { callOffReset, typing } from './hotkeys';
 import type { Hud } from './hud/Hud';
 
-/** One slide: a title and one or two lines under it. */
-export interface HowToSlide { title: string; lines: string[] }
+/** One slide: its step number (null for the closing slide, which the client left unnumbered), its sentence, and a smaller line under it. */
+export interface HowToSlide { step: number | null; text: string; note?: string }
 
-/** The five slides, in order. */
+/** A vote time in words: "2 minutes", "1 minute", or m:ss when it is not a whole number of minutes ("1:30"). */
+export function durationText(seconds: number): string {
+  if (seconds > 0 && seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+  }
+  return clockText(seconds);
+}
+
+/** The seven slides, in order, word for word. */
 export function howtoSlides(content: CaseContent): HowToSlide[] {
-  const clock = clockText(content.settings.voteSeconds);
   return [
-    { title: 'Join', lines: ['Scan the code. Pick your name, your role and your team.'] },
-    { title: 'Five bosses', lines: ['Power, Demand, Competition, Risk, and the Deadlock. Each one guards a question.'] },
-    { title: 'Vote', lines: [`Read the question on your phone and pick A, B or C. You have ${clock}.`] },
-    { title: 'Defend', lines: ['Then look at the screen. You may be called to defend your pick.'] },
-    { title: 'The ending', lines: ['The last vote decides how it ends.'] },
+    { step: 1, text: 'You will be split into groups of 4' },
+    { step: 2, text: 'You pick a role' },
+    { step: 3, text: 'Each role has their own interest' },
+    {
+      step: 4,
+      text: 'The purpose of the game is for you to get to a team consensus, BUT KEEP YOUR INTERESTS IN MIND!!',
+      note: `You'll have ${durationText(content.settings.voteSeconds)} to discuss within your team`,
+    },
+    { step: 5, text: 'If you are very inclined to pick another option, then you may sabotage your team' },
+    { step: 6, text: "You'll randomly be called to speak your truth, so be ready to defend!!" },
+    { step: null, text: 'Each monster that we are defeating is representative of a problem that was faced in the case' },
   ];
 }
 

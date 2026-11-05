@@ -19,7 +19,7 @@ export class Boot extends Phaser.Scene {
     for (const { key, url } of BACKDROP) this.load.image(key, url);
   }
 
-  /** The bosses first, so the Ending's `boss-core` is theirs; then the placeholders fill every key still missing. */
+  /** The bosses first, so `boss-core` is theirs; then the placeholders fill every key still missing. */
   create(): void {
     makeBossArt(this);
     makePlaceholders(this);

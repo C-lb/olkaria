@@ -148,30 +148,6 @@ const GROUND: readonly Rect[] = [
   [6, 13, 1, 3, P.stoneDeep], [13, 13, 1, 3, P.stoneDeep], [3, 4, 1, 1, P.stone], [10, 10, 1, 1, P.stone],
 ];
 
-const PLATFORM: readonly Rect[] = [
-  [0, 0, 16, 2, P.stonePale], [0, 2, 16, 1, P.stoneLight], [0, 3, 16, 10, P.stone], [0, 13, 16, 3, P.stoneDark],
-  [7, 3, 1, 10, P.stoneDark], [15, 3, 1, 10, P.stoneDark], [3, 6, 1, 1, P.stoneLight], [11, 9, 1, 1, P.stoneLight],
-  [0, 15, 16, 1, P.outline],
-];
-
-/** A case exhibit: a scroll with an amber seal. */
-const EXHIBIT: readonly Rect[] = [
-  [2, 3, 8, 6, P.bone], [1, 2, 2, 8, P.boneDim], [9, 2, 2, 8, P.boneDim],
-  [4, 5, 4, 1, P.stoneLight], [4, 7, 3, 1, P.stoneLight], [7, 7, 2, 2, P.amber],
-];
-
-/** The arena gate: a stone arch with a portcullis and two torches. */
-function gate(p: Painter): void {
-  p.rects([
-    [0, 0, 32, 10, P.stone], [0, 0, 32, 1, P.stonePale], [0, 10, 6, 38, P.stone], [26, 10, 6, 38, P.stone],
-    [6, 10, 20, 38, P.outline], [6, 10, 3, 2, P.stone], [23, 10, 3, 2, P.stone], [6, 12, 1, 1, P.stone], [25, 12, 1, 1, P.stone],
-    [5, 10, 1, 38, P.stoneDark], [26, 10, 1, 38, P.stoneDark],
-  ]);
-  for (const x of [9, 13, 17, 21]) p.rects([[x, 12, 2, 36, P.stoneLight]]);
-  for (const y of [18, 28, 38]) p.rects([[6, y, 20, 2, P.stoneLight]]);
-  p.rects([[2, 16, 2, 3, P.amber], [28, 16, 2, 3, P.amber], [2, 19, 2, 3, P.wood], [28, 19, 2, 3, P.wood]]);
-}
-
 // ---- The digits font: 4 x 6 glyphs (M and W 5 x 6) in 5 x 6 cells ----------------------------------------
 
 const GLYPHS: Record<string, readonly string[]> = {
@@ -215,16 +191,13 @@ function digits(scene: Phaser.Scene): void {
 
 /**
  * Creates every placeholder texture once per game: `class-citizen`, `class-government`, `class-business`,
- * `class-microsoft` (16 x 20), `tile-ground` and `tile-platform` (16 x 16), `exhibit` (12 x 12), `gate` (32 x 48),
+ * `class-microsoft` (16 x 20), `tile-ground` (16 x 16),
  * `boss-power`, `boss-demand`, `boss-competition`, `boss-risk`, `boss-core` (64 x 48), and the bitmap font `digits`
  * (6 px tall, white, tint it). A key that already exists, a real asset loaded first say, is left alone.
  */
 export function makePlaceholders(scene: Phaser.Scene): void {
   for (const role of ROLES) texture(scene, `class-${role}`, FIGURE_W, FIGURE_H, (p) => p.rects(FIGURES[role]));
   texture(scene, 'tile-ground', 16, 16, (p) => p.rects(GROUND));
-  texture(scene, 'tile-platform', 16, 16, (p) => p.rects(PLATFORM));
-  texture(scene, 'exhibit', 12, 12, (p) => p.rects(EXHIBIT));
-  texture(scene, 'gate', 32, 48, gate);
   texture(scene, 'boss-power', 64, 48, gridWyrm);
   texture(scene, 'boss-demand', 64, 48, fogOfDemand);
   texture(scene, 'boss-competition', 64, 48, hydraOfRivalry);
